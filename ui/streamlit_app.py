@@ -63,6 +63,32 @@ STOPWORDS = {
     "per",
 }
 
+PESTEL_DOMAINS = (
+    "political",
+    "economic",
+    "social",
+    "technological",
+    "environmental",
+    "legal",
+)
+
+DOMAIN_ALIASES = {
+    "politics": "political",
+    "policy": "legal",
+    "regulatory": "legal",
+    "regulation": "legal",
+    "economy": "economic",
+    "financial": "economic",
+    "finance": "economic",
+    "societal": "social",
+    "demographic": "social",
+    "technology": "technological",
+    "tech": "technological",
+    "environment": "environmental",
+    "climate": "environmental",
+    "law": "legal",
+}
+
 
 def run_cli(args: list[str]) -> tuple[int, str]:
     proc = subprocess.run(
@@ -133,6 +159,29 @@ def _load_view_model(run_dir: Path) -> dict[str, Any]:
     return build_view_model(run_dir)
 
 
+def _load_charter_artifacts(
+    run_dir: Path,
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    artifacts_dir = run_dir / "artifacts"
+    charter = _load_json(artifacts_dir / "scenario_charter.json")
+    if not charter:
+        charter = _load_json(artifacts_dir / "charter.json")
+    focal_issue = _load_json(artifacts_dir / "focal_issue.json")
+    return charter, focal_issue
+
+
+def _artifact_registry(run_dir: Path | None) -> dict[str, Any] | None:
+    if not run_dir or not run_dir.exists():
+        return None
+    artifacts_dir = run_dir / "artifacts"
+    if not artifacts_dir.exists():
+        return {"run_id": run_dir.name, "artifacts": []}
+    artifacts = sorted(
+        [path.name for path in artifacts_dir.iterdir() if path.is_file()]
+    )
+    return {"run_id": run_dir.name, "artifacts": artifacts}
+
+
 def _group_drivers_by_domain(drivers: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
     grouped: dict[str, list[dict[str, Any]]] = {}
     for entry in drivers:
@@ -141,13 +190,76 @@ def _group_drivers_by_domain(drivers: list[dict[str, Any]]) -> dict[str, list[di
     return {key: grouped[key] for key in sorted(grouped.keys())}
 
 
+def _normalize_domain(domain: str | None) -> str | None:
+    if not domain:
+        return None
+    value = str(domain).strip().lower()
+    if value in PESTEL_DOMAINS:
+        return value
+    return DOMAIN_ALIASES.get(value)
+
+
+def _normalize_text(value: Any | None) -> str:
+    if value is None:
+        return ""
+    return str(value).strip().lower()
+
+
+def _parse_horizon_months(value: Any | None) -> int | None:
+    if value is None:
+        return None
+    match = re.search(r"\d+", str(value))
+    if not match:
+        return None
+    return int(match.group())
+
+
+def _domain_counts(forces: list[dict[str, Any]]) -> dict[str, int]:
+    counts = {domain: 0 for domain in PESTEL_DOMAINS}
+    for force in forces:
+        raw_domain = force.get("domain") or force.get("category")
+        domain = _normalize_domain(raw_domain)
+        if domain:
+            counts[domain] += 1
+    return counts
+
+
+def _washout_pass(
+    forces: list[dict[str, Any]],
+    washout_report: dict[str, Any] | None,
+    *,
+    min_total: int = 30,
+    min_per_domain: int = 5,
+    max_duplicate_ratio: float = 0.2,
+) -> bool:
+    if not forces or len(forces) < min_total:
+        return False
+    counts = _domain_counts(forces)
+    if any(count < min_per_domain for count in counts.values()):
+        return False
+    for force in forces:
+        citations = force.get("citations") if isinstance(force, dict) else None
+        if not isinstance(citations, list) or not citations:
+            return False
+    duplicate_ratio = None
+    if isinstance(washout_report, dict):
+        duplicate_ratio = washout_report.get("duplicate_ratio")
+        missing_categories = washout_report.get("missing_categories", [])
+        if isinstance(missing_categories, list) and missing_categories:
+            return False
+    if not isinstance(duplicate_ratio, (int, float)):
+        return False
+    return float(duplicate_ratio) <= max_duplicate_ratio
+
+
 def _keyword_weights(drivers: list[dict[str, Any]]) -> list[tuple[str, float]]:
     weights: dict[str, float] = {}
     for entry in drivers:
         confidence = entry.get("confidence")
         weight = float(confidence) if isinstance(confidence, (int, float)) else 1.0
         text = " ".join(
-            str(entry.get(field, "")) for field in ("name", "description", "category", "trend")
+            str(entry.get(field, ""))
+            for field in ("name", "description", "domain", "category", "trend", "why_it_matters")
         )
         tokens = re.findall(r"[A-Za-z][A-Za-z0-9_-]+", text.lower())
         for token in tokens:
@@ -194,7 +306,7 @@ def _plot_word_map(drivers: list[dict[str, Any]]) -> None:
         height=420,
         margin={"l": 10, "r": 10, "t": 10, "b": 10},
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 
 def _plot_uncertainties(
@@ -233,7 +345,7 @@ def _plot_uncertainties(
         height=420,
         legend_title=None,
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 
 def _narrative_map(narratives: list[dict[str, str]]) -> dict[str, str]:
@@ -296,7 +408,7 @@ def _render_network_graph(drivers: list[dict[str, Any]]) -> None:
     for driver in drivers:
         node_id = driver.get("id") or driver.get("name")
         label = driver.get("name") or driver.get("id") or "driver"
-        group = driver.get("category") or "Other"
+        group = driver.get("category") or driver.get("domain") or "Other"
         net.add_node(node_id, label=label, group=group)
 
     for idx, left in enumerate(drivers):
@@ -305,7 +417,9 @@ def _render_network_graph(drivers: list[dict[str, Any]]) -> None:
             right_id = right.get("id") or right.get("name")
             if not left_id or not right_id:
                 continue
-            shared_domain = (left.get("category") or "") == (right.get("category") or "")
+            shared_domain = (left.get("category") or left.get("domain") or "") == (
+                right.get("category") or right.get("domain") or ""
+            )
             left_citations = _citation_domains(left.get("citations") or [])
             right_citations = _citation_domains(right.get("citations") or [])
             shared_citation = bool(left_citations & right_citations)
@@ -369,12 +483,22 @@ if latest_status.get("error_summary"):
     st.warning(f"Error summary: {latest_status['error_summary']}")
 
 view_model: dict[str, Any] = {}
+run_dir: Path | None = None
+charter: dict[str, Any] | None = None
+focal_issue: dict[str, Any] | None = None
 if selected_run:
     run_dir = RUNS_DIR / selected_run
     if run_dir.exists():
         view_model = _load_view_model(run_dir)
+        charter, focal_issue = _load_charter_artifacts(run_dir)
 
-charter = view_model.get("charter") or {}
+charter_payload = charter or {}
+focal_issue_payload = focal_issue or {}
+driving_forces = view_model.get("driving_forces") or []
+washout_report = view_model.get("washout_report") or {}
+evidence_units = view_model.get("evidence_units") or []
+belief_sets = view_model.get("belief_sets") or []
+effects = view_model.get("effects") or []
 drivers = view_model.get("drivers") or []
 drivers_by_domain = view_model.get("drivers_by_domain") or _group_drivers_by_domain(drivers)
 uncertainties = view_model.get("uncertainties") or []
@@ -383,6 +507,12 @@ scenarios = view_model.get("scenarios") or []
 narratives = view_model.get("narratives") or []
 ewis = view_model.get("ewis") or []
 daily_brief_md = view_model.get("daily_brief_md")
+force_entries = driving_forces if driving_forces else drivers
+force_groups = _group_drivers_by_domain(force_entries)
+artifact_registry = _artifact_registry(run_dir)
+if artifact_registry:
+    exp = st.expander("Debug: Artifacts", expanded=False)
+    exp.json(artifact_registry)
 
 tabs = st.tabs(
     [
@@ -397,38 +527,96 @@ tabs = st.tabs(
 )
 
 with tabs[0]:
+    st.write(f"Viewing run: {selected_run or 'None'}")
+    run_scope = charter_payload.get("scope")
+    run_value = charter_payload.get("title") or charter_payload.get("value")
+    run_horizon = charter_payload.get("time_horizon")
+    st.write(
+        "Run charter: "
+        f"{run_scope or 'N/A'}/{run_value or 'N/A'}/{run_horizon or 'N/A'}"
+    )
+    build_horizon_months = horizon
+    run_horizon_months = _parse_horizon_months(run_horizon)
+    mismatch = False
+    if run_scope and _normalize_text(run_scope) != _normalize_text(scope):
+        mismatch = True
+    if run_value and _normalize_text(run_value) != _normalize_text(value):
+        mismatch = True
+    if run_horizon_months is not None:
+        mismatch = mismatch or run_horizon_months != build_horizon_months
+    elif run_horizon and _normalize_text(run_horizon) != _normalize_text(f"{horizon} months"):
+        mismatch = True
+    if mismatch:
+        st.warning(
+            "Build controls affect the next run only and do not change the selected run."
+        )
+
     st.subheader("Charter Summary")
-    domains = ", ".join(drivers_by_domain.keys()) if drivers_by_domain else "None"
-    st.write(f"Scope: {charter.get('scope', 'N/A')}")
-    st.write(f"Value: {charter.get('title', 'N/A')}")
-    st.write(f"Horizon: {charter.get('time_horizon', 'N/A')}")
-    st.write(f"Domains: {domains}")
+    domains = ", ".join(force_groups.keys()) if force_groups else "None"
+    if charter_payload:
+        st.write(f"Scope: {run_scope or 'N/A'}")
+        st.write(f"Value: {run_value or 'N/A'}")
+        st.write(f"Horizon: {run_horizon or 'N/A'}")
+        st.write(f"Domains: {domains}")
+    else:
+        st.write("No charter found for this run.")
+
+    if focal_issue_payload:
+        st.subheader("Focal Issue")
+        focal_text = focal_issue_payload.get("focal_issue")
+        if focal_text:
+            st.write(focal_text)
+        decision_type = focal_issue_payload.get("decision_type")
+        if decision_type:
+            st.write(f"Decision type: {decision_type}")
+        success_criteria = focal_issue_payload.get("success_criteria")
+        if success_criteria:
+            st.write(f"Success criteria: {success_criteria}")
+        exclusions = focal_issue_payload.get("exclusions") or []
+        if isinstance(exclusions, list) and exclusions:
+            st.write(f"Exclusions: {', '.join(exclusions)}")
 
     st.subheader("Counts")
-    st.write(f"Drivers: {len(drivers)}")
+    st.write(f"Driving forces: {len(force_entries)}")
     st.write(f"Uncertainties: {len(uncertainties)}")
     st.write(f"Scenarios: {len(scenarios)}")
     st.write(f"EWIs: {len(ewis)}")
+
+    st.subheader("Exploration")
+    domain_counts = _domain_counts(force_entries)
+    coverage = ", ".join([f"{domain}:{domain_counts[domain]}" for domain in PESTEL_DOMAINS])
+    duplicate_ratio = washout_report.get("duplicate_ratio")
+    washout_status = "PASS" if _washout_pass(force_entries, washout_report) else "FAIL"
+    st.write(f"Forces: {len(force_entries)}")
+    st.write(f"Per-domain coverage: {coverage if force_entries else 'N/A'}")
+    if isinstance(duplicate_ratio, (int, float)):
+        st.write(f"Duplicates ratio: {duplicate_ratio:.2f}")
+    else:
+        st.write("Duplicates ratio: N/A")
+    st.write(f"Washout: {washout_status}")
 
     updated_at = latest_status.get("updated_at")
     st.write(f"Last updated: {updated_at or 'N/A'}")
 
 with tabs[1]:
-    st.subheader("Clustered Drivers")
-    if not drivers_by_domain:
-        st.info("No drivers available yet.")
-    for domain, entries in drivers_by_domain.items():
+    st.subheader("Clustered Driving Forces")
+    if not force_groups:
+        st.info("No driving forces available yet.")
+    for domain, entries in force_groups.items():
         with st.expander(domain, expanded=False):
             for entry in entries:
-                st.markdown(f"**{entry.get('name', 'Driver')}**")
+                st.markdown(f"**{entry.get('name', 'Force')}**")
                 st.write(entry.get("description", ""))
+                why = entry.get("why_it_matters")
+                if why:
+                    st.write(f"Why it matters: {why}")
                 citations = entry.get("citations") or []
                 if citations:
                     st.caption(", ".join([c.get("url", "") for c in citations if c.get("url")]))
 
-    st.subheader("Driver Word Map")
-    _plot_word_map(drivers)
-    _render_network_graph(drivers)
+    st.subheader("Force Word Map")
+    _plot_word_map(force_entries)
+    _render_network_graph(force_entries)
 
 with tabs[2]:
     st.subheader("Impact vs Uncertainty")
@@ -437,48 +625,81 @@ with tabs[2]:
 
 with tabs[3]:
     st.subheader("Evidence -> Beliefs -> Effects")
-    driver_by_id = {entry.get("id"): entry for entry in drivers if entry.get("id")}
-    scenario_logic_items = scenario_logic.get("scenarios", []) if isinstance(scenario_logic, dict) else []
-    narrative_by_id = _narrative_map(narratives)
+    evidence_by_id = {
+        entry.get("id"): entry for entry in evidence_units if entry.get("id")
+    }
+    effects_by_belief: dict[str, list[dict[str, Any]]] = {}
+    for effect in effects:
+        belief_id = effect.get("belief_id")
+        if belief_id:
+            effects_by_belief.setdefault(belief_id, []).append(effect)
 
-    top_uncertainties = _top_uncertainties(uncertainties)
-    if not top_uncertainties:
-        st.info("No uncertainties available yet.")
-    for uncertainty in top_uncertainties:
-        st.markdown(f"### {uncertainty.get('name', 'Uncertainty')}")
+    if not belief_sets:
+        st.info("No belief sets available yet.")
+    for belief_set in belief_sets:
+        uncertainty_label = belief_set.get("uncertainty_id", "Uncertainty")
+        st.markdown(f"### {uncertainty_label}")
         cols = st.columns(3)
         with cols[0]:
             st.markdown("**Evidence**")
-            driver_ids = uncertainty.get("driver_ids") or []
-            if not driver_ids:
-                st.write("No linked drivers.")
-            for driver_id in driver_ids:
-                driver = driver_by_id.get(driver_id)
-                if not driver:
+            evidence_ids: list[str] = []
+            dominant = belief_set.get("dominant_belief") or {}
+            counter = belief_set.get("counter_belief") or {}
+            for belief in (dominant, counter):
+                for evidence_id in belief.get("evidence_ids", []) or []:
+                    if evidence_id not in evidence_ids:
+                        evidence_ids.append(evidence_id)
+            if not evidence_ids:
+                st.write("No evidence linked.")
+            for evidence_id in evidence_ids:
+                evidence = evidence_by_id.get(evidence_id)
+                if not evidence:
                     continue
-                st.write(driver.get("name", driver_id))
-                citations = driver.get("citations") or []
+                statement = evidence.get("statement") or evidence_id
+                detail_parts = [
+                    evidence.get("actor"),
+                    evidence.get("variable"),
+                    evidence.get("direction"),
+                    evidence.get("time_signal"),
+                ]
+                details = ", ".join([part for part in detail_parts if part])
+                if details:
+                    st.write(f"{statement} ({details})")
+                else:
+                    st.write(statement)
+                citations = evidence.get("citations") or []
                 if citations:
                     st.caption(", ".join([c.get("url", "") for c in citations if c.get("url")]))
         with cols[1]:
             st.markdown("**Beliefs**")
-            st.write(uncertainty.get("description", "No description."))
-            extremes = uncertainty.get("extremes") or []
-            if extremes:
-                st.caption(f"Extremes: {', '.join(extremes)}")
+            dominant = belief_set.get("dominant_belief") or {}
+            counter = belief_set.get("counter_belief") or {}
+            if dominant:
+                st.write(f"Dominant: {dominant.get('statement', '')}")
+                assumptions = dominant.get("assumptions") or []
+                if assumptions:
+                    st.caption(f"Assumptions: {', '.join(assumptions)}")
+            if counter:
+                st.write(f"Counter: {counter.get('statement', '')}")
+                assumptions = counter.get("assumptions") or []
+                if assumptions:
+                    st.caption(f"Assumptions: {', '.join(assumptions)}")
         with cols[2]:
             st.markdown("**Effects**")
-            effects = []
-            for scenario in scenario_logic_items:
-                effects.append(f"{scenario.get('name')}: {scenario.get('logic')}")
-            effects = [item for item in effects if item][:3]
-            if effects:
-                for effect in effects:
-                    st.write(effect)
-            else:
-                st.write("No scenario effects available.")
+            for label, belief in (("Dominant", dominant), ("Counter", counter)):
+                belief_id = belief.get("id")
+                belief_effects = effects_by_belief.get(belief_id, [])
+                if belief_effects:
+                    st.write(f"{label}:")
+                    for effect in belief_effects[:3]:
+                        order = effect.get("order")
+                        description = effect.get("description") or ""
+                        suffix = f" (order {order})" if order else ""
+                        st.write(f"- {description}{suffix}")
+                else:
+                    st.write(f"{label}: No effects.")
         with st.expander("Raw JSON", expanded=False):
-            st.json(uncertainty)
+            st.json(belief_set)
 
 with tabs[4]:
     st.subheader("Axes")
