@@ -32,16 +32,19 @@ def write_latest_status(
     *,
     run_id: str,
     status: str,
+    command: str | None = None,
     base_dir: Path | None = None,
     error_summary: str | None = None,
 ) -> Path:
     if base_dir is None:
         base_dir = default_runs_dir()
     base_dir.mkdir(parents=True, exist_ok=True)
+    command_name = command or "unknown"
     payload: dict[str, Any] = {
         "run_id": run_id,
         "updated_at": datetime.now(timezone.utc).isoformat(),
         "status": status,
+        "command": command_name,
     }
     if error_summary:
         payload["error_summary"] = error_summary

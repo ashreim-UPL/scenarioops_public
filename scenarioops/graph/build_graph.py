@@ -330,6 +330,7 @@ def run_graph(
     mock_mode: bool = False,
     generate_strategies: bool = True,
     report_date: str | None = None,
+    command: str | None = None,
 ) -> ScenarioOpsState:
     if run_id is None:
         run_id = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
@@ -478,10 +479,13 @@ def run_graph(
         write_latest_status(
             run_id=run_id,
             status="FAIL",
+            command=command or "run-graph",
             error_summary=str(exc),
             base_dir=base_dir,
         )
         raise
 
-    write_latest_status(run_id=run_id, status="OK", base_dir=base_dir)
+    write_latest_status(
+        run_id=run_id, status="OK", command=command or "run-graph", base_dir=base_dir
+    )
     return state

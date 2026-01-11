@@ -28,7 +28,12 @@ from scenarioops.graph.nodes import (
 )
 from scenarioops.graph.state import ScenarioOpsState
 from scenarioops.graph.tools.scoring import hash_scoring_result, score_with_rubric
-from scenarioops.graph.tools.storage import default_runs_dir, read_latest_status, write_artifact
+from scenarioops.graph.tools.storage import (
+    default_runs_dir,
+    read_latest_status,
+    write_artifact,
+    write_latest_status,
+)
 from scenarioops.graph.tools.web_retriever import retrieve_url
 
 
@@ -69,6 +74,23 @@ def _verify_fail(message: str) -> None:
     raise SystemExit(1)
 
 
+def _write_latest(
+    *,
+    run_id: str,
+    status: str,
+    command: str,
+    base_dir: Path | None = None,
+    error_summary: str | None = None,
+) -> None:
+    write_latest_status(
+        run_id=run_id,
+        status=status,
+        command=command,
+        error_summary=error_summary,
+        base_dir=base_dir,
+    )
+
+
 def _run_verify(args: argparse.Namespace) -> None:
     if not args.demo:
         _verify_fail("verify requires --demo to run in mock mode.")
@@ -90,6 +112,7 @@ def _run_verify(args: argparse.Namespace) -> None:
             mock_mode=True,
             generate_strategies=True,
             report_date="2026-01-01",
+            command="verify",
         )
     except Exception as exc:
         _verify_fail(f"mock build failed: {exc}")
@@ -156,26 +179,40 @@ def _run_build_scenarios(args: argparse.Namespace) -> None:
         sources = default_sources()
 
     inputs = GraphInputs(user_params=user_params, sources=sources, signals=[])
-    if args.live:
-        retriever = lambda url, **kwargs: retrieve_url(
-            url, allow_network=True, public_demo_mode=False, **kwargs
-        )
-        run_graph(
-            inputs,
+    command = "build-scenarios"
+    try:
+        if args.live:
+            retriever = lambda url, **kwargs: retrieve_url(
+                url, allow_network=True, public_demo_mode=False, **kwargs
+            )
+            run_graph(
+                inputs,
+                run_id=run_id,
+                base_dir=base_dir,
+                mock_mode=False,
+                generate_strategies=False,
+                retriever=retriever,
+                command=command,
+            )
+        else:
+            run_graph(
+                inputs,
+                run_id=run_id,
+                base_dir=base_dir,
+                mock_mode=True,
+                generate_strategies=False,
+                command=command,
+            )
+        _write_latest(run_id=run_id, status="OK", command=command, base_dir=base_dir)
+    except Exception as exc:
+        _write_latest(
             run_id=run_id,
+            status="FAIL",
+            command=command,
+            error_summary=str(exc),
             base_dir=base_dir,
-            mock_mode=False,
-            generate_strategies=False,
-            retriever=retriever,
         )
-    else:
-        run_graph(
-            inputs,
-            run_id=run_id,
-            base_dir=base_dir,
-            mock_mode=True,
-            generate_strategies=False,
-        )
+        raise
     _print_result(run_id, base_dir)
 
 
@@ -229,16 +266,28 @@ def _run_daily(args: argparse.Namespace) -> None:
     mock_payloads = (
         mock_payloads_for_sources(default_sources()) if not args.live else None
     )
-    state = run_daily_runner_node(
-        signals,
-        run_id=run_id,
-        state=state,
-        llm_client=client_for_node(
-            "daily_runner", mock_payloads=mock_payloads
-        ),
-        base_dir=base_dir,
-    )
-    run_auditor_node(run_id=run_id, state=state, base_dir=base_dir)
+    command = "run-daily"
+    try:
+        state = run_daily_runner_node(
+            signals,
+            run_id=run_id,
+            state=state,
+            llm_client=client_for_node(
+                "daily_runner", mock_payloads=mock_payloads
+            ),
+            base_dir=base_dir,
+        )
+        run_auditor_node(run_id=run_id, state=state, base_dir=base_dir)
+        _write_latest(run_id=run_id, status="OK", command=command, base_dir=base_dir)
+    except Exception as exc:
+        _write_latest(
+            run_id=run_id,
+            status="FAIL",
+            command=command,
+            error_summary=str(exc),
+            base_dir=base_dir,
+        )
+        raise
     _print_result(run_id, base_dir)
 
 
