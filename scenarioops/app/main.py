@@ -34,6 +34,7 @@ from scenarioops.graph.tools.storage import (
     write_artifact,
     write_latest_status,
 )
+from scenarioops.graph.tools.view_model import build_view_model
 from scenarioops.graph.tools.web_retriever import retrieve_url
 
 
@@ -291,6 +292,27 @@ def _run_daily(args: argparse.Namespace) -> None:
     _print_result(run_id, base_dir)
 
 
+def _run_export_view(args: argparse.Namespace) -> None:
+    base_dir = Path(args.base_dir) if args.base_dir else None
+    run_id = args.run_id or latest_run_id(base_dir)
+    if not run_id:
+        raise ValueError("No run_id found. Run build-scenarios first.")
+
+    runs_dir = base_dir if base_dir is not None else default_runs_dir()
+    run_dir = runs_dir / run_id
+    if not run_dir.exists():
+        raise FileNotFoundError(f"Run directory not found: {run_dir}")
+
+    view_model = build_view_model(run_dir)
+    artifacts_dir = run_dir / "artifacts"
+    artifacts_dir.mkdir(parents=True, exist_ok=True)
+    output_path = artifacts_dir / "view_model.json"
+    output_path.write_text(
+        json.dumps(view_model, indent=2, sort_keys=True), encoding="utf-8"
+    )
+    print(json.dumps({"run_id": run_id, "view_model": str(output_path)}, indent=2))
+
+
 def main(argv: Sequence[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="scenarioops-app")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -330,6 +352,11 @@ def main(argv: Sequence[str] | None = None) -> None:
         help="Use live LLM instead of mock payloads.",
     )
     daily_parser.set_defaults(handler=_run_daily)
+
+    export_parser = subparsers.add_parser("export-view")
+    export_parser.add_argument("--run-id", default=None)
+    export_parser.add_argument("--base-dir", default=None)
+    export_parser.set_defaults(handler=_run_export_view)
 
     verify_parser = subparsers.add_parser("verify")
     verify_parser.add_argument("--demo", action="store_true", help="Run offline demo checks.")
