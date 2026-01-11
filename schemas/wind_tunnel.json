@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Wind Tunnel",
+  "type": "object",
+  "required": ["id", "title", "tests"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "title": { "type": "string", "minLength": 1 },
+    "tests": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/test" }
+    },
+    "metadata": { "type": "object", "additionalProperties": true }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "test": {
+      "type": "object",
+      "required": [
+        "id",
+        "strategy_id",
+        "scenario_id",
+        "outcome",
+        "failure_modes",
+        "adaptations",
+        "feasibility_score",
+        "rubric_score",
+        "action"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "strategy_id": { "type": "string", "minLength": 1 },
+        "scenario_id": { "type": "string", "minLength": 1 },
+        "outcome": { "type": "string", "minLength": 1 },
+        "failure_modes": { "type": "array", "items": { "type": "string" } },
+        "adaptations": { "type": "array", "items": { "type": "string" } },
+        "feasibility_score": { "type": "number", "minimum": 0, "maximum": 1 },
+        "rubric_score": { "type": "number", "minimum": 0, "maximum": 1 },
+        "action": {
+          "type": "string",
+          "enum": ["KEEP", "MODIFY", "HEDGE", "DROP"]
+        },
+        "rating": { "type": "integer", "minimum": 1, "maximum": 5 },
+        "notes": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

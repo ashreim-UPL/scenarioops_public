@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ScenarioOps</title>
+    <style>
+      :root {
+        --bg: #f7f1e9;
+        --ink: #0f2d32;
+        --muted: #5f6b6c;
+        --accent: #d95d39;
+        --accent-2: #f2b134;
+        --accent-3: #2f7f6f;
+        --card: #fff7eb;
+        --border: #e3d3c1;
+        --shadow: 0 20px 40px rgba(15, 45, 50, 0.12);
+        --font-display: "Fraunces", "Iowan Old Style", "Palatino Linotype", serif;
+        --font-body: "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: var(--font-body);
+        color: var(--ink);
+        background:
+          radial-gradient(800px 400px at 90% -10%, rgba(217, 93, 57, 0.18), transparent 70%),
+          radial-gradient(700px 500px at -10% 10%, rgba(47, 127, 111, 0.2), transparent 70%),
+          linear-gradient(120deg, #f7f1e9 0%, #f3e9dc 40%, #f9efe2 100%);
+        min-height: 100vh;
+      }
+
+      .shell {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 32px 24px 80px;
+      }
+
+      .hero {
+        display: grid;
+        gap: 16px;
+        padding: 28px;
+        border-radius: 24px;
+        background: rgba(255, 255, 255, 0.75);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .hero::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(400px 200px at 10% 0%, rgba(242, 177, 52, 0.2), transparent 70%);
+        pointer-events: none;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--accent);
+      }
+
+      h1 {
+        margin: 0;
+        font-family: var(--font-display);
+        font-size: clamp(32px, 4vw, 46px);
+        line-height: 1.1;
+      }
+
+      .subhead {
+        margin: 0;
+        color: var(--muted);
+        font-size: 16px;
+      }
+
+      .hero-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        font-size: 14px;
+        color: var(--muted);
+      }
+
+      .hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+      }
+
+      button {
+        border: none;
+        border-radius: 999px;
+        padding: 10px 18px;
+        font-weight: 600;
+        background: var(--ink);
+        color: #fff;
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 20px rgba(15, 45, 50, 0.2);
+      }
+
+      button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .grid {
+        margin-top: 32px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 18px;
+      }
+
+      .card {
+        padding: 20px;
+        border-radius: 18px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow);
+        transition: transform 0.25s ease, box-shadow 0.25s ease;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 24px 40px rgba(15, 45, 50, 0.15);
+      }
+
+      .card h3 {
+        margin: 0 0 6px;
+        font-family: var(--font-display);
+        font-size: 22px;
+      }
+
+      .card small {
+        color: var(--muted);
+      }
+
+      .card .logic {
+        margin-top: 10px;
+        font-size: 14px;
+        color: var(--muted);
+      }
+
+      .card .rules {
+        margin-top: 12px;
+        display: grid;
+        gap: 6px;
+        font-size: 13px;
+      }
+
+      .card .rules span {
+        display: inline-flex;
+        gap: 6px;
+      }
+
+      .card .rules b {
+        color: var(--accent-3);
+      }
+
+      .card .detail {
+        margin-top: 12px;
+        font-size: 14px;
+        color: #1d3f44;
+        display: none;
+      }
+
+      .card.expanded .detail {
+        display: block;
+      }
+
+      .section {
+        margin-top: 32px;
+        padding: 22px;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.85);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow);
+      }
+
+      .section h2 {
+        margin: 0 0 12px;
+        font-family: var(--font-display);
+        font-size: 24px;
+      }
+
+      .gauges {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 16px;
+      }
+
+      .gauge {
+        padding: 14px;
+        border-radius: 16px;
+        background: #fff;
+        border: 1px solid var(--border);
+      }
+
+      .gauge-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        font-weight: 600;
+      }
+
+      .gauge-track {
+        margin-top: 10px;
+        position: relative;
+        height: 10px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #efe0cc 0%, #f4c27c 45%, #d95d39 100%);
+      }
+
+      .gauge-marker {
+        position: absolute;
+        top: -4px;
+        width: 3px;
+        height: 18px;
+        background: var(--ink);
+      }
+
+      .gauge-marker.after {
+        background: var(--accent-3);
+      }
+
+      .gauge-meta {
+        margin-top: 8px;
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .kmd {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 16px;
+      }
+
+      .kmd-column {
+        background: #fff;
+        border-radius: 16px;
+        padding: 14px;
+        border: 1px solid var(--border);
+      }
+
+      .kmd-column h3 {
+        margin: 0 0 10px;
+        font-size: 16px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .kmd-column ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: grid;
+        gap: 8px;
+        font-size: 13px;
+      }
+
+      .brief {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 16px;
+      }
+
+      .brief-panel {
+        padding: 16px;
+        border-radius: 16px;
+        background: #fff;
+        border: 1px solid var(--border);
+      }
+
+      .brief-panel h4 {
+        margin: 0 0 8px;
+        font-size: 15px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .brief-panel ul {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        gap: 6px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .status {
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .reveal {
+        opacity: 0;
+        transform: translateY(12px);
+        animation: rise 0.6s ease forwards;
+      }
+
+      @keyframes rise {
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .reveal {
+          animation: none;
+          opacity: 1;
+          transform: none;
+        }
+
+        button:hover {
+          transform: none;
+          box-shadow: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="hero reveal" style="animation-delay: 0.05s">
+        <div class="badge">ScenarioOps</div>
+        <h1>Scenario Situation Room</h1>
+        <p class="subhead">
+          Scenario cards, activation deltas, and response posture in one glance.
+        </p>
+        <div class="hero-meta" id="runMeta">Loading latest run...</div>
+        <div class="hero-actions">
+          <button id="refreshBtn">Refresh</button>
+          <span class="status" id="statusText">Awaiting data...</span>
+        </div>
+      </header>
+
+      <section class="grid" id="scenarioCards"></section>
+
+      <section class="section reveal" style="animation-delay: 0.12s">
+        <h2>Activation Gauges</h2>
+        <div class="gauges" id="activationGauges"></div>
+      </section>
+
+      <section class="section reveal" style="animation-delay: 0.18s">
+        <h2>Keep / Modify / Drop</h2>
+        <div class="kmd" id="actionLists"></div>
+      </section>
+
+      <section class="section reveal" style="animation-delay: 0.24s">
+        <h2>Daily Delta Brief</h2>
+        <div class="brief" id="dailyBrief"></div>
+      </section>
+    </main>
+
+    <script>
+      const state = {
+        runId: null,
+        artifacts: {},
+      };
+
+      const bandScale = {
+        none: 0.05,
+        watch: 0.3,
+        elevated: 0.6,
+        active: 0.9,
+      };
+
+      const refreshBtn = document.getElementById("refreshBtn");
+      refreshBtn.addEventListener("click", () => {
+        refreshBtn.disabled = true;
+        loadLatest().finally(() => {
+          refreshBtn.disabled = false;
+        });
+      });
+
+      function parseArtifactName(path) {
+        const parts = path.split(/[/\\\\]/);
+        return parts[parts.length - 1];
+      }
+
+      async function fetchArtifact(runId, name) {
+        const res = await fetch(`/artifact/${runId}/${name}`);
+        if (!res.ok) {
+          return null;
+        }
+        if (name.endsWith(".json")) {
+          return res.json();
+        }
+        const text = await res.text();
+        if (name.endsWith(".jsonl")) {
+          return text
+            .split("\n")
+            .map((line) => line.trim())
+            .filter(Boolean)
+            .map((line) => JSON.parse(line));
+        }
+        return text;
+      }
+
+      function setStatus(message) {
+        const status = document.getElementById("statusText");
+        status.textContent = message;
+      }
+
+      function renderMeta(runId, artifacts) {
+        const meta = document.getElementById("runMeta");
+        meta.textContent = `Run ${runId} · ${artifacts.length} artifacts`;
+      }
+
+      function renderScenarioCards(logic, skeletons) {
+        const container = document.getElementById("scenarioCards");
+        container.innerHTML = "";
+        if (!logic || !logic.scenarios) {
+          container.textContent = "No scenario logic found.";
+          return;
+        }
+        const skeletonMap = {};
+        if (skeletons && skeletons.scenarios) {
+          skeletons.scenarios.forEach((item) => {
+            skeletonMap[item.id] = item;
+          });
+        }
+
+        logic.scenarios.forEach((scenario, index) => {
+          const skeleton = skeletonMap[scenario.id] || {};
+          const card = document.createElement("article");
+          card.className = "card reveal";
+          card.style.animationDelay = `${0.08 + index * 0.05}s`;
+
+          const title = document.createElement("h3");
+          title.textContent = scenario.name || scenario.id;
+
+          const small = document.createElement("small");
+          small.textContent = scenario.id || "Scenario";
+
+          const logicText = document.createElement("div");
+          logicText.className = "logic";
+          logicText.textContent = scenario.logic || "Logic pending";
+
+          const rules = document.createElement("div");
+          rules.className = "rules";
+          if (skeleton.operating_rules) {
+            Object.entries(skeleton.operating_rules).forEach(([key, value]) => {
+              const line = document.createElement("span");
+              const label = document.createElement("b");
+              label.textContent = `${key}:`;
+              const text = document.createElement("span");
+              text.textContent = value;
+              line.append(label, text);
+              rules.appendChild(line);
+            });
+          }
+
+          const detail = document.createElement("div");
+          detail.className = "detail";
+          detail.textContent =
+            skeleton.narrative || "Click to expand the narrative details.";
+
+          card.append(title, small, logicText, rules, detail);
+          card.addEventListener("click", () => {
+            card.classList.toggle("expanded");
+          });
+
+          container.appendChild(card);
+        });
+      }
+
+      function parseSignals(signalLines) {
+        if (!Array.isArray(signalLines)) {
+          return [];
+        }
+        return signalLines.map((line) => {
+          const match = line.match(
+            /^(.*?):\s*([+-]?[0-9.]+)\s*\((\w+)->(\w+)\)/i
+          );
+          if (!match) {
+            return { scenarioId: line, delta: 0, bandFrom: "none", bandTo: "none" };
+          }
+          return {
+            scenarioId: match[1].trim(),
+            delta: parseFloat(match[2]),
+            bandFrom: match[3].toLowerCase(),
+            bandTo: match[4].toLowerCase(),
+          };
+        });
+      }
+
+      function renderActivationGauges(logic, dailyBrief) {
+        const container = document.getElementById("activationGauges");
+        container.innerHTML = "";
+        const signals = parseSignals(dailyBrief?.signals || []);
+        if (!signals.length) {
+          container.textContent = "No activation deltas found.";
+          return;
+        }
+
+        const nameMap = {};
+        if (logic && logic.scenarios) {
+          logic.scenarios.forEach((scenario) => {
+            nameMap[scenario.id] = scenario.name;
+          });
+        }
+
+        signals.forEach((signal) => {
+          const gauge = document.createElement("div");
+          gauge.className = "gauge";
+
+          const header = document.createElement("div");
+          header.className = "gauge-header";
+          const title = document.createElement("span");
+          title.textContent = nameMap[signal.scenarioId] || signal.scenarioId;
+          const delta = document.createElement("span");
+          delta.textContent = signal.delta >= 0 ? `+${signal.delta}` : `${signal.delta}`;
+          header.append(title, delta);
+
+          const track = document.createElement("div");
+          track.className = "gauge-track";
+          const before = document.createElement("span");
+          before.className = "gauge-marker";
+          const after = document.createElement("span");
+          after.className = "gauge-marker after";
+          const beforePos = bandScale[signal.bandFrom] || 0.05;
+          const afterPos = bandScale[signal.bandTo] || 0.05;
+          before.style.left = `${beforePos * 100}%`;
+          after.style.left = `${afterPos * 100}%`;
+          track.append(before, after);
+
+          const meta = document.createElement("div");
+          meta.className = "gauge-meta";
+          const beforeLabel = document.createElement("span");
+          beforeLabel.textContent = `before: ${signal.bandFrom}`;
+          const afterLabel = document.createElement("span");
+          afterLabel.textContent = `after: ${signal.bandTo}`;
+          meta.append(beforeLabel, afterLabel);
+
+          gauge.append(header, track, meta);
+          container.appendChild(gauge);
+        });
+      }
+
+      function renderKeepModifyDrop(logic, windTunnel) {
+        const container = document.getElementById("actionLists");
+        container.innerHTML = "";
+        if (!windTunnel || !windTunnel.tests) {
+          container.textContent = "No wind-tunnel results found.";
+          return;
+        }
+
+        const nameMap = {};
+        if (logic && logic.scenarios) {
+          logic.scenarios.forEach((scenario) => {
+            nameMap[scenario.id] = scenario.name;
+          });
+        }
+
+        const buckets = {
+          KEEP: [],
+          MODIFY: [],
+          HEDGE: [],
+          DROP: [],
+        };
+        windTunnel.tests.forEach((test) => {
+          const action = (test.action || "MODIFY").toUpperCase();
+          if (!buckets[action]) {
+            buckets[action] = [];
+          }
+          buckets[action].push(test);
+        });
+
+        Object.entries(buckets).forEach(([action, tests]) => {
+          const column = document.createElement("div");
+          column.className = "kmd-column";
+          const title = document.createElement("h3");
+          title.textContent = action.toLowerCase();
+          const list = document.createElement("ul");
+          if (!tests.length) {
+            const item = document.createElement("li");
+            item.textContent = "No entries";
+            list.appendChild(item);
+          } else {
+            tests.forEach((test) => {
+              const item = document.createElement("li");
+              const scenarioName = nameMap[test.scenario_id] || test.scenario_id;
+              item.textContent = `${test.strategy_id} in ${scenarioName}: ${test.outcome}`;
+              list.appendChild(item);
+            });
+          }
+          column.append(title, list);
+          container.appendChild(column);
+        });
+      }
+
+      function renderDailyBrief(dailyBrief) {
+        const container = document.getElementById("dailyBrief");
+        container.innerHTML = "";
+        if (!dailyBrief) {
+          container.textContent = "Daily brief not available.";
+          return;
+        }
+
+        const overview = document.createElement("div");
+        overview.className = "brief-panel";
+        const title = document.createElement("h4");
+        title.textContent = "Overview";
+        const headline = document.createElement("p");
+        headline.textContent = dailyBrief.headline || "Daily brief";
+        const notes = document.createElement("p");
+        notes.textContent = dailyBrief.notes || "";
+        overview.append(title, headline, notes);
+
+        const activations = document.createElement("div");
+        activations.className = "brief-panel";
+        const actTitle = document.createElement("h4");
+        actTitle.textContent = "Activation Deltas";
+        const actList = document.createElement("ul");
+        (dailyBrief.signals || []).forEach((item) => {
+          const li = document.createElement("li");
+          li.textContent = item;
+          actList.appendChild(li);
+        });
+        if (!dailyBrief.signals || !dailyBrief.signals.length) {
+          const li = document.createElement("li");
+          li.textContent = "No activation deltas.";
+          actList.appendChild(li);
+        }
+        activations.append(actTitle, actList);
+
+        const tunnel = document.createElement("div");
+        tunnel.className = "brief-panel";
+        const tunnelTitle = document.createElement("h4");
+        tunnelTitle.textContent = "Wind Tunnel Deltas";
+        const tunnelList = document.createElement("ul");
+        (dailyBrief.implications || []).forEach((item) => {
+          const li = document.createElement("li");
+          li.textContent = item;
+          tunnelList.appendChild(li);
+        });
+        if (!dailyBrief.implications || !dailyBrief.implications.length) {
+          const li = document.createElement("li");
+          li.textContent = "No wind tunnel deltas.";
+          tunnelList.appendChild(li);
+        }
+        tunnel.append(tunnelTitle, tunnelList);
+
+        container.append(overview, activations, tunnel);
+      }
+
+      async function loadLatest() {
+        setStatus("Loading latest artifacts...");
+        const res = await fetch("/latest");
+        if (!res.ok) {
+          setStatus("No runs available.");
+          return;
+        }
+        const latest = await res.json();
+        state.runId = latest.run_id;
+        renderMeta(latest.run_id, latest.links || []);
+
+        const artifactNames = (latest.links || []).map(parseArtifactName);
+        const wanted = [
+          "logic.json",
+          "skeletons.json",
+          "wind_tunnel.json",
+          "daily_brief.json",
+          "ewi.json",
+        ];
+
+        const toFetch = wanted.filter((name) => artifactNames.includes(name));
+        const results = await Promise.all(
+          toFetch.map((name) => fetchArtifact(state.runId, name))
+        );
+        toFetch.forEach((name, index) => {
+          state.artifacts[name] = results[index];
+        });
+
+        renderScenarioCards(state.artifacts["logic.json"], state.artifacts["skeletons.json"]);
+        renderActivationGauges(state.artifacts["logic.json"], state.artifacts["daily_brief.json"]);
+        renderKeepModifyDrop(state.artifacts["logic.json"], state.artifacts["wind_tunnel.json"]);
+        renderDailyBrief(state.artifacts["daily_brief.json"]);
+        setStatus("Loaded latest run.");
+      }
+
+      loadLatest();
+    </script>
+  </body>
+</html>

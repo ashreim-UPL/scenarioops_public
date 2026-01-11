@@ -1,0 +1,7 @@
+Strategy Set: Gulf Resilience Sprint
+
+1) Buffer inventory for critical components.
+2) Dual-source top 3 suppliers with monthly redundancy checks.
+3) Expand regional warehousing to reduce transit volatility.
+4) Launch compliance radar with weekly regulatory monitoring.
+5) Stand up a rapid response playbook for port disruptions.

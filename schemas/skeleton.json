@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Skeleton",
+  "type": "object",
+  "required": ["id", "title", "scenarios"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "title": { "type": "string", "minLength": 1 },
+    "scenarios": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/scenarioSkeleton" }
+    },
+    "metadata": { "type": "object", "additionalProperties": true }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "scenarioSkeleton": {
+      "type": "object",
+      "required": ["id", "name", "narrative", "operating_rules"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "narrative": { "type": "string", "minLength": 1 },
+        "operating_rules": {
+          "type": "object",
+          "required": ["policy", "market", "operations"],
+          "properties": {
+            "policy": { "type": "string", "minLength": 1 },
+            "market": { "type": "string", "minLength": 1 },
+            "operations": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        },
+        "key_events": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/scenarioEvent" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "scenarioEvent": {
+      "type": "object",
+      "required": ["date", "event"],
+      "properties": {
+        "date": { "type": "string", "minLength": 1 },
+        "event": { "type": "string", "minLength": 1 },
+        "implications": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

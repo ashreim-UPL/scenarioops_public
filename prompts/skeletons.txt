@@ -1,0 +1,1 @@
+Draft scenario skeletons with operating rules and key events.
