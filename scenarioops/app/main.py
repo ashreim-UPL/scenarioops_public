@@ -92,6 +92,22 @@ def _write_latest(
     )
 
 
+def _export_view_model(run_id: str, base_dir: Path | None) -> Path:
+    runs_dir = base_dir if base_dir is not None else default_runs_dir()
+    run_dir = runs_dir / run_id
+    if not run_dir.exists():
+        raise FileNotFoundError(f"Run directory not found: {run_dir}")
+
+    view_model = build_view_model(run_dir)
+    artifacts_dir = run_dir / "artifacts"
+    artifacts_dir.mkdir(parents=True, exist_ok=True)
+    output_path = artifacts_dir / "view_model.json"
+    output_path.write_text(
+        json.dumps(view_model, indent=2, sort_keys=True), encoding="utf-8"
+    )
+    return output_path
+
+
 def _run_verify(args: argparse.Namespace) -> None:
     if not args.demo:
         _verify_fail("verify requires --demo to run in mock mode.")
@@ -123,6 +139,13 @@ def _run_verify(args: argparse.Namespace) -> None:
         _verify_fail("latest.json missing or does not match run_id.")
     if latest.get("status") != "OK":
         _verify_fail(f"latest.json status is {latest.get('status')}.")
+
+    try:
+        view_path = _export_view_model(run_id, base_dir)
+    except Exception as exc:
+        _verify_fail(f"view model export failed: {exc}")
+    if not view_path.exists():
+        _verify_fail("view_model.json missing after export.")
 
     try:
         run_auditor_node(run_id=run_id, state=ScenarioOpsState(), base_dir=base_dir)
@@ -298,18 +321,7 @@ def _run_export_view(args: argparse.Namespace) -> None:
     if not run_id:
         raise ValueError("No run_id found. Run build-scenarios first.")
 
-    runs_dir = base_dir if base_dir is not None else default_runs_dir()
-    run_dir = runs_dir / run_id
-    if not run_dir.exists():
-        raise FileNotFoundError(f"Run directory not found: {run_dir}")
-
-    view_model = build_view_model(run_dir)
-    artifacts_dir = run_dir / "artifacts"
-    artifacts_dir.mkdir(parents=True, exist_ok=True)
-    output_path = artifacts_dir / "view_model.json"
-    output_path.write_text(
-        json.dumps(view_model, indent=2, sort_keys=True), encoding="utf-8"
-    )
+    output_path = _export_view_model(run_id, base_dir)
     print(json.dumps({"run_id": run_id, "view_model": str(output_path)}, indent=2))
 
 
