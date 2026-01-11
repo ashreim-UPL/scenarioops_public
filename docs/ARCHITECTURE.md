@@ -24,7 +24,7 @@
                              +-------------------------+
 ```
 
-## Graph Nodes
+## LangGraph Nodes
 - Charter
 - Drivers
 - Uncertainties
