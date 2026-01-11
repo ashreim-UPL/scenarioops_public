@@ -75,6 +75,49 @@ def _verify_fail(message: str) -> None:
     raise SystemExit(1)
 
 
+def _format_audit_findings(report_path: Path) -> list[str]:
+    if not report_path.exists():
+        return [f"audit report missing: {report_path}"]
+    try:
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        return [f"audit report invalid JSON: {exc}"]
+
+    findings = report.get("findings", []) if isinstance(report, dict) else []
+    if not isinstance(findings, list):
+        return [f"audit report findings invalid: {type(findings)}"]
+
+    lines = []
+    for finding in findings:
+        if not isinstance(finding, dict):
+            lines.append(str(finding))
+            continue
+        finding_id = str(finding.get("id", "unknown"))
+        finding_text = str(finding.get("finding", "")).strip()
+        line = f"{finding_id}: {finding_text}".strip()
+        evidence = finding.get("evidence")
+        if isinstance(evidence, list) and evidence:
+            line = f"{line} (evidence: {evidence[0]})"
+        elif evidence:
+            line = f"{line} (evidence: {evidence})"
+        lines.append(line)
+    return lines
+
+
+def _record_audit_findings(run_id: str, base_dir: Path | None) -> None:
+    report_path = _runs_dir(base_dir) / run_id / "artifacts" / "audit_report.json"
+    lines = _format_audit_findings(report_path)
+    if lines:
+        print("audit findings:")
+        for line in lines:
+            print(f"- {line}")
+
+    logs_dir = _runs_dir(base_dir) / run_id / "logs"
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    log_path = logs_dir / "verify_audit_findings.txt"
+    log_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 def _write_latest(
     *,
     run_id: str,
@@ -99,13 +142,15 @@ def _export_view_model(run_id: str, base_dir: Path | None) -> Path:
         raise FileNotFoundError(f"Run directory not found: {run_dir}")
 
     view_model = build_view_model(run_dir)
-    artifacts_dir = run_dir / "artifacts"
-    artifacts_dir.mkdir(parents=True, exist_ok=True)
-    output_path = artifacts_dir / "view_model.json"
-    output_path.write_text(
-        json.dumps(view_model, indent=2, sort_keys=True), encoding="utf-8"
+    artifact_path, _, _ = write_artifact(
+        run_id=run_id,
+        artifact_name="view_model",
+        payload=view_model,
+        ext="json",
+        tool_versions={"view_model_export": "0.1.0"},
+        base_dir=base_dir,
     )
-    return output_path
+    return artifact_path
 
 
 def _run_verify(args: argparse.Namespace) -> None:
@@ -150,6 +195,7 @@ def _run_verify(args: argparse.Namespace) -> None:
     try:
         run_auditor_node(run_id=run_id, state=ScenarioOpsState(), base_dir=base_dir)
     except Exception as exc:
+        _record_audit_findings(run_id, base_dir)
         _verify_fail(f"schema audit failed: {exc}")
 
     scores = {"relevance": 0.9, "credibility": 0.9, "recency": 0.8, "specificity": 0.8}

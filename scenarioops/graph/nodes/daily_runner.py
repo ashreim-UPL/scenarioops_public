@@ -12,7 +12,7 @@ from scenarioops.graph.tools.scenario_activation import (
     compute_activation_deltas,
     compute_scenario_activation,
 )
-from scenarioops.graph.tools.storage import ensure_run_dirs, write_artifact
+from scenarioops.graph.tools.storage import write_artifact
 
 
 def _wind_tunnel_scores(tests: Sequence[Mapping[str, Any]]) -> dict[str, float]:
@@ -88,6 +88,17 @@ def run_daily_runner_node(
     if report_date is None:
         report_date = datetime.now(timezone.utc).date().isoformat()
 
+    write_artifact(
+        run_id=run_id,
+        artifact_name="daily_brief",
+        payload=markdown,
+        ext="md",
+        input_values={"signals_count": len(signals), "missing_data": missing_data},
+        prompt_values={"prompt": prompt},
+        tool_versions={"daily_runner_node": "0.1.0"},
+        base_dir=base_dir,
+    )
+
     daily_brief = {
         "id": f"daily-brief-{run_id}",
         "date": report_date,
@@ -127,15 +138,11 @@ def run_daily_runner_node(
         artifact_name="daily_brief",
         payload=daily_brief,
         ext="json",
-        input_values={"signals_count": len(signals)},
+        input_values={"signals_count": len(signals), "missing_data": missing_data},
         prompt_values={"prompt": prompt},
         tool_versions={"daily_runner_node": "0.1.0"},
         base_dir=base_dir,
     )
-
-    dirs = ensure_run_dirs(run_id, base_dir=base_dir)
-    brief_path = dirs["artifacts_dir"] / "daily_brief.md"
-    brief_path.write_text(markdown, encoding="utf-8")
 
     state.daily_brief = DailyBrief(
         id=daily_brief["id"],
