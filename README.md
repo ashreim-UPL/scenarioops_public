@@ -22,6 +22,21 @@ venv\Scripts\activate
 pip install -e ".[dev]"
 ```
 
+## UI
+
+The Streamlit UI is installed with the base package requirements. Optional network
+visualization support can be added with:
+
+```sh
+pip install -e ".[ui]"
+```
+
+Run the UI:
+
+```sh
+streamlit run ui/streamlit_app.py
+```
+
 Common tasks:
 
 ```sh
