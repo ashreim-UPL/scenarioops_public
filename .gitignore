@@ -18,5 +18,10 @@ htmlcov/
 .vscode/
 .DS_Store
 
+storage/
 storage/runs/*
 !storage/runs/.gitkeep
+
+.streamlit/
+*.log
+.env
