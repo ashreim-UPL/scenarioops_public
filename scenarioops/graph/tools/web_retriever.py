@@ -5,7 +5,6 @@ from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 import hashlib
 import json
-import os
 from html.parser import HTMLParser
 from pathlib import Path
 import time
@@ -78,6 +77,8 @@ _LAST_FETCH_AT: float | None = None
 def _load_allowlist(path: Path | None = None) -> list[str]:
     if path is None:
         path = Path(__file__).resolve().parents[3] / "data" / "public_sources_allowlist.json"
+    if not path.exists():
+        return []
     payload = json.loads(path.read_text(encoding="utf-8"))
     domains = payload.get("domains", [])
     return [domain.lower() for domain in domains if isinstance(domain, str)]
@@ -103,6 +104,13 @@ def _hash_excerpt(text: str, length: int = 1000) -> str:
 
 def _parse_date(header_value: str | None) -> str | None:
     if not header_value:
+        return None
+    try:
+        parsed = parsedate_to_datetime(header_value)
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc).isoformat()
+    except (TypeError, ValueError):
         return None
 
 
@@ -144,13 +152,6 @@ def _write_cache(url: str, content: RetrievedContent, cache_dir: Path) -> None:
     )
 
 
-def _public_demo_mode(enabled: bool | None = None) -> bool:
-    if enabled is not None:
-        return enabled
-    value = os.getenv("SCENARIOOPS_PUBLIC_DEMO_MODE", "1").strip().lower()
-    return value not in {"0", "false", "no"}
-
-
 def _rate_limit(rate_limit_per_sec: float | None) -> None:
     global _LAST_FETCH_AT
     if rate_limit_per_sec is None or rate_limit_per_sec <= 0:
@@ -164,13 +165,6 @@ def _rate_limit(rate_limit_per_sec: float | None) -> None:
     if elapsed < min_interval:
         time.sleep(min_interval - elapsed)
     _LAST_FETCH_AT = time.monotonic()
-    try:
-        parsed = parsedate_to_datetime(header_value)
-        if parsed.tzinfo is None:
-            parsed = parsed.replace(tzinfo=timezone.utc)
-        return parsed.astimezone(timezone.utc).isoformat()
-    except (TypeError, ValueError):
-        return None
 
 
 def _log_retrieval(
@@ -202,16 +196,18 @@ def retrieve_url(
     base_dir: Path | None = None,
     cache_dir: Path | None = None,
     rate_limit_per_sec: float | None = 0.5,
+    allow_web: bool | None = None,
     allow_network: bool | None = None,
-    public_demo_mode: bool | None = None,
+    enforce_allowlist: bool = True,
     timeout_seconds: float = 20.0,
 ) -> RetrievedContent:
-    demo_mode = _public_demo_mode(public_demo_mode)
-    if allow_network is None:
-        allow_network = not demo_mode
+    if allow_web is None:
+        allow_web = allow_network
+    if allow_web is None:
+        allow_web = False
 
-    allowlist = _load_allowlist(allowlist_path)
-    if not _is_allowed(url, allowlist):
+    allowlist = _load_allowlist(allowlist_path) if enforce_allowlist else []
+    if allowlist and not _is_allowed(url, allowlist):
         _log_retrieval(
             run_id=run_id,
             url=url,
@@ -242,7 +238,7 @@ def retrieve_url(
         )
         return cached
 
-    if not allow_network:
+    if not allow_web:
         _log_retrieval(
             run_id=run_id,
             url=url,
@@ -253,7 +249,10 @@ def retrieve_url(
         raise PermissionError("Network disabled and cache miss.")
 
     _rate_limit(rate_limit_per_sec)
-    request = Request(url, headers={"User-Agent": "ScenarioOpsRetriever/0.1"})
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+    request = Request(url, headers=headers)
     try:
         with urlopen(request, timeout=timeout_seconds) as response:
             raw = response.read()
