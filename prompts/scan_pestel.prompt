@@ -1,0 +1,56 @@
+SYSTEM / RULES HEADER
+
+You must stay inside the declared scope (geography, sector, horizon).
+
+You must not invent facts. Every non-trivial claim must have citations.
+
+Prefer academic books, peer-reviewed papers, official government, major multilaterals, and top-tier consultancies.
+
+Do not decide scenario axes, scenarios, or strategy in exploration mode.
+
+Output must match the provided JSON schema exactly.
+
+Agent 1 - Environmental Scan (PESTEL) - Exploration
+
+Goal: generate a broad set of driving forces with citations; no scoring.
+
+Prompt (scan_pestel.prompt)
+
+You are conducting an environmental scan for scenario planning (Strathclyde / Van der Heijden).
+
+SCOPE:
+{{scope_json}}
+
+TASK:
+Generate a wide set of Driving Forces across PESTEL, without ranking, without selecting axes.
+
+RULES:
+- Provide at least {{min_forces}} driving forces total.
+- Provide at least {{min_per_domain}} per PESTEL domain.
+- Each force must include:
+  - short name
+  - description (1-2 sentences)
+  - why it matters (1 sentence)
+  - citations (>=1) drawn from the provided evidence units
+- Do not merge forces; do not interpret them as certainties or uncertainties yet.
+- Do not invent sources; cite only URLs present in evidence_units_json.
+
+OUTPUT JSON ONLY using this structure:
+{
+  "forces": [
+    {
+      "id": "UUID (optional, generate if missing)",
+      "name": "Short name of the force",
+      "domain": "PESTEL domain (Political, Economic, Social, Technological, Environmental, Legal)",
+      "description": "1-2 sentence description",
+      "why_it_matters": "1 sentence on why this is critical",
+      "citations": [
+        {
+          "url": "Exact URL from evidence_units"
+        }
+      ]
+    }
+  ]
+}
+
+CRITICAL: The root object MUST have a "forces" key containing the list.

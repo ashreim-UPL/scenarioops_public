@@ -173,6 +173,27 @@ class MockLLMClient:
                 "exclusions": ["Operational details"],
                 "success_criteria": "Clear decision path",
             }
+        elif schema_title == "Driving Forces":
+            payload = {
+                "forces": [
+                    {
+                        "id": "mock-force-1",
+                        "name": "Mock AI Regulation",
+                        "domain": "Political",
+                        "description": "Rising calls for AI safety laws.",
+                        "why_it_matters": "Could limit deployment speed.",
+                        "citations": [{"url": "https://example.com/ai-policy"}]
+                    },
+                    {
+                        "id": "mock-force-2",
+                        "name": "GPU Shortage",
+                        "domain": "Technological",
+                        "description": "Supply chain constraints on chips.",
+                        "why_it_matters": "Bottleneck for scaling.",
+                        "citations": [{"url": "https://example.com/chips"}]
+                    }
+                ]
+            }
         else:
             payload = {
                 "mock": True,
