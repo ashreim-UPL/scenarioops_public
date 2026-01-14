@@ -1,0 +1,154 @@
+from __future__ import annotations
+
+import uuid
+from pathlib import Path
+from typing import Any, Iterable
+
+from scenarioops.app.config import LLMConfig
+from scenarioops.app.config import ScenarioOpsSettings
+from scenarioops.graph.nodes.utils import get_client, load_prompt, render_prompt
+from scenarioops.graph.state import ScenarioOpsState
+from scenarioops.graph.tools.schema_validate import load_schema, validate_artifact
+from scenarioops.graph.tools.storage import write_artifact
+from scenarioops.llm.guards import ensure_dict
+from scenarioops.graph.nodes.drivers import _normalize_url as _normalize_citation_url
+from scenarioops.graph.nodes.drivers import _excerpt_hash as _hash_excerpt
+
+
+def _scope_payload(state: ScenarioOpsState) -> dict[str, Any]:
+    if isinstance(state.focal_issue, dict):
+        scope = state.focal_issue.get("scope")
+        if isinstance(scope, dict):
+            return scope
+    return {}
+
+
+def _evidence_payload(state: ScenarioOpsState) -> dict[str, Any]:
+    if isinstance(state.evidence_units, dict):
+        return state.evidence_units
+    return {"evidence_units": []}
+
+
+def _evidence_maps(
+    state: ScenarioOpsState,
+) -> tuple[dict[str, str], dict[str, str], dict[str, str]]:
+    evidence_units = _evidence_payload(state).get("evidence_units", [])
+    hashes: dict[str, str] = {}
+    publishers: dict[str, str] = {}
+    evidence_ids: dict[str, str] = {}
+    if not isinstance(evidence_units, list):
+        return hashes, publishers, evidence_ids
+    for entry in evidence_units:
+        if not isinstance(entry, dict):
+            continue
+        url = str(entry.get("url", ""))
+        excerpt = str(entry.get("excerpt", ""))
+        publisher = str(entry.get("publisher", "")) or url
+        evidence_id = str(entry.get("id", "")) or url
+        normalized = _normalize_citation_url(url)
+        hashes[normalized] = _hash_excerpt(excerpt)
+        publishers[normalized] = publisher
+        evidence_ids[normalized] = evidence_id
+    return hashes, publishers, evidence_ids
+
+
+def _focus_payload(
+    domains: Iterable[str] | None, categories: Iterable[str] | None
+) -> dict[str, list[str]]:
+    return {
+        "domains": [item for item in (domains or []) if item],
+        "categories": [item for item in (categories or []) if item],
+    }
+
+
+def run_scan_node(
+    *,
+    run_id: str,
+    state: ScenarioOpsState,
+    llm_client=None,
+    base_dir: Path | None = None,
+    config: LLMConfig | None = None,
+    min_forces: int = 30,
+    min_per_domain: int = 5,
+    focus_domains: Iterable[str] | None = None,
+    focus_categories: Iterable[str] | None = None,
+    settings: ScenarioOpsSettings | None = None,
+) -> ScenarioOpsState:
+    prompt_template = load_prompt("scan_pestel")
+    context = {
+        "scope_json": _scope_payload(state),
+        "evidence_units_json": _evidence_payload(state),
+        "min_forces": min_forces,
+        "min_per_domain": min_per_domain,
+        "scan_focus": _focus_payload(focus_domains, focus_categories),
+    }
+    prompt = render_prompt(prompt_template, context)
+    client = get_client(llm_client, config)
+    schema = load_schema("driving_forces.schema")
+    response = client.generate_json(prompt, schema)
+    parsed = ensure_dict(response, node_name="scan_pestel")
+    evidence_hashes, evidence_publishers, evidence_ids = _evidence_maps(state)
+    if not evidence_hashes:
+        raise ValueError("Evidence units are required before scan.")
+    
+    raw_forces = parsed.get("forces", [])
+    valid_forces = []
+    
+    if isinstance(raw_forces, list):
+        for force in raw_forces:
+            if not isinstance(force, dict):
+                continue
+            if not force.get("id"):
+                force["id"] = str(uuid.uuid4())
+            
+            raw_citations = force.get("citations", [])
+            valid_citations = []
+            
+            if isinstance(raw_citations, list):
+                for citation in raw_citations:
+                    if not isinstance(citation, dict):
+                        continue
+                    url = str(citation.get("url", ""))
+                    normalized = _normalize_citation_url(url)
+                    if normalized not in evidence_hashes:
+                        print(f"Warning: Dropping invalid citation '{url}' in force '{force.get('name')}'")
+                        continue
+                    
+                    citation["excerpt_hash"] = evidence_hashes[normalized]
+                    citation["publisher"] = evidence_publishers.get(
+                        normalized, citation.get("publisher", "")
+                    )
+                    citation["evidence_id"] = evidence_ids.get(
+                        normalized, citation.get("evidence_id", "")
+                    )
+                    valid_citations.append(citation)
+            
+            if not valid_citations:
+                print(f"Warning: Dropping force '{force.get('name')}' - no valid citations.")
+                continue
+            
+            force["citations"] = valid_citations
+            valid_forces.append(force)
+            
+    parsed["forces"] = valid_forces
+
+    validate_artifact("driving_forces.schema", parsed)
+
+    write_artifact(
+        run_id=run_id,
+        artifact_name="driving_forces",
+        payload=parsed,
+        ext="json",
+        input_values={
+            "min_forces": min_forces,
+            "min_per_domain": min_per_domain,
+            "focus_domains": list(focus_domains or []),
+            "focus_categories": list(focus_categories or []),
+        },
+        prompt_values={"prompt": prompt},
+        tool_versions={"scan_node": "0.1.0"},
+        base_dir=base_dir,
+    )
+
+    state.driving_forces = parsed
+    return state
