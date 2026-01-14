@@ -3,12 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 import hashlib
 import json
+import os
 from typing import Any, Mapping, Protocol, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from app.config import LLMConfig
+    from scenarioops.app.config import LLMConfig
 
 from scenarioops.graph.tools.schema_validate import validate_schema
+from scenarioops.llm.transport import MockTransport, RequestsTransport, Transport
 
 
 class LLMClient(Protocol):
@@ -19,46 +21,15 @@ class LLMClient(Protocol):
         ...
 
 
-class GeminiTransport(Protocol):
-    def generate_json(
-        self,
-        *,
-        prompt: str,
-        schema: Mapping[str, Any],
-        model_name: str,
-        temperature: float,
-        timeout_seconds: float | None,
-    ) -> str:
-        ...
-
-    def generate_markdown(
-        self,
-        *,
-        prompt: str,
-        model_name: str,
-        temperature: float,
-        timeout_seconds: float | None,
-    ) -> str:
-        ...
-
-
 @dataclass(frozen=True)
 class GeminiClient:
-    model_name: str
+    api_key: str
+    model: str
+    transport: Transport
     temperature: float = 0.2
-    timeout_seconds: float | None = None
-    transport: GeminiTransport | None = None
 
     def generate_json(self, prompt: str, schema: Mapping[str, Any]) -> dict[str, Any]:
-        if self.transport is None:
-            raise RuntimeError("GeminiClient requires a transport implementation.")
-        raw = self.transport.generate_json(
-            prompt=prompt,
-            schema=schema,
-            model_name=self.model_name,
-            temperature=self.temperature,
-            timeout_seconds=self.timeout_seconds,
-        )
+        raw = self._generate_text(prompt)
         if not isinstance(raw, str):
             raise TypeError(f"Expected raw model output as str, got {type(raw)}.")
 
@@ -84,14 +55,19 @@ class GeminiClient:
         return _wrap_payload(parsed, raw)
 
     def generate_markdown(self, prompt: str) -> str:
-        if self.transport is None:
-            raise RuntimeError("GeminiClient requires a transport implementation.")
-        return self.transport.generate_markdown(
-            prompt=prompt,
-            model_name=self.model_name,
-            temperature=self.temperature,
-            timeout_seconds=self.timeout_seconds,
-        )
+        return self._generate_text(prompt)
+
+    def _generate_text(self, prompt: str) -> str:
+        url = _gemini_url(self.model, self.api_key)
+        headers = {"Content-Type": "application/json"}
+        payload = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {"temperature": self.temperature},
+        }
+        response = self.transport.post_json(url, headers, payload)
+        if not isinstance(response, Mapping):
+            raise TypeError(f"Expected response mapping, got {type(response)}.")
+        return _extract_candidate_text(response)
 
 
 def _hash_text(text: str) -> str:
@@ -129,6 +105,39 @@ def _extract_first_json_object(raw: str) -> str | None:
     return None
 
 
+def _gemini_url(model: str, api_key: str) -> str:
+    return (
+        "https://generativelanguage.googleapis.com/v1beta/models/"
+        f"{model}:generateContent?key={api_key}"
+    )
+
+
+def _extract_candidate_text(response: Mapping[str, Any]) -> str:
+    error = response.get("error")
+    if isinstance(error, Mapping):
+        message = error.get("message", "Unknown Gemini API error.")
+        raise RuntimeError(f"Gemini API error: {message}")
+    candidates = response.get("candidates")
+    if not isinstance(candidates, list) or not candidates:
+        raise ValueError("Gemini response missing candidates.")
+    for candidate in candidates:
+        if not isinstance(candidate, Mapping):
+            continue
+        content = candidate.get("content")
+        if isinstance(content, Mapping):
+            parts = content.get("parts")
+            if isinstance(parts, list):
+                for part in parts:
+                    if isinstance(part, Mapping):
+                        text = part.get("text")
+                        if isinstance(text, str):
+                            return text
+        text = candidate.get("text")
+        if isinstance(text, str):
+            return text
+    raise ValueError("Gemini response missing text output.")
+
+
 @dataclass
 class MockLLMClient:
     json_payload: dict[str, Any] | None = None
@@ -143,11 +152,22 @@ class MockLLMClient:
             raw = json.dumps(self.json_payload, sort_keys=True)
             return _wrap_payload(self.json_payload, raw)
         schema_title = schema.get("title") if isinstance(schema, Mapping) else None
-        payload = {
-            "mock": True,
-            "prompt_hash": _hash_text(prompt),
-            "schema_title": schema_title or "unknown",
-        }
+        
+        if schema_title == "Charter":
+            payload = {
+                "id": "mock-charter-uuid",
+                "title": "Mock Charter Title",
+                "purpose": "Generated by MockLLMClient for testing.",
+                "scope": "Global Mock Scope",
+                "time_horizon": "5 years",
+                "mock": True,
+            }
+        else:
+            payload = {
+                "mock": True,
+                "prompt_hash": _hash_text(prompt),
+                "schema_title": schema_title or "unknown",
+            }
         raw = json.dumps(payload, sort_keys=True)
         return _wrap_payload(payload, raw)
 
@@ -157,18 +177,63 @@ class MockLLMClient:
         return f"# Mock Response\n\nprompt_hash: {_hash_text(prompt)}\n"
 
 
+def get_gemini_api_key() -> str:
+    try:
+        import streamlit as st  # type: ignore
+    except Exception:
+        st = None
+
+    if st is not None:
+        try:
+            secret_value = st.secrets.get("GEMINI_API_KEY")
+        except Exception:
+            secret_value = None
+        if isinstance(secret_value, str):
+            secret_value = secret_value.strip()
+            if secret_value:
+                return secret_value
+
+    value = os.environ.get("GEMINI_API_KEY", "").strip()
+    if value:
+        return value
+    raise RuntimeError("Missing GEMINI_API_KEY")
+
+
+def get_gemini_api_key_from_env() -> str:
+    return get_gemini_api_key()
+
+
 def get_llm_client(config: "LLMConfig") -> LLMClient:
     mode = getattr(config, "mode", "mock")
     if mode == "mock":
         return MockLLMClient()
     if mode == "gemini":
+        api_key = get_gemini_api_key()
         timeout_seconds = None
         timeouts = getattr(config, "timeouts", None)
         if timeouts is not None:
             timeout_seconds = getattr(timeouts, "request_seconds", None)
-        return GeminiClient(
-            model_name=getattr(config, "model_name", "gemini-1.5-pro"),
-            temperature=getattr(config, "temperature", 0.2),
+        transport = RequestsTransport(
             timeout_seconds=timeout_seconds,
+            user_agent="ScenarioOps",
+        )
+        return GeminiClient(
+            api_key=api_key,
+            model=getattr(config, "model_name", "gemini-1.5-pro"),
+            transport=transport,
+            temperature=getattr(config, "temperature", 0.2),
         )
     raise ValueError(f"Unsupported LLM mode: {mode}")
+
+
+__all__ = [
+    "GeminiClient",
+    "LLMClient",
+    "MockLLMClient",
+    "MockTransport",
+    "RequestsTransport",
+    "Transport",
+    "get_gemini_api_key",
+    "get_gemini_api_key_from_env",
+    "get_llm_client",
+]
