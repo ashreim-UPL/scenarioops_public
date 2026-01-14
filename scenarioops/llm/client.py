@@ -194,6 +194,16 @@ class MockLLMClient:
                     }
                 ]
             }
+        elif schema_title == "Washout Report":
+            payload = {
+                "duplicate_ratio": 0.0,
+                "duplicate_groups": [],
+                "undercovered_domains": [],
+                "missing_categories": [],
+                "proposed_forces": [],
+                "reason": "Mock audit passed.",
+                "notes": "No duplicates found."
+            }
         else:
             payload = {
                 "mock": True,
