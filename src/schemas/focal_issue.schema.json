@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Focal Issue",
+  "type": "object",
+  "required": [
+    "focal_issue",
+    "scope",
+    "decision_type",
+    "exclusions",
+    "success_criteria"
+  ],
+  "properties": {
+    "focal_issue": { "type": "string", "minLength": 1 },
+    "scope": {
+      "type": "object",
+      "required": ["geography", "sectors", "time_horizon_years"],
+      "properties": {
+        "geography": { "type": "string", "minLength": 1 },
+        "sectors": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1,
+          "maxItems": 3
+        },
+        "time_horizon_years": { "type": "integer", "minimum": 3 }
+      },
+      "additionalProperties": false
+    },
+    "decision_type": { "type": "string", "minLength": 1 },
+    "exclusions": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1
+    },
+    "success_criteria": { "type": "string", "minLength": 1 }
+  },
+  "additionalProperties": false
+}

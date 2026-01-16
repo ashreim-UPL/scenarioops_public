@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Logic",
+  "type": "object",
+  "required": ["id", "title", "axes", "scenarios"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "title": { "type": "string", "minLength": 1 },
+    "axes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/axis" }
+    },
+    "scenarios": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/scenarioLogic" }
+    },
+    "metadata": { "type": "object", "additionalProperties": true }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "axis": {
+      "type": "object",
+      "required": ["uncertainty_id", "low", "high"],
+      "properties": {
+        "uncertainty_id": { "type": "string", "minLength": 1 },
+        "low": { "type": "string", "minLength": 1 },
+        "high": { "type": "string", "minLength": 1 },
+        "rationale": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "scenarioLogic": {
+      "type": "object",
+      "required": ["id", "name", "logic"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "logic": { "type": "string", "minLength": 1 },
+        "summary": { "type": "string" },
+        "axis_assumptions": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

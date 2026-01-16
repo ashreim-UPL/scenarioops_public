@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Charter",
+  "type": "object",
+  "required": [
+    "id",
+    "title",
+    "purpose",
+    "decision_context",
+    "scope",
+    "time_horizon",
+    "stakeholders",
+    "constraints",
+    "assumptions",
+    "success_criteria"
+  ],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "title": { "type": "string", "minLength": 1 },
+    "purpose": { "type": "string", "minLength": 1 },
+    "decision_context": { "type": "string", "minLength": 1 },
+    "scope": { "type": "string", "minLength": 1 },
+    "time_horizon": { "type": "string", "minLength": 1 },
+    "stakeholders": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "constraints": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "assumptions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "success_criteria": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "notes": { "type": "string" },
+    "metadata": { "type": "object", "additionalProperties": true }
+  },
+  "additionalProperties": false
+}
