@@ -3,11 +3,12 @@ from __future__ import annotations
 from difflib import SequenceMatcher
 from pathlib import Path
 
-from app.config import LLMConfig
+from scenarioops.app.config import LLMConfig
 from scenarioops.graph.nodes.utils import get_client, load_prompt, render_prompt
 from scenarioops.graph.state import Logic, ScenarioAxis, ScenarioLogic, ScenarioOpsState
+from scenarioops.graph.tools.normalization import stable_id
 from scenarioops.graph.tools.schema_validate import load_schema, validate_artifact
-from scenarioops.graph.tools.storage import write_artifact
+from scenarioops.graph.tools.storage import log_normalization, write_artifact
 from scenarioops.llm.guards import ensure_dict
 
 
@@ -69,8 +70,23 @@ def run_logic_node(
 
     axes = [ScenarioAxis(**axis) for axis in parsed.get("axes", [])]
     scenarios = [ScenarioLogic(**scenario) for scenario in parsed.get("scenarios", [])]
+    logic_id = parsed.get("id")
+    if not logic_id:
+        logic_id = stable_id(
+            "logic",
+            [axis.uncertainty_id for axis in axes],
+            [scenario.id for scenario in scenarios],
+        )
+        log_normalization(
+            run_id=run_id,
+            node_name="logic",
+            operation="stable_id_assigned",
+            details={"field": "id"},
+            base_dir=base_dir,
+        )
+
     state.logic = Logic(
-        id=parsed.get("id", f"logic-{run_id}"),
+        id=logic_id,
         title=parsed.get("title", "Scenario Logic"),
         axes=axes,
         scenarios=scenarios,

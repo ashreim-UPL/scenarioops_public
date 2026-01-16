@@ -7,26 +7,8 @@ class StubTransport:
     def __init__(self, raw: str) -> None:
         self._raw = raw
 
-    def generate_json(
-        self,
-        *,
-        prompt: str,
-        schema,
-        model_name: str,
-        temperature: float,
-        timeout_seconds: float | None,
-    ) -> str:
-        return self._raw
-
-    def generate_markdown(
-        self,
-        *,
-        prompt: str,
-        model_name: str,
-        temperature: float,
-        timeout_seconds: float | None,
-    ) -> str:
-        raise NotImplementedError
+    def post_json(self, url: str, headers: dict, payload: dict) -> dict:
+        return {"candidates": [{"content": {"parts": [{"text": self._raw}]}}]}
 
 
 def _schema() -> dict:
@@ -41,7 +23,7 @@ def _schema() -> dict:
 
 def test_generate_json_parses_object() -> None:
     raw = '{"foo": "bar"}'
-    client = GeminiClient(model_name="stub", transport=StubTransport(raw))
+    client = GeminiClient(api_key="test", model="stub", transport=StubTransport(raw))
 
     payload = client.generate_json("prompt", _schema())
 
@@ -50,7 +32,7 @@ def test_generate_json_parses_object() -> None:
 
 def test_generate_json_parses_code_fence() -> None:
     raw = "```json\n{\"foo\": \"bar\"}\n```"
-    client = GeminiClient(model_name="stub", transport=StubTransport(raw))
+    client = GeminiClient(api_key="test", model="stub", transport=StubTransport(raw))
 
     payload = client.generate_json("prompt", _schema())
 
@@ -59,7 +41,7 @@ def test_generate_json_parses_code_fence() -> None:
 
 def test_generate_json_parses_embedded_object() -> None:
     raw = "Result:\n{\"foo\": \"bar\"}\nThanks."
-    client = GeminiClient(model_name="stub", transport=StubTransport(raw))
+    client = GeminiClient(api_key="test", model="stub", transport=StubTransport(raw))
 
     payload = client.generate_json("prompt", _schema())
 
@@ -68,7 +50,7 @@ def test_generate_json_parses_embedded_object() -> None:
 
 def test_generate_json_rejects_array() -> None:
     raw = '[{"foo": "bar"}]'
-    client = GeminiClient(model_name="stub", transport=StubTransport(raw))
+    client = GeminiClient(api_key="test", model="stub", transport=StubTransport(raw))
 
     with pytest.raises(TypeError):
         client.generate_json("prompt", _schema())

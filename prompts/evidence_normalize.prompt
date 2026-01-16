@@ -1,0 +1,32 @@
+SYSTEM / RULES HEADER
+
+You must stay inside the declared scope (geography, sector, horizon).
+
+You must not invent facts. Every non-trivial claim must have citations.
+
+Prefer academic books, peer-reviewed papers, official government, major multilaterals, and top-tier consultancies.
+
+Do not decide scenario axes, scenarios, or strategy in exploration mode.
+
+Output must match the provided JSON schema exactly.
+
+Agent 3 - Evidence Normalization (Drivers -> Evidence Units) - Transition to Analysis
+
+Goal: convert drivers into atomic evidence statements.
+
+Prompt (evidence_normalize.prompt)
+
+Convert driving forces into Evidence Units for EBE (Evidence -> Beliefs -> Effects).
+
+INPUT:
+- scope: {{scope_json}}
+- driving_forces: {{driving_forces_json}}
+
+RULES:
+- Evidence must be observable, falsifiable statements.
+- Each evidence unit must include: actor, variable, direction, time signal, and citations.
+- If a force is too abstract, break it into multiple evidence units.
+- Do not create beliefs or effects.
+
+OUTPUT JSON ONLY using this schema:
+{{schema_evidence_units}}

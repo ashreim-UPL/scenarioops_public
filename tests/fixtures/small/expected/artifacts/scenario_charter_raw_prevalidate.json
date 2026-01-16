@@ -1,0 +1,21 @@
+{
+  "assumptions": [
+    "Stable demand"
+  ],
+  "constraints": [
+    "No headcount increase"
+  ],
+  "decision_context": "Resilience investment prioritization.",
+  "id": "charter-001",
+  "purpose": "Assess operational resilience.",
+  "scope": "Supply chain",
+  "stakeholders": [
+    "Operations",
+    "Finance"
+  ],
+  "success_criteria": [
+    "Decision-ready scenario set"
+  ],
+  "time_horizon": "12 months",
+  "title": "ScenarioOps Charter"
+}

@@ -1,0 +1,39 @@
+{
+  "predetermined_elements": [
+    {
+      "description": "Compliance baselines remain in effect.",
+      "evidence_ids": [
+        "ev-1"
+      ],
+      "id": "pre-1",
+      "name": "Baseline policy obligations",
+      "reasoning": "Regulatory baselines are already enacted."
+    }
+  ],
+  "uncertainties": [
+    {
+      "description": "Pace of regulatory changes.",
+      "evidence_ids": [
+        "ev-1",
+        "ev-2"
+      ],
+      "id": "unc-1",
+      "impact": 0.8,
+      "name": "Policy tempo",
+      "reasoning": "Signals point to potential acceleration or slowdown.",
+      "uncertainty": 0.7
+    },
+    {
+      "description": "Speed of platform and automation uptake.",
+      "evidence_ids": [
+        "ev-2",
+        "ev-3"
+      ],
+      "id": "unc-2",
+      "impact": 0.7,
+      "name": "Technology adoption",
+      "reasoning": "Adoption timing remains contested.",
+      "uncertainty": 0.6
+    }
+  ]
+}

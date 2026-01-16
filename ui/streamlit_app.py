@@ -3,24 +3,37 @@ from __future__ import annotations
 import json
 import random
 import re
-from pathlib import Path
 import subprocess
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
+
+def _find_repo_root(start: Path) -> Path:
+    current = start.resolve()
+    for parent in [current, *current.parents]:
+        if (parent / "pyproject.toml").exists():
+            return parent
+    return start.resolve().parent
+
+
+ROOT = _find_repo_root(Path(__file__).resolve())
 
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
+from scenarioops.app.config import load_settings
+from scenarioops.graph.gates.source_reputation import (
+    classify_publisher,
+    load_source_reputation_config,
+)
 from scenarioops.graph.tools.view_model import build_view_model
-
-
-ROOT = Path(__file__).resolve().parents[1]
 RUNS_DIR = ROOT / "storage" / "runs"
 LATEST_POINTER = RUNS_DIR / "latest.json"
 RUN_LIMIT = 12
 RANDOM_SEED = 42
+SOURCE_REPUTATION = load_source_reputation_config()
 
 STOPWORDS = {
     "a",
@@ -101,6 +114,15 @@ def run_cli(args: list[str]) -> tuple[int, str]:
     return proc.returncode, output.strip()
 
 
+def get_gemini_api_key_from_streamlit_secrets() -> str:
+    import streamlit as st
+
+    value = (st.secrets.get("GEMINI_API_KEY") or "").strip()
+    if value:
+        return value
+    raise RuntimeError("Missing GEMINI_API_KEY in Streamlit secrets.")
+
+
 def load_latest_status() -> dict[str, Any] | None:
     if not LATEST_POINTER.exists():
         return None
@@ -157,6 +179,10 @@ def _load_view_model(run_dir: Path) -> dict[str, Any]:
         if payload:
             return payload
     return build_view_model(run_dir)
+
+
+def _load_run_config(run_dir: Path) -> dict[str, Any] | None:
+    return _load_json(run_dir / "run_config.json")
 
 
 def _load_charter_artifacts(
@@ -393,6 +419,60 @@ def _citation_domains(citations: list[dict[str, Any]]) -> set[str]:
     return domains
 
 
+def _collect_citation_urls(entries: list[dict[str, Any]]) -> list[str]:
+    urls: list[str] = []
+    for entry in entries:
+        citations = entry.get("citations") or []
+        if not isinstance(citations, list):
+            continue
+        for citation in citations:
+            if not isinstance(citation, dict):
+                continue
+            url = citation.get("url")
+            if url:
+                urls.append(str(url))
+    return urls
+
+
+def _citation_category_percentages(urls: list[str]) -> dict[str, float]:
+    counts: dict[str, int] = {}
+    for url in urls:
+        category = classify_publisher(url, SOURCE_REPUTATION)
+        counts[category] = counts.get(category, 0) + 1
+    total = sum(counts.values())
+    if total == 0:
+        return {}
+    return {category: count / total for category, count in counts.items()}
+
+
+def _citation_host_counts(urls: list[str]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for url in urls:
+        parsed = urlparse(url)
+        hostname = parsed.hostname or ""
+        if not hostname:
+            continue
+        counts[hostname] = counts.get(hostname, 0) + 1
+    return dict(sorted(counts.items(), key=lambda item: item[1], reverse=True))
+
+
+def _fixture_detected(entries: list[dict[str, Any]]) -> bool:
+    for entry in entries:
+        name = str(entry.get("name", "")).lower()
+        if re.search(r"(signal|driver)\s+\d+", name):
+            return True
+        for citation in entry.get("citations") or []:
+            if not isinstance(citation, dict):
+                continue
+            url = str(citation.get("url", "")).lower()
+            if "example.com" in url:
+                return True
+            excerpt_hash = str(citation.get("excerpt_hash", ""))
+            if excerpt_hash.startswith("hash-"):
+                return True
+    return False
+
+
 def _render_network_graph(drivers: list[dict[str, Any]]) -> None:
     try:
         from pyvis.network import Network  # type: ignore
@@ -431,7 +511,39 @@ def _render_network_graph(drivers: list[dict[str, Any]]) -> None:
 
 
 st.set_page_config(page_title="ScenarioOps", layout="wide")
-st.title("ScenarioOps Live")
+st.title("ScenarioOps")
+
+default_settings = load_settings()
+mode_options = ["demo", "live"]
+policy_options = ["fixtures", "academic_only", "mixed_reputable"]
+mode_index = mode_options.index(default_settings.mode) if default_settings.mode in mode_options else 0
+policy_index = (
+    policy_options.index(default_settings.sources_policy)
+    if default_settings.sources_policy in policy_options
+    else 0
+)
+
+with st.sidebar:
+    st.header("Run Settings")
+    mode_choice = st.selectbox(
+        "Mode",
+        mode_options,
+        index=mode_index,
+        format_func=lambda value: value.upper(),
+    )
+    sources_policy_choice = st.selectbox(
+        "Sources Policy",
+        policy_options,
+        index=policy_index,
+        format_func=lambda value: value.replace("_", " ").title(),
+    )
+    allow_web_choice = st.checkbox("Allow web retrieval", value=default_settings.allow_web)
+
+mode_label = mode_choice.upper()
+if mode_choice == "live":
+    st.success(f"Mode: {mode_label}")
+else:
+    st.info(f"Mode: {mode_label}")
 
 scope = st.selectbox("Scope", ["world", "region", "country"], index=0)
 value = st.text_input("Value", "UAE")
@@ -443,9 +555,24 @@ if "action_logs" not in st.session_state:
 action_cols = st.columns(3)
 with action_cols[0]:
     if st.button("Build Scenarios"):
-        rc, out = run_cli(
-            ["build-scenarios", "--scope", scope, "--value", value, "--horizon", str(horizon)]
-        )
+        cmd = [
+            "build-scenarios",
+            "--scope",
+            scope,
+            "--value",
+            value,
+            "--horizon",
+            str(horizon),
+            "--mode",
+            mode_choice,
+            "--sources-policy",
+            sources_policy_choice,
+        ]
+        if allow_web_choice:
+            cmd.append("--allow-web")
+        else:
+            cmd.append("--no-allow-web")
+        rc, out = run_cli(cmd)
         st.session_state["action_logs"]["Build Scenarios"] = {"rc": rc, "out": out}
 with action_cols[1]:
     if st.button("Export View Model"):
@@ -484,6 +611,7 @@ if latest_status.get("error_summary"):
 
 view_model: dict[str, Any] = {}
 run_dir: Path | None = None
+run_config: dict[str, Any] = {}
 charter: dict[str, Any] | None = None
 focal_issue: dict[str, Any] | None = None
 if selected_run:
@@ -491,6 +619,7 @@ if selected_run:
     if run_dir.exists():
         view_model = _load_view_model(run_dir)
         charter, focal_issue = _load_charter_artifacts(run_dir)
+        run_config = _load_run_config(run_dir) or {}
 
 charter_payload = charter or {}
 focal_issue_payload = focal_issue or {}
@@ -509,6 +638,45 @@ ewis = view_model.get("ewis") or []
 daily_brief_md = view_model.get("daily_brief_md")
 force_entries = driving_forces if driving_forces else drivers
 force_groups = _group_drivers_by_domain(force_entries)
+citation_urls = _collect_citation_urls(force_entries)
+category_percentages = _citation_category_percentages(citation_urls)
+example_detected = any("example.com" in url.lower() for url in citation_urls)
+fixture_detected = _fixture_detected(force_entries)
+run_mode = str(run_config.get("mode") or default_settings.mode)
+run_sources_policy = str(run_config.get("sources_policy") or default_settings.sources_policy)
+if example_detected:
+    st.warning("Fixture citation detected: example.com")
+
+st.subheader("Data Provenance")
+prov_cols = st.columns(4)
+prov_cols[0].metric("Run mode", run_mode.upper())
+prov_cols[1].metric("Sources policy", run_sources_policy.replace("_", " ").title())
+prov_cols[2].metric("Evidence units", str(len(evidence_units)))
+prov_cols[3].metric("Fixture status", "DETECTED" if fixture_detected else "CLEAR")
+
+if fixture_detected:
+    st.warning("Fixture content detected in citations or force names.")
+
+host_counts = _citation_host_counts(citation_urls)
+if host_counts:
+    top_hosts = list(host_counts.items())[:10]
+    st.write("Top citation hosts")
+    st.table([{"host": host, "count": count} for host, count in top_hosts])
+
+if run_sources_policy == "academic_only":
+    if not citation_urls:
+        st.info("Academic-only compliance: N/A (no citations)")
+    else:
+        non_academic = [
+            url
+            for url in citation_urls
+            if classify_publisher(url, SOURCE_REPUTATION) != "academic"
+        ]
+        if non_academic:
+            st.error("Academic-only compliance: FAIL")
+        else:
+            st.success("Academic-only compliance: PASS")
+
 artifact_registry = _artifact_registry(run_dir)
 if artifact_registry:
     exp = st.expander("Debug: Artifacts", expanded=False)
@@ -581,6 +749,18 @@ with tabs[0]:
     st.write(f"Uncertainties: {len(uncertainties)}")
     st.write(f"Scenarios: {len(scenarios)}")
     st.write(f"EWIs: {len(ewis)}")
+
+    if category_percentages:
+        st.subheader("Citation Mix")
+        mix = ", ".join(
+            [
+                f"{category}: {percentage:.0%}"
+                for category, percentage in sorted(
+                    category_percentages.items(), key=lambda item: item[1], reverse=True
+                )
+            ]
+        )
+        st.write(mix)
 
     st.subheader("Exploration")
     domain_counts = _domain_counts(force_entries)
@@ -655,21 +835,23 @@ with tabs[3]:
                 evidence = evidence_by_id.get(evidence_id)
                 if not evidence:
                     continue
-                statement = evidence.get("statement") or evidence_id
-                detail_parts = [
-                    evidence.get("actor"),
-                    evidence.get("variable"),
-                    evidence.get("direction"),
-                    evidence.get("time_signal"),
-                ]
-                details = ", ".join([part for part in detail_parts if part])
-                if details:
-                    st.write(f"{statement} ({details})")
+                title = evidence.get("title") or evidence_id
+                url = evidence.get("url")
+                if url:
+                    st.markdown(f"[{title}]({url})")
                 else:
-                    st.write(statement)
-                citations = evidence.get("citations") or []
-                if citations:
-                    st.caption(", ".join([c.get("url", "") for c in citations if c.get("url")]))
+                    st.write(title)
+                publisher = evidence.get("publisher")
+                retrieved_at = evidence.get("retrieved_at")
+                detail_parts = [part for part in [publisher, retrieved_at] if part]
+                if detail_parts:
+                    st.caption(" | ".join(detail_parts))
+                excerpt = evidence.get("excerpt") or ""
+                if excerpt:
+                    excerpt_text = (
+                        excerpt if len(excerpt) <= 240 else f"{excerpt[:237]}..."
+                    )
+                    st.write(excerpt_text)
         with cols[1]:
             st.markdown("**Beliefs**")
             dominant = belief_set.get("dominant_belief") or {}

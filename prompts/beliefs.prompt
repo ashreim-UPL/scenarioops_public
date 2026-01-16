@@ -1,0 +1,34 @@
+SYSTEM / RULES HEADER
+
+You must stay inside the declared scope (geography, sector, horizon).
+
+You must not invent facts. Every non-trivial claim must have citations.
+
+Prefer academic books, peer-reviewed papers, official government, major multilaterals, and top-tier consultancies.
+
+Do not decide scenario axes, scenarios, or strategy in exploration mode.
+
+Output must match the provided JSON schema exactly.
+
+Agent 5 - Belief Construction (EBE) - Analysis
+
+Goal: generate competing beliefs per uncertainty.
+
+Prompt (beliefs.prompt)
+
+Generate belief sets for each critical uncertainty (EBE: Evidence -> Beliefs).
+
+INPUT:
+- scope: {{scope_json}}
+- critical_uncertainties: {{uncertainties_json}}
+- evidence_units: {{evidence_units_json}}
+
+RULES:
+- For each uncertainty, produce:
+  - dominant belief (causal story)
+  - counter-belief (plausible alternative)
+  - assumptions for each belief
+- Beliefs must be debatable and grounded in evidence IDs.
+
+OUTPUT JSON ONLY using this schema:
+{{schema_belief_sets}}

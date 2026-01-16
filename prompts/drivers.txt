@@ -1,2 +1,3 @@
-Extract drivers with citations from the provided sources.
+Extract drivers with citations from the provided evidence units.
+Use only URLs present in evidence_units_json.
 Return ONLY a JSON object with a top-level "drivers" key that contains the list of driver entries.

@@ -1,0 +1,66 @@
+{
+  "id": "wt-1",
+  "tests": [
+    {
+      "action": "KEEP",
+      "adaptations": [
+        "Scale buffers"
+      ],
+      "failure_modes": [
+        "Demand spike"
+      ],
+      "feasibility_score": 0.8,
+      "id": "wt-1",
+      "outcome": "Resilient",
+      "rubric_score": 0.8600000000000001,
+      "scenario_id": "S1",
+      "strategy_id": "st-1"
+    },
+    {
+      "action": "KEEP",
+      "adaptations": [
+        "Shift routing"
+      ],
+      "failure_modes": [
+        "Port delays"
+      ],
+      "feasibility_score": 0.7,
+      "id": "wt-2",
+      "outcome": "Stressed",
+      "rubric_score": 0.8600000000000001,
+      "scenario_id": "S2",
+      "strategy_id": "st-2"
+    },
+    {
+      "action": "KEEP",
+      "adaptations": [
+        "Scale buffers"
+      ],
+      "failure_modes": [
+        "Demand spike"
+      ],
+      "feasibility_score": 0.8,
+      "id": "wt-3",
+      "outcome": "Resilient",
+      "rubric_score": 0.8600000000000001,
+      "scenario_id": "S3",
+      "strategy_id": "st-1"
+    },
+    {
+      "action": "KEEP",
+      "adaptations": [
+        "Shift routing"
+      ],
+      "failure_modes": [
+        "Port delays"
+      ],
+      "feasibility_score": 0.7,
+      "id": "wt-4",
+      "outcome": "Stressed",
+      "rubric_score": 0.8600000000000001,
+      "scenario_id": "S4",
+      "strategy_id": "st-2"
+    }
+  ],
+  "title": "Wind Tunnel"
+}

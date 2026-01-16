@@ -1,0 +1,267 @@
+{
+  "epistemic_summary": {
+    "artifact": "artifacts/epistemic_summary.json",
+    "assumptions": [
+      "bel-1",
+      "bel-2",
+      "bel-3",
+      "bel-4"
+    ],
+    "facts": [
+      "pre-1"
+    ],
+    "interpretations": [
+      "eff-1",
+      "eff-2",
+      "eff-3",
+      "eff-4"
+    ],
+    "unknowns": [
+      "unc-1",
+      "unc-2"
+    ]
+  },
+  "run_id": "medium",
+  "scenarios": [
+    {
+      "links": [
+        {
+          "artifact": "artifacts/drivers.jsonl",
+          "claim_type": "drivers",
+          "ids": [
+            "drv-1",
+            "drv-2",
+            "drv-3"
+          ]
+        },
+        {
+          "artifact": "artifacts/belief_sets.json",
+          "claim_type": "assumptions",
+          "ids": [
+            "bel-1",
+            "bel-2",
+            "bel-3",
+            "bel-4"
+          ]
+        },
+        {
+          "artifact": "artifacts/certainty_uncertainty.json",
+          "claim_type": "unknowns",
+          "ids": [
+            "unc-1",
+            "unc-2"
+          ]
+        },
+        {
+          "artifact": "artifacts/effects.json",
+          "claim_type": "causal_chain",
+          "ids": [
+            "eff-1",
+            "eff-2",
+            "eff-3",
+            "eff-4"
+          ]
+        },
+        {
+          "artifact": "artifacts/ewi.json",
+          "claim_type": "signals",
+          "ids": [
+            "S1-ewi-0",
+            "S1-ewi-1",
+            "S1-ewi-2",
+            "S1-ewi-3",
+            "S1-ewi-4"
+          ]
+        },
+        {
+          "artifact": "artifacts/wind_tunnel.json",
+          "claim_type": "options",
+          "ids": [
+            "st-1"
+          ]
+        }
+      ],
+      "scenario_id": "S1"
+    },
+    {
+      "links": [
+        {
+          "artifact": "artifacts/drivers.jsonl",
+          "claim_type": "drivers",
+          "ids": [
+            "drv-1",
+            "drv-2",
+            "drv-3"
+          ]
+        },
+        {
+          "artifact": "artifacts/belief_sets.json",
+          "claim_type": "assumptions",
+          "ids": [
+            "bel-1",
+            "bel-2",
+            "bel-3",
+            "bel-4"
+          ]
+        },
+        {
+          "artifact": "artifacts/certainty_uncertainty.json",
+          "claim_type": "unknowns",
+          "ids": [
+            "unc-1",
+            "unc-2"
+          ]
+        },
+        {
+          "artifact": "artifacts/effects.json",
+          "claim_type": "causal_chain",
+          "ids": [
+            "eff-1",
+            "eff-2",
+            "eff-3",
+            "eff-4"
+          ]
+        },
+        {
+          "artifact": "artifacts/ewi.json",
+          "claim_type": "signals",
+          "ids": [
+            "S2-ewi-0",
+            "S2-ewi-1",
+            "S2-ewi-2",
+            "S2-ewi-3",
+            "S2-ewi-4"
+          ]
+        },
+        {
+          "artifact": "artifacts/wind_tunnel.json",
+          "claim_type": "options",
+          "ids": [
+            "st-2"
+          ]
+        }
+      ],
+      "scenario_id": "S2"
+    },
+    {
+      "links": [
+        {
+          "artifact": "artifacts/drivers.jsonl",
+          "claim_type": "drivers",
+          "ids": [
+            "drv-1",
+            "drv-2",
+            "drv-3"
+          ]
+        },
+        {
+          "artifact": "artifacts/belief_sets.json",
+          "claim_type": "assumptions",
+          "ids": [
+            "bel-1",
+            "bel-2",
+            "bel-3",
+            "bel-4"
+          ]
+        },
+        {
+          "artifact": "artifacts/certainty_uncertainty.json",
+          "claim_type": "unknowns",
+          "ids": [
+            "unc-1",
+            "unc-2"
+          ]
+        },
+        {
+          "artifact": "artifacts/effects.json",
+          "claim_type": "causal_chain",
+          "ids": [
+            "eff-1",
+            "eff-2",
+            "eff-3",
+            "eff-4"
+          ]
+        },
+        {
+          "artifact": "artifacts/ewi.json",
+          "claim_type": "signals",
+          "ids": [
+            "S3-ewi-0",
+            "S3-ewi-1",
+            "S3-ewi-2",
+            "S3-ewi-3",
+            "S3-ewi-4"
+          ]
+        },
+        {
+          "artifact": "artifacts/wind_tunnel.json",
+          "claim_type": "options",
+          "ids": [
+            "st-1"
+          ]
+        }
+      ],
+      "scenario_id": "S3"
+    },
+    {
+      "links": [
+        {
+          "artifact": "artifacts/drivers.jsonl",
+          "claim_type": "drivers",
+          "ids": [
+            "drv-1",
+            "drv-2",
+            "drv-3"
+          ]
+        },
+        {
+          "artifact": "artifacts/belief_sets.json",
+          "claim_type": "assumptions",
+          "ids": [
+            "bel-1",
+            "bel-2",
+            "bel-3",
+            "bel-4"
+          ]
+        },
+        {
+          "artifact": "artifacts/certainty_uncertainty.json",
+          "claim_type": "unknowns",
+          "ids": [
+            "unc-1",
+            "unc-2"
+          ]
+        },
+        {
+          "artifact": "artifacts/effects.json",
+          "claim_type": "causal_chain",
+          "ids": [
+            "eff-1",
+            "eff-2",
+            "eff-3",
+            "eff-4"
+          ]
+        },
+        {
+          "artifact": "artifacts/ewi.json",
+          "claim_type": "signals",
+          "ids": [
+            "S4-ewi-0",
+            "S4-ewi-1",
+            "S4-ewi-2",
+            "S4-ewi-3",
+            "S4-ewi-4"
+          ]
+        },
+        {
+          "artifact": "artifacts/wind_tunnel.json",
+          "claim_type": "options",
+          "ids": [
+            "st-2"
+          ]
+        }
+      ],
+      "scenario_id": "S4"
+    }
+  ]
+}

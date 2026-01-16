@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.config import LLMConfig
+from scenarioops.app.config import LLMConfig
 from scenarioops.graph.nodes.utils import get_client, load_prompt, render_prompt
 from scenarioops.graph.state import ScenarioOpsState, Strategies, Strategy
+from scenarioops.graph.tools.normalization import stable_id
 from scenarioops.graph.tools.schema_validate import load_schema, validate_artifact
-from scenarioops.graph.tools.storage import write_artifact
+from scenarioops.graph.tools.storage import log_normalization, write_artifact
 from scenarioops.llm.guards import ensure_dict
 
 
@@ -34,8 +35,36 @@ def run_strategies_node(
     response = client.generate_json(prompt, schema)
     parsed = ensure_dict(response, node_name="strategies")
 
+    if not parsed.get("id"):
+        parsed["id"] = stable_id(
+            "strategies",
+            parsed.get("title"),
+            [scenario.id for scenario in state.logic.scenarios],
+        )
+        log_normalization(
+            run_id=run_id,
+            node_name="strategies",
+            operation="stable_id_assigned",
+            details={"field": "id"},
+            base_dir=base_dir,
+        )
+
     validate_artifact("strategies", parsed)
     for strategy in parsed.get("strategies", []):
+        if not strategy.get("id"):
+            strategy["id"] = stable_id(
+                "strategy",
+                strategy.get("name"),
+                strategy.get("objective"),
+                strategy.get("actions", []),
+            )
+            log_normalization(
+                run_id=run_id,
+                node_name="strategies",
+                operation="stable_id_assigned",
+                details={"field": "strategy.id", "name": strategy.get("name", "")},
+                base_dir=base_dir,
+            )
         if not strategy.get("kpis"):
             raise ValueError(f"Strategy {strategy.get('id')} missing KPIs.")
 

@@ -1,0 +1,8 @@
+mode: demo
+llm_provider: gemini
+gemini_model: gemini-2.0-flash
+sources_policy: academic_only
+allow_web: false
+min_sources_per_domain: 8
+min_citations_per_driver: 2
+forbid_fixture_citations: true

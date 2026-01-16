@@ -1,0 +1,16 @@
+{
+  "decision_type": "strategic planning",
+  "exclusions": [
+    "Product portfolio redesign",
+    "M&A decisions"
+  ],
+  "focal_issue": "How should the organization prioritize resilience investments over the next 5 years?",
+  "scope": {
+    "geography": "UAE",
+    "sectors": [
+      "supply chain"
+    ],
+    "time_horizon_years": 5
+  },
+  "success_criteria": "Scenarios enable resilient investment sequencing and risk-aware budgeting."
+}

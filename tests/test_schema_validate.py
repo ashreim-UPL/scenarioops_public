@@ -8,6 +8,7 @@ def test_charter_schema_accepts_valid_artifact() -> None:
         "id": "charter-001",
         "title": "ScenarioOps Pilot",
         "purpose": "Assess operational resilience for the next planning cycle.",
+        "decision_context": "Capital allocation for resilience investments.",
         "scope": "Global supply chain for Q3-Q4.",
         "time_horizon": "12 months",
         "stakeholders": ["Operations", "Finance"],

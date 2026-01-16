@@ -1,10 +1,7 @@
-import hashlib
-
 import pytest
 
 from scenarioops.graph.nodes.drivers import run_drivers_node
 from scenarioops.graph.state import ScenarioOpsState
-from scenarioops.graph.tools.web_retriever import RetrievedContent
 
 
 class StubClient:
@@ -16,17 +13,6 @@ class StubClient:
 
     def generate_markdown(self, prompt: str) -> str:
         raise NotImplementedError
-
-
-def _fake_retriever(url: str, **_) -> RetrievedContent:
-    text = f"Source {url}"
-    return RetrievedContent(
-        url=url,
-        title="Example",
-        date="2026-01-01T00:00:00Z",
-        text=text,
-        excerpt_hash=hashlib.sha256(text.encode("utf-8")).hexdigest(),
-    )
 
 
 def _drivers_list(sources: list[str]) -> list[dict]:
@@ -43,17 +29,31 @@ def _drivers_list(sources: list[str]) -> list[dict]:
     ]
 
 
+def _evidence_units(sources: list[str]) -> dict:
+    units = []
+    for idx, url in enumerate(sources, start=1):
+        units.append(
+            {
+                "id": f"ev-{idx}",
+                "title": "Example",
+                "url": url,
+                "publisher": "example.com",
+                "retrieved_at": "2026-01-01T00:00:00Z",
+                "excerpt": f"Source {url}",
+            }
+        )
+    return {"evidence_units": units}
+
+
 def test_drivers_node_accepts_object_payload(tmp_path) -> None:
     sources = ["https://example.com/a", "https://example.com/b", "https://example.com/c"]
     payload = {"drivers": _drivers_list(sources)}
 
-    state = ScenarioOpsState()
+    state = ScenarioOpsState(evidence_units=_evidence_units(sources))
     run_drivers_node(
-        sources,
         run_id="drivers-ok",
         state=state,
         llm_client=StubClient(payload),
-        retriever=_fake_retriever,
         base_dir=tmp_path / "runs",
     )
 
@@ -67,10 +67,8 @@ def test_drivers_node_rejects_list_payload(tmp_path) -> None:
 
     with pytest.raises(TypeError, match="Expected payload\\['drivers'\\] list"):
         run_drivers_node(
-            sources,
             run_id="drivers-bad",
-            state=ScenarioOpsState(),
+            state=ScenarioOpsState(evidence_units=_evidence_units(sources)),
             llm_client=StubClient(payload),
-            retriever=_fake_retriever,
             base_dir=tmp_path / "runs",
         )

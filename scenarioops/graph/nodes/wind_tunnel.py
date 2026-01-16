@@ -3,12 +3,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from app.config import LLMConfig
+from scenarioops.app.config import LLMConfig
 from scenarioops.graph.nodes.utils import get_client, load_prompt, render_prompt
 from scenarioops.graph.state import ScenarioOpsState, WindTunnel, WindTunnelTest
+from scenarioops.graph.tools.normalization import stable_id
 from scenarioops.graph.tools.schema_validate import load_schema, validate_artifact
 from scenarioops.graph.tools.scoring import score_with_rubric
-from scenarioops.graph.tools.storage import write_artifact
+from scenarioops.graph.tools.storage import log_normalization, write_artifact
 from scenarioops.llm.guards import ensure_dict
 
 
@@ -46,6 +47,19 @@ def _normalize_tests(raw_tests: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return normalized
 
 
+def _validate_scenario_coverage(
+    tests: list[dict[str, Any]], scenario_ids: list[str]
+) -> None:
+    covered = {scenario_id: False for scenario_id in scenario_ids}
+    for test in tests:
+        scenario_id = str(test.get("scenario_id"))
+        if scenario_id in covered:
+            covered[scenario_id] = True
+    missing = [scenario_id for scenario_id, ok in covered.items() if not ok]
+    if missing:
+        raise ValueError(f"Wind tunnel missing tests for scenarios: {missing}")
+
+
 def run_wind_tunnel_node(
     *,
     run_id: str,
@@ -71,8 +85,25 @@ def run_wind_tunnel_node(
 
     raw_tests = parsed.get("tests", [])
     normalized_tests = _normalize_tests(raw_tests)
+    scenario_ids = [scenario.id for scenario in state.logic.scenarios]
+    _validate_scenario_coverage(normalized_tests, scenario_ids)
+    tunnel_id = parsed.get("id")
+    if not tunnel_id:
+        tunnel_id = stable_id(
+            "wind_tunnel",
+            [strategy.id for strategy in state.strategies.strategies],
+            [scenario.id for scenario in state.logic.scenarios],
+        )
+        log_normalization(
+            run_id=run_id,
+            node_name="wind_tunnel",
+            operation="stable_id_assigned",
+            details={"field": "id"},
+            base_dir=base_dir,
+        )
+
     payload = {
-        "id": parsed.get("id", f"wind-tunnel-{run_id}"),
+        "id": tunnel_id,
         "title": parsed.get("title", "Wind Tunnel"),
         "tests": normalized_tests,
     }

@@ -31,6 +31,7 @@ RULES:
   - short name
   - description (1-2 sentences)
   - why it matters (1 sentence)
+  - study lenses (macro, law, geopolitics, ethics, culture)
   - citations (>=1) drawn from the provided evidence units
 - Do not merge forces; do not interpret them as certainties or uncertainties yet.
 - Do not invent sources; cite only URLs present in evidence_units_json.
@@ -41,7 +42,8 @@ OUTPUT JSON ONLY using this structure:
     {
       "id": "UUID (optional, generate if missing)",
       "name": "Short name of the force",
-      "domain": "PESTEL domain (Political, Economic, Social, Technological, Environmental, Legal)",
+      "domain": "PESTEL domain (political, economic, social, technological, environmental, legal)",
+      "lenses": ["macro", "law"],
       "description": "1-2 sentence description",
       "why_it_matters": "1 sentence on why this is critical",
       "citations": [

@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.config import LLMConfig
+from scenarioops.app.config import LLMConfig
 from scenarioops.graph.nodes.utils import get_client, load_prompt, render_prompt
 from scenarioops.graph.state import ScenarioEvent, ScenarioOpsState, ScenarioSkeleton, Skeleton
+from scenarioops.graph.tools.normalization import stable_id
 from scenarioops.graph.tools.schema_validate import load_schema, validate_artifact
-from scenarioops.graph.tools.storage import write_artifact
+from scenarioops.graph.tools.storage import log_normalization, write_artifact
 from scenarioops.llm.guards import ensure_dict
 
 
@@ -67,8 +68,21 @@ def run_skeletons_node(
                 operating_rules=scenario.get("operating_rules", {}),
             )
         )
+    skeleton_id = parsed.get("id")
+    if not skeleton_id:
+        skeleton_id = stable_id(
+            "skeletons",
+            [scenario.id for scenario in state.logic.scenarios],
+        )
+        log_normalization(
+            run_id=run_id,
+            node_name="skeletons",
+            operation="stable_id_assigned",
+            details={"field": "id"},
+            base_dir=base_dir,
+        )
     state.skeleton = Skeleton(
-        id=parsed.get("id", f"skeletons-{run_id}"),
+        id=skeleton_id,
         title=parsed.get("title", "Scenario Skeletons"),
         scenarios=skeletons,
     )

@@ -1,0 +1,206 @@
+{
+  "id": "ewi-1",
+  "indicators": [
+    {
+      "description": "Track metric movement.",
+      "id": "S1-ewi-0",
+      "linked_scenarios": [
+        "S1"
+      ],
+      "metric": "days",
+      "name": "EWI 0",
+      "signal": "Rising"
+    },
+    {
+      "description": "Track metric movement.",
+      "id": "S1-ewi-1",
+      "linked_scenarios": [
+        "S1"
+      ],
+      "metric": "days",
+      "name": "EWI 1",
+      "signal": "Rising"
+    },
+    {
+      "description": "Track metric movement.",
+      "id": "S1-ewi-2",
+      "linked_scenarios": [
+        "S1"
+      ],
+      "metric": "days",
+      "name": "EWI 2",
+      "signal": "Rising"
+    },
+    {
+      "description": "Track metric movement.",
+      "id": "S1-ewi-3",
+      "linked_scenarios": [
+        "S1"
+      ],
+      "metric": "days",
+      "name": "EWI 3",
+      "signal": "Rising"
+    },
+    {
+      "description": "Track metric movement.",
+      "id": "S1-ewi-4",
+      "linked_scenarios": [
+        "S1"
+      ],
+      "metric": "days",
+      "name": "EWI 4",
+      "signal": "Rising"
+    },
+    {
+      "description": "Track metric movement.",
+      "id": "S2-ewi-0",
+      "linked_scenarios": [
+        "S2"
+      ],
+      "metric": "days",
+      "name": "EWI 0",
+      "signal": "Rising"
+    },
+    {
+      "description": "Track metric movement.",
+      "id": "S2-ewi-1",
+      "linked_scenarios": [
+        "S2"
+      ],
+      "metric": "days",
+      "name": "EWI 1",
+      "signal": "Rising"
+    },
+    {
+      "description": "Track metric movement.",
+      "id": "S2-ewi-2",
+      "linked_scenarios": [
+        "S2"
+      ],
+      "metric": "days",
+      "name": "EWI 2",
+      "signal": "Rising"
+    },
+    {
+      "description": "Track metric movement.",
+      "id": "S2-ewi-3",
+      "linked_scenarios": [
+        "S2"
+      ],
+      "metric": "days",
+      "name": "EWI 3",
+      "signal": "Rising"
+    },
+    {
+      "description": "Track metric movement.",
+      "id": "S2-ewi-4",
+      "linked_scenarios": [
+        "S2"
+      ],
+      "metric": "days",
+      "name": "EWI 4",
+      "signal": "Rising"
+    },
+    {
+      "description": "Track metric movement.",
+      "id": "S3-ewi-0",
+      "linked_scenarios": [
+        "S3"
+      ],
+      "metric": "days",
+      "name": "EWI 0",
+      "signal": "Rising"
+    },
+    {
+      "description": "Track metric movement.",
+      "id": "S3-ewi-1",
+      "linked_scenarios": [
+        "S3"
+      ],
+      "metric": "days",
+      "name": "EWI 1",
+      "signal": "Rising"
+    },
+    {
+      "description": "Track metric movement.",
+      "id": "S3-ewi-2",
+      "linked_scenarios": [
+        "S3"
+      ],
+      "metric": "days",
+      "name": "EWI 2",
+      "signal": "Rising"
+    },
+    {
+      "description": "Track metric movement.",
+      "id": "S3-ewi-3",
+      "linked_scenarios": [
+        "S3"
+      ],
+      "metric": "days",
+      "name": "EWI 3",
+      "signal": "Rising"
+    },
+    {
+      "description": "Track metric movement.",
+      "id": "S3-ewi-4",
+      "linked_scenarios": [
+        "S3"
+      ],
+      "metric": "days",
+      "name": "EWI 4",
+      "signal": "Rising"
+    },
+    {
+      "description": "Track metric movement.",
+      "id": "S4-ewi-0",
+      "linked_scenarios": [
+        "S4"
+      ],
+      "metric": "days",
+      "name": "EWI 0",
+      "signal": "Rising"
+    },
+    {
+      "description": "Track metric movement.",
+      "id": "S4-ewi-1",
+      "linked_scenarios": [
+        "S4"
+      ],
+      "metric": "days",
+      "name": "EWI 1",
+      "signal": "Rising"
+    },
+    {
+      "description": "Track metric movement.",
+      "id": "S4-ewi-2",
+      "linked_scenarios": [
+        "S4"
+      ],
+      "metric": "days",
+      "name": "EWI 2",
+      "signal": "Rising"
+    },
+    {
+      "description": "Track metric movement.",
+      "id": "S4-ewi-3",
+      "linked_scenarios": [
+        "S4"
+      ],
+      "metric": "days",
+      "name": "EWI 3",
+      "signal": "Rising"
+    },
+    {
+      "description": "Track metric movement.",
+      "id": "S4-ewi-4",
+      "linked_scenarios": [
+        "S4"
+      ],
+      "metric": "days",
+      "name": "EWI 4",
+      "signal": "Rising"
+    }
+  ],
+  "title": "EWIs"
+}

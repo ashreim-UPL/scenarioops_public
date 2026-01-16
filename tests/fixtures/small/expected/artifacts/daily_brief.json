@@ -1,0 +1,20 @@
+{
+  "actions": [],
+  "date": "2026-01-01",
+  "developments": [],
+  "headline": "Daily brief",
+  "id": "daily-brief-ed1ed1e66dab",
+  "implications": [
+    "S1: +0.86",
+    "S2: +0.86",
+    "S3: +0.86",
+    "S4: +0.86"
+  ],
+  "markdown": "# Daily Brief\n\nSignals monitored without anomalies.\n",
+  "signals": [
+    "S1: +0.60 (none->elevated)",
+    "S2: +0.60 (none->elevated)",
+    "S3: +0.60 (none->elevated)",
+    "S4: +0.60 (none->elevated)"
+  ]
+}

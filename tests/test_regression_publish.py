@@ -49,7 +49,17 @@ def test_mock_run_deterministic_hashes(tmp_path: Path) -> None:
     )
     second = _hash_artifacts(base_dir, run_id)
 
-    assert first == second
+    run_graph(
+        inputs,
+        run_id=run_id,
+        base_dir=base_dir,
+        mock_mode=True,
+        generate_strategies=True,
+        report_date="2026-01-01",
+    )
+    third = _hash_artifacts(base_dir, run_id)
+
+    assert first == second == third
 
 
 def test_schema_violation_blocks_publish(tmp_path: Path) -> None:

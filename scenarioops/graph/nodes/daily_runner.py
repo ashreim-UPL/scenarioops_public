@@ -4,15 +4,16 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-from app.config import LLMConfig
+from scenarioops.app.config import LLMConfig
 from scenarioops.graph.nodes.utils import get_client, load_prompt, render_prompt
 from scenarioops.graph.state import DailyBrief, ScenarioOpsState
+from scenarioops.graph.tools.normalization import stable_id
 from scenarioops.graph.tools.schema_validate import validate_artifact
 from scenarioops.graph.tools.scenario_activation import (
     compute_activation_deltas,
     compute_scenario_activation,
 )
-from scenarioops.graph.tools.storage import write_artifact
+from scenarioops.graph.tools.storage import log_normalization, write_artifact
 
 
 def _wind_tunnel_scores(tests: Sequence[Mapping[str, Any]]) -> dict[str, float]:
@@ -87,6 +88,13 @@ def run_daily_runner_node(
 
     if report_date is None:
         report_date = datetime.now(timezone.utc).date().isoformat()
+        log_normalization(
+            run_id=run_id,
+            node_name="daily_runner",
+            operation="default_report_date",
+            details={"value": report_date},
+            base_dir=base_dir,
+        )
 
     write_artifact(
         run_id=run_id,
@@ -99,8 +107,21 @@ def run_daily_runner_node(
         base_dir=base_dir,
     )
 
+    brief_id = stable_id(
+        "daily-brief",
+        report_date,
+        len(signals),
+        missing_data,
+    )
+    log_normalization(
+        run_id=run_id,
+        node_name="daily_runner",
+        operation="stable_id_assigned",
+        details={"field": "id"},
+        base_dir=base_dir,
+    )
     daily_brief = {
-        "id": f"daily-brief-{run_id}",
+        "id": brief_id,
         "date": report_date,
         "headline": "data unavailable" if missing_data else "Daily brief",
         "developments": [],

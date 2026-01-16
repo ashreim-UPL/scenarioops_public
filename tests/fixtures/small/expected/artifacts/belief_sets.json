@@ -1,0 +1,54 @@
+{
+  "belief_sets": [
+    {
+      "counter_belief": {
+        "assumptions": [
+          "Regulators prefer phased rollouts."
+        ],
+        "evidence_ids": [
+          "ev-1",
+          "ev-2"
+        ],
+        "id": "bel-2",
+        "statement": "Policy updates slow as institutions focus on stability."
+      },
+      "dominant_belief": {
+        "assumptions": [
+          "Regulators prioritize rapid updates."
+        ],
+        "evidence_ids": [
+          "ev-1",
+          "ev-2"
+        ],
+        "id": "bel-1",
+        "statement": "Policy changes accelerate and increase compliance load."
+      },
+      "uncertainty_id": "unc-1"
+    },
+    {
+      "counter_belief": {
+        "assumptions": [
+          "Budget pressures delay upgrades."
+        ],
+        "evidence_ids": [
+          "ev-2",
+          "ev-3"
+        ],
+        "id": "bel-4",
+        "statement": "Adoption slows due to cost and talent constraints."
+      },
+      "dominant_belief": {
+        "assumptions": [
+          "Capital is available for modernization."
+        ],
+        "evidence_ids": [
+          "ev-2",
+          "ev-3"
+        ],
+        "id": "bel-3",
+        "statement": "Automation adoption accelerates across core processes."
+      },
+      "uncertainty_id": "unc-2"
+    }
+  ]
+}

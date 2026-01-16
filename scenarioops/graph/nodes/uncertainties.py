@@ -3,12 +3,37 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from app.config import LLMConfig
+from scenarioops.app.config import LLMConfig
 from scenarioops.graph.nodes.utils import get_client, load_prompt, render_prompt
 from scenarioops.graph.state import ScenarioOpsState, UncertaintyEntry, Uncertainties
+from scenarioops.graph.tools.normalization import stable_id
 from scenarioops.graph.tools.schema_validate import load_schema, validate_artifact
-from scenarioops.graph.tools.storage import write_artifact
+from scenarioops.graph.tools.storage import log_normalization, write_artifact
 from scenarioops.llm.guards import ensure_dict
+
+
+def _forces_as_drivers(state: ScenarioOpsState) -> list[dict[str, Any]]:
+    forces = []
+    if isinstance(state.driving_forces, dict):
+        forces = state.driving_forces.get("forces", [])
+    if not isinstance(forces, list):
+        return []
+    drivers: list[dict[str, Any]] = []
+    for force in forces:
+        if not isinstance(force, dict):
+            continue
+        drivers.append(
+            {
+                "id": force.get("id"),
+                "name": force.get("name"),
+                "description": force.get("description"),
+                "category": force.get("domain") or "other",
+                "trend": "unspecified",
+                "impact": "unspecified",
+                "citations": force.get("citations", []),
+            }
+        )
+    return drivers
 
 
 def _validate_uncertainty_links(payload: dict[str, Any], driver_ids: set[str]) -> None:
@@ -29,11 +54,14 @@ def run_uncertainties_node(
     base_dir: Path | None = None,
     config: LLMConfig | None = None,
 ) -> ScenarioOpsState:
-    if state.drivers is None:
-        raise ValueError("Drivers are required to generate uncertainties.")
+    if state.drivers is None and state.driving_forces is None:
+        raise ValueError("Drivers or driving forces are required to generate uncertainties.")
 
     prompt_template = load_prompt("uncertainties")
-    driver_payload = [driver.__dict__ for driver in state.drivers.drivers]
+    if state.drivers is not None:
+        driver_payload = [driver.__dict__ for driver in state.drivers.drivers]
+    else:
+        driver_payload = _forces_as_drivers(state)
     context = {"drivers": driver_payload}
     prompt = render_prompt(prompt_template, context)
 
@@ -43,7 +71,11 @@ def run_uncertainties_node(
     parsed = ensure_dict(response, node_name="uncertainties")
 
     validate_artifact("uncertainties", parsed)
-    driver_ids = {driver.id for driver in state.drivers.drivers}
+    driver_ids = {
+        driver.get("id")
+        for driver in driver_payload
+        if isinstance(driver, dict) and driver.get("id")
+    }
     _validate_uncertainty_links(parsed, driver_ids)
 
     write_artifact(
@@ -60,8 +92,19 @@ def run_uncertainties_node(
     uncertainties = [
         UncertaintyEntry(**entry) for entry in parsed.get("uncertainties", [])
     ]
+    uncertainty_id = parsed.get("id")
+    if not uncertainty_id:
+        uncertainty_id = stable_id("uncertainties", sorted(driver_ids))
+        log_normalization(
+            run_id=run_id,
+            node_name="uncertainties",
+            operation="stable_id_assigned",
+            details={"field": "id"},
+            base_dir=base_dir,
+        )
+
     state.uncertainties = Uncertainties(
-        id=parsed.get("id", f"uncertainties-{run_id}"),
+        id=uncertainty_id,
         title=parsed.get("title", "Uncertainties"),
         uncertainties=uncertainties,
     )

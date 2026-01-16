@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import uuid
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -8,8 +7,9 @@ from scenarioops.app.config import LLMConfig
 from scenarioops.app.config import ScenarioOpsSettings
 from scenarioops.graph.nodes.utils import get_client, load_prompt, render_prompt
 from scenarioops.graph.state import ScenarioOpsState
+from scenarioops.graph.tools.normalization import stable_id
 from scenarioops.graph.tools.schema_validate import load_schema, validate_artifact
-from scenarioops.graph.tools.storage import write_artifact
+from scenarioops.graph.tools.storage import log_normalization, write_artifact
 from scenarioops.llm.guards import ensure_dict
 from scenarioops.graph.nodes.drivers import _normalize_url as _normalize_citation_url
 from scenarioops.graph.nodes.drivers import _excerpt_hash as _hash_excerpt
@@ -92,45 +92,81 @@ def run_scan_node(
         raise ValueError("Evidence units are required before scan.")
     
     raw_forces = parsed.get("forces", [])
-    valid_forces = []
-    
+    normalized_forces = []
+
     if isinstance(raw_forces, list):
         for force in raw_forces:
             if not isinstance(force, dict):
-                continue
+                raise ValueError("Driving forces must be objects.")
             if not force.get("id"):
-                force["id"] = str(uuid.uuid4())
-            
+                force["id"] = stable_id(
+                    "force",
+                    force.get("name"),
+                    force.get("domain"),
+                    force.get("description"),
+                )
+                log_normalization(
+                    run_id=run_id,
+                    node_name="scan_pestel",
+                    operation="stable_id_assigned",
+                    details={"field": "id", "name": force.get("name", "")},
+                    base_dir=base_dir,
+                )
+
+            raw_domain = force.get("domain")
+            if isinstance(raw_domain, str) and raw_domain.strip():
+                normalized_domain = raw_domain.strip().lower()
+                if normalized_domain != raw_domain:
+                    log_normalization(
+                        run_id=run_id,
+                        node_name="scan_pestel",
+                        operation="normalized_domain",
+                        details={"from": raw_domain, "to": normalized_domain},
+                        base_dir=base_dir,
+                    )
+                force["domain"] = normalized_domain
+
+            raw_lenses = force.get("lenses", [])
+            if isinstance(raw_lenses, list):
+                normalized_lenses = []
+                for lens in raw_lenses:
+                    if isinstance(lens, str) and lens.strip():
+                        normalized_lenses.append(lens.strip().lower())
+                if normalized_lenses != raw_lenses:
+                    log_normalization(
+                        run_id=run_id,
+                        node_name="scan_pestel",
+                        operation="normalized_lenses",
+                        details={"from": raw_lenses, "to": normalized_lenses},
+                        base_dir=base_dir,
+                    )
+                force["lenses"] = list(dict.fromkeys(normalized_lenses))
+
             raw_citations = force.get("citations", [])
-            valid_citations = []
-            
-            if isinstance(raw_citations, list):
-                for citation in raw_citations:
-                    if not isinstance(citation, dict):
-                        continue
-                    url = str(citation.get("url", ""))
-                    normalized = _normalize_citation_url(url)
-                    if normalized not in evidence_hashes:
-                        print(f"Warning: Dropping invalid citation '{url}' in force '{force.get('name')}'")
-                        continue
-                    
-                    citation["excerpt_hash"] = evidence_hashes[normalized]
-                    citation["publisher"] = evidence_publishers.get(
-                        normalized, citation.get("publisher", "")
+            if not isinstance(raw_citations, list) or not raw_citations:
+                raise ValueError(
+                    f"Driving force '{force.get('name')}' missing citations."
+                )
+
+            for citation in raw_citations:
+                if not isinstance(citation, dict):
+                    raise ValueError("Driving force citations must be objects.")
+                url = str(citation.get("url", ""))
+                normalized = _normalize_citation_url(url)
+                if normalized not in evidence_hashes:
+                    raise ValueError(
+                        f"Driving force citation url not in evidence units: {url}"
                     )
-                    citation["evidence_id"] = evidence_ids.get(
-                        normalized, citation.get("evidence_id", "")
-                    )
-                    valid_citations.append(citation)
-            
-            if not valid_citations:
-                print(f"Warning: Dropping force '{force.get('name')}' - no valid citations.")
-                continue
-            
-            force["citations"] = valid_citations
-            valid_forces.append(force)
-            
-    parsed["forces"] = valid_forces
+                citation["excerpt_hash"] = evidence_hashes[normalized]
+                citation["publisher"] = evidence_publishers.get(
+                    normalized, citation.get("publisher", "")
+                )
+                citation["evidence_id"] = evidence_ids.get(
+                    normalized, citation.get("evidence_id", "")
+                )
+            normalized_forces.append(force)
+
+    parsed["forces"] = normalized_forces
 
     validate_artifact("driving_forces.schema", parsed)
 

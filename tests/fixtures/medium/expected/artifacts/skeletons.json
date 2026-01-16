@@ -1,0 +1,50 @@
+{
+  "id": "sk-1",
+  "scenarios": [
+    {
+      "id": "S1",
+      "key_events": [],
+      "name": "Steady climb",
+      "narrative": "Calm reforms and reliable transport.",
+      "operating_rules": {
+        "market": "Stable demand",
+        "operations": "Predictable lanes",
+        "policy": "Incremental updates"
+      }
+    },
+    {
+      "id": "S2",
+      "key_events": [],
+      "name": "Policy shock",
+      "narrative": "Sudden rule changes with steady logistics.",
+      "operating_rules": {
+        "market": "Steady demand",
+        "operations": "Stable lanes",
+        "policy": "Rapid compliance shifts"
+      }
+    },
+    {
+      "id": "S3",
+      "key_events": [],
+      "name": "Turbulent road",
+      "narrative": "Slow policy but volatile transport.",
+      "operating_rules": {
+        "market": "Steady demand",
+        "operations": "Volatile lanes",
+        "policy": "Slow compliance"
+      }
+    },
+    {
+      "id": "S4",
+      "key_events": [],
+      "name": "Full volatility",
+      "narrative": "Rapid policy shifts and volatile transport.",
+      "operating_rules": {
+        "market": "Demand stress",
+        "operations": "Volatile lanes",
+        "policy": "Rapid changes"
+      }
+    }
+  ],
+  "title": "Skeletons"
+}

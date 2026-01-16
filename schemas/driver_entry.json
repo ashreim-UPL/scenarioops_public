@@ -19,10 +19,12 @@
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["url", "excerpt_hash"],
+        "required": ["url"],
         "properties": {
           "url": { "type": "string", "minLength": 1 },
-          "excerpt_hash": { "type": "string", "minLength": 1 }
+          "excerpt_hash": { "type": "string", "minLength": 1 },
+          "publisher": { "type": "string", "minLength": 1 },
+          "evidence_id": { "type": "string", "minLength": 1 }
         },
         "additionalProperties": false
       }

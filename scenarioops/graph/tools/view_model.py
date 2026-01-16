@@ -59,8 +59,28 @@ def build_view_model(run_dir: Path) -> dict[str, Any]:
     artifacts_dir = run_dir / "artifacts"
 
     charter = _load_json(artifacts_dir / "scenario_charter.json")
+    focal_issue = _load_json(artifacts_dir / "focal_issue.json")
+
+    driving_forces_payload = _load_json(artifacts_dir / "driving_forces.json") or {}
+    driving_forces = driving_forces_payload.get("forces", [])
+    if not isinstance(driving_forces, list):
+        driving_forces = []
     drivers = _load_jsonl(artifacts_dir / "drivers.jsonl")
     drivers_by_domain = _group_drivers_by_domain(drivers)
+
+    washout_report = _load_json(artifacts_dir / "washout_report.json")
+    evidence_units_payload = _load_json(artifacts_dir / "evidence_units.json") or {}
+    evidence_units = evidence_units_payload.get("evidence_units", [])
+    if not isinstance(evidence_units, list):
+        evidence_units = []
+    belief_sets_payload = _load_json(artifacts_dir / "belief_sets.json") or {}
+    belief_sets = belief_sets_payload.get("belief_sets", [])
+    if not isinstance(belief_sets, list):
+        belief_sets = []
+    effects_payload = _load_json(artifacts_dir / "effects.json") or {}
+    effects = effects_payload.get("effects", [])
+    if not isinstance(effects, list):
+        effects = []
 
     uncertainties_payload = _load_json(artifacts_dir / "uncertainties.json") or {}
     uncertainties = uncertainties_payload.get("uncertainties", [])
@@ -79,13 +99,22 @@ def build_view_model(run_dir: Path) -> dict[str, Any]:
     daily_brief_md = _load_text(artifacts_dir / "daily_brief.md")
 
     latest_status = read_latest_status(run_dir.parent) or {}
+    run_config = _load_json(run_dir / "run_config.json")
     run_meta = {
         "run_id": run_dir.name,
         "status": latest_status.get("status", "unknown"),
     }
+    if run_config:
+        run_meta["run_config"] = run_config
 
     return {
         "charter": charter,
+        "focal_issue": focal_issue,
+        "driving_forces": driving_forces,
+        "washout_report": washout_report,
+        "evidence_units": evidence_units,
+        "belief_sets": belief_sets,
+        "effects": effects,
         "drivers": drivers,
         "drivers_by_domain": drivers_by_domain,
         "uncertainties": uncertainties,

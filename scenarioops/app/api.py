@@ -9,6 +9,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 
+from scenarioops.app.config import llm_config_from_settings, load_settings
 from scenarioops.app.workflow import (
     ensure_signals,
     latest_run_id,
@@ -98,31 +99,25 @@ def build(payload: BuildRequest) -> RunResponse:
     run_id = payload.run_id or datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
     user_params = {"scope": payload.scope, "value": payload.value, "horizon": payload.horizon}
     sources = payload.sources or []
-    if not sources and payload.mock:
+    overrides = {"mode": "demo" if payload.mock else "live"}
+    if payload.mock:
+        overrides["sources_policy"] = "fixtures"
+        overrides["llm_provider"] = "mock"
+    settings = load_settings(overrides)
+    use_fixtures = settings.sources_policy == "fixtures"
+    if not sources and use_fixtures:
         sources = default_sources()
-    if not sources and not payload.mock:
-        raise HTTPException(status_code=400, detail="Sources are required in live mode.")
 
     inputs = GraphInputs(user_params=user_params, sources=sources, signals=[])
     try:
-        if payload.mock:
-            run_graph(
-                inputs,
-                run_id=run_id,
-                mock_mode=True,
-                generate_strategies=False,
-            )
-        else:
-            retriever = lambda url, **kwargs: retrieve_url(
-                url, allow_network=True, public_demo_mode=False, **kwargs
-            )
-            run_graph(
-                inputs,
-                run_id=run_id,
-                mock_mode=False,
-                generate_strategies=False,
-                retriever=retriever,
-            )
+        run_graph(
+            inputs,
+            run_id=run_id,
+            mock_mode=use_fixtures,
+            settings=settings,
+            generate_strategies=False,
+            retriever=retrieve_url,
+        )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
@@ -157,6 +152,12 @@ def strategies(payload: StrategiesRequest) -> RunResponse:
     if not run_id:
         raise HTTPException(status_code=404, detail="No runs available.")
 
+    overrides = {"mode": "demo" if payload.mock else "live"}
+    if payload.mock:
+        overrides["sources_policy"] = "fixtures"
+        overrides["llm_provider"] = "mock"
+    settings = load_settings(overrides)
+    config = llm_config_from_settings(settings)
     mock_payloads = (
         mock_payloads_for_sources(default_sources()) if payload.mock else None
     )
@@ -167,13 +168,15 @@ def strategies(payload: StrategiesRequest) -> RunResponse:
             state=state,
             strategy_notes=payload.strategies_text or "",
             llm_client=client_for_node("strategies", mock_payloads=mock_payloads),
+            config=config,
         )
         state = run_wind_tunnel_node(
             run_id=run_id,
             state=state,
             llm_client=client_for_node("wind_tunnel", mock_payloads=mock_payloads),
+            config=config,
         )
-        run_auditor_node(run_id=run_id, state=state)
+        run_auditor_node(run_id=run_id, state=state, settings=settings, config=config)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except Exception as exc:
@@ -188,6 +191,12 @@ def daily(payload: DailyRequest) -> RunResponse:
     if not run_id:
         raise HTTPException(status_code=404, detail="No runs available.")
 
+    overrides = {"mode": "demo" if payload.mock else "live"}
+    if payload.mock:
+        overrides["sources_policy"] = "fixtures"
+        overrides["llm_provider"] = "mock"
+    settings = load_settings(overrides)
+    config = llm_config_from_settings(settings)
     mock_payloads = (
         mock_payloads_for_sources(default_sources()) if payload.mock else None
     )
@@ -201,8 +210,9 @@ def daily(payload: DailyRequest) -> RunResponse:
             run_id=run_id,
             state=state,
             llm_client=client_for_node("daily_runner", mock_payloads=mock_payloads),
+            config=config,
         )
-        run_auditor_node(run_id=run_id, state=state)
+        run_auditor_node(run_id=run_id, state=state, settings=settings, config=config)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except Exception as exc:

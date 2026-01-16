@@ -37,6 +37,33 @@ Run the UI:
 streamlit run ui/streamlit_app.py
 ```
 
+## Configuration
+
+ScenarioOps reads settings from `config/scenarioops.yaml`. UI and CLI overrides apply on top
+of that file so mode and source policies stay explicit without relying on environment variables.
+
+Key settings:
+
+- `mode`: `demo` or `live`
+- `sources_policy`: `fixtures`, `academic_only`, or `mixed_reputable`
+- `allow_web`: allow network retrieval when using live sources
+- `min_sources_per_domain`: minimum evidence sources required in live runs
+- `min_citations_per_driver`: minimum citations per driver in live runs
+
+Gemini API keys are loaded from Streamlit secrets at runtime. Use
+`.streamlit/secrets.example.toml` as a template.
+
+## Data provenance
+
+Each run writes provenance artifacts into `storage/runs/<run_id>/`:
+
+- `run_config.json` captures the resolved settings for the run.
+- `evidence_units.json` contains retrieved excerpts with publisher metadata.
+- `driving_forces.json` and `drivers.jsonl` cite evidence by URL, publisher, and evidence id.
+- `latest.json` mirrors run status and the resolved run configuration.
+
+Live runs enforce reputable sources and fail fast if fixture markers are detected.
+
 Common tasks:
 
 ```sh

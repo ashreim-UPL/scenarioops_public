@@ -1,0 +1,38 @@
+{
+  "axes": [
+    {
+      "high": "Rapid compliance",
+      "low": "Slow compliance",
+      "uncertainty_id": "u1"
+    },
+    {
+      "high": "Turbulent logistics",
+      "low": "Stable logistics",
+      "uncertainty_id": "u2"
+    }
+  ],
+  "id": "logic-1",
+  "scenarios": [
+    {
+      "id": "S1",
+      "logic": "Slow + Stable",
+      "name": "Steady climb"
+    },
+    {
+      "id": "S2",
+      "logic": "Rapid + Stable",
+      "name": "Policy shock"
+    },
+    {
+      "id": "S3",
+      "logic": "Slow + Turbulent",
+      "name": "Turbulent road"
+    },
+    {
+      "id": "S4",
+      "logic": "Rapid + Turbulent",
+      "name": "Full volatility"
+    }
+  ],
+  "title": "Scenario Logic"
+}

@@ -1,0 +1,355 @@
+{
+  "artifacts": [
+    {
+      "meta_path": "artifacts\\audit_report.meta.json",
+      "name": "audit_report",
+      "path": "artifacts\\audit_report.json",
+      "schema": "audit_report",
+      "sha256": "21a0820c49b6dcc16710d2936f147fbbcdbe6e99a76a85392a426244c65264db",
+      "tool_versions": {
+        "auditor_node": "0.1.0",
+        "python": "3.11.9",
+        "scenarioops": "0.1.0"
+      },
+      "validated": true
+    },
+    {
+      "meta_path": "artifacts\\belief_sets.meta.json",
+      "name": "belief_sets",
+      "path": "artifacts\\belief_sets.json",
+      "schema": "belief_sets.schema",
+      "sha256": "f619dd57910f5fc528e37b385a03248ed4b9c48c1cb16322b8ddef58fd929fb1",
+      "tool_versions": {
+        "beliefs_node": "0.1.0",
+        "python": "3.11.9",
+        "scenarioops": "0.1.0"
+      },
+      "validated": true
+    },
+    {
+      "meta_path": "artifacts\\certainty_uncertainty.meta.json",
+      "name": "certainty_uncertainty",
+      "path": "artifacts\\certainty_uncertainty.json",
+      "schema": "certainty_uncertainty.schema",
+      "sha256": "006bda6700a7265c78f70ecb672705e391d79584836be216c4cd772f023b403d",
+      "tool_versions": {
+        "classify_node": "0.1.0",
+        "python": "3.11.9",
+        "scenarioops": "0.1.0"
+      },
+      "validated": true
+    },
+    {
+      "meta_path": "artifacts\\coverage_report.meta.json",
+      "name": "coverage_report",
+      "path": "artifacts\\coverage_report.json",
+      "schema": "coverage_report",
+      "sha256": "e24ec4dcbce1a5a7bb819c35286afbb01d1882ae55094cd292c121b255204a6b",
+      "tool_versions": {
+        "coverage_node": "0.1.0",
+        "python": "3.11.9",
+        "scenarioops": "0.1.0"
+      },
+      "validated": true
+    },
+    {
+      "meta_path": "artifacts\\daily_brief.meta.json",
+      "name": "daily_brief",
+      "path": "artifacts\\daily_brief.json",
+      "schema": "daily_brief",
+      "sha256": "b22788b6e5085241afff2d11020280c444e74aed0eff9f8b1ab2e086ed5fb7b2",
+      "tool_versions": {
+        "daily_runner_node": "0.1.0",
+        "python": "3.11.9",
+        "scenarioops": "0.1.0"
+      },
+      "validated": true
+    },
+    {
+      "meta_path": "artifacts\\daily_brief.meta.json",
+      "name": "daily_brief",
+      "path": "artifacts\\daily_brief.md",
+      "schema": "markdown",
+      "sha256": "365a8c3429077fc53c4d5c4fde693b7c2a19aeec40710217a417f53548d99975",
+      "tool_versions": {
+        "daily_runner_node": "0.1.0",
+        "python": "3.11.9",
+        "scenarioops": "0.1.0"
+      },
+      "validated": true
+    },
+    {
+      "meta_path": "artifacts\\drivers.meta.json",
+      "name": "drivers",
+      "path": "artifacts\\drivers.jsonl",
+      "schema": "driver_entry",
+      "sha256": "be2361882f3190694b89c114b26cbbda78e750308681966591da47e112829360",
+      "tool_versions": {
+        "drivers_node": "0.1.0",
+        "python": "3.11.9",
+        "scenarioops": "0.1.0"
+      },
+      "validated": true
+    },
+    {
+      "meta_path": "artifacts\\driving_forces.meta.json",
+      "name": "driving_forces",
+      "path": "artifacts\\driving_forces.json",
+      "schema": "driving_forces.schema",
+      "sha256": "c5d5fbf0d513a7de5073ab775f70dfa4c76833f2bf02e57d9344e61a61480f47",
+      "tool_versions": {
+        "python": "3.11.9",
+        "scan_node": "0.1.0",
+        "scenarioops": "0.1.0"
+      },
+      "validated": true
+    },
+    {
+      "meta_path": "artifacts\\effects.meta.json",
+      "name": "effects",
+      "path": "artifacts\\effects.json",
+      "schema": "effects.schema",
+      "sha256": "75ffe6bd4e8fd54ab15029126c4625bab90940e4840d0c7166c368bd42c8f7ae",
+      "tool_versions": {
+        "effects_node": "0.1.0",
+        "python": "3.11.9",
+        "scenarioops": "0.1.0"
+      },
+      "validated": true
+    },
+    {
+      "meta_path": "artifacts\\epistemic_summary.meta.json",
+      "name": "epistemic_summary",
+      "path": "artifacts\\epistemic_summary.json",
+      "schema": "epistemic_summary",
+      "sha256": "74ea7c99c0fdb2d813eba56b35866e6302ef4286f06008737ed7b08a99dfedd3",
+      "tool_versions": {
+        "epistemic_summary_node": "0.1.0",
+        "python": "3.11.9",
+        "scenarioops": "0.1.0"
+      },
+      "validated": true
+    },
+    {
+      "meta_path": "artifacts\\evidence_units.meta.json",
+      "name": "evidence_units",
+      "path": "artifacts\\evidence_units.json",
+      "schema": "evidence_units.schema",
+      "sha256": "4a07919c2600d352bf10baf6c3e1f70f0e98faa5529a3068435c69ad6f6d8c47",
+      "tool_versions": {
+        "python": "3.11.9",
+        "retrieval_node": "0.1.0",
+        "scenarioops": "0.1.0"
+      },
+      "validated": true
+    },
+    {
+      "meta_path": "artifacts\\ewi.meta.json",
+      "name": "ewi",
+      "path": "artifacts\\ewi.json",
+      "schema": "ewi",
+      "sha256": "d0decbb91a02fc1f9ee71e904dc74c6591c56b535fb2e56e337115f8c059f153",
+      "tool_versions": {
+        "ewis_node": "0.1.0",
+        "python": "3.11.9",
+        "scenarioops": "0.1.0"
+      },
+      "validated": true
+    },
+    {
+      "meta_path": "artifacts\\focal_issue.meta.json",
+      "name": "focal_issue",
+      "path": "artifacts\\focal_issue.json",
+      "schema": "focal_issue.schema",
+      "sha256": "1276c76a16ea1e36d8ed443bf1247c2e354181ced5703ea03dc9396a032aad9b",
+      "tool_versions": {
+        "focal_issue_node": "0.1.0",
+        "python": "3.11.9",
+        "scenarioops": "0.1.0"
+      },
+      "validated": true
+    },
+    {
+      "meta_path": "artifacts\\logic.meta.json",
+      "name": "logic",
+      "path": "artifacts\\logic.json",
+      "schema": "logic",
+      "sha256": "535cec939e2229a3a50a09b5e87de45f35b7ee4e4f312f75909f599c817c3c54",
+      "tool_versions": {
+        "logic_node": "0.1.0",
+        "python": "3.11.9",
+        "scenarioops": "0.1.0"
+      },
+      "validated": true
+    },
+    {
+      "meta_path": "artifacts\\narrative_S1.meta.json",
+      "name": "narrative_S1",
+      "path": "artifacts\\narrative_S1.md",
+      "schema": "markdown",
+      "sha256": "150895d9b1e301b3a15ea4e14b81d4d36b1a675238e65787610e588610045e78",
+      "tool_versions": {
+        "narratives_node": "0.1.0",
+        "python": "3.11.9",
+        "scenarioops": "0.1.0"
+      },
+      "validated": true
+    },
+    {
+      "meta_path": "artifacts\\narrative_S2.meta.json",
+      "name": "narrative_S2",
+      "path": "artifacts\\narrative_S2.md",
+      "schema": "markdown",
+      "sha256": "64055d0ccc74e66183a0e8a86ee4cb8fa10a0f79ce81f9d94447be5ded9e31ea",
+      "tool_versions": {
+        "narratives_node": "0.1.0",
+        "python": "3.11.9",
+        "scenarioops": "0.1.0"
+      },
+      "validated": true
+    },
+    {
+      "meta_path": "artifacts\\narrative_S3.meta.json",
+      "name": "narrative_S3",
+      "path": "artifacts\\narrative_S3.md",
+      "schema": "markdown",
+      "sha256": "4d1b037da719fd9f473f59f50b4a8ccf93421c5dc094f4ca9c109dc439a3a8ce",
+      "tool_versions": {
+        "narratives_node": "0.1.0",
+        "python": "3.11.9",
+        "scenarioops": "0.1.0"
+      },
+      "validated": true
+    },
+    {
+      "meta_path": "artifacts\\narrative_S4.meta.json",
+      "name": "narrative_S4",
+      "path": "artifacts\\narrative_S4.md",
+      "schema": "markdown",
+      "sha256": "43979d11284774221a42cabc9dec413bed413f150f61623b8e699472efd0bc0f",
+      "tool_versions": {
+        "narratives_node": "0.1.0",
+        "python": "3.11.9",
+        "scenarioops": "0.1.0"
+      },
+      "validated": true
+    },
+    {
+      "meta_path": "artifacts\\scenario_charter.meta.json",
+      "name": "scenario_charter",
+      "path": "artifacts\\scenario_charter.json",
+      "schema": "charter",
+      "sha256": "63fdecac1c73c6e1538949af569be91caac463bed17401acad574391d99f95c0",
+      "tool_versions": {
+        "charter_node": "0.1.0",
+        "python": "3.11.9",
+        "scenarioops": "0.1.0"
+      },
+      "validated": true
+    },
+    {
+      "meta_path": "artifacts\\scenario_charter_raw_prevalidate.meta.json",
+      "name": "scenario_charter_raw_prevalidate",
+      "path": "artifacts\\scenario_charter_raw_prevalidate.json",
+      "schema": "charter",
+      "sha256": "63fdecac1c73c6e1538949af569be91caac463bed17401acad574391d99f95c0",
+      "tool_versions": {
+        "charter_node": "0.1.0",
+        "python": "3.11.9",
+        "scenarioops": "0.1.0"
+      },
+      "validated": true
+    },
+    {
+      "meta_path": "artifacts\\scenario_profiles.meta.json",
+      "name": "scenario_profiles",
+      "path": "artifacts\\scenario_profiles.json",
+      "schema": "scenario_profiles",
+      "sha256": "becb1793d1f9c95da851b9dd9639925f96149c6502cd2fab71cad0a76f798dc4",
+      "tool_versions": {
+        "python": "3.11.9",
+        "scenario_profiles_node": "0.1.0",
+        "scenarioops": "0.1.0"
+      },
+      "validated": true
+    },
+    {
+      "meta_path": "artifacts\\skeletons.meta.json",
+      "name": "skeletons",
+      "path": "artifacts\\skeletons.json",
+      "schema": "skeleton",
+      "sha256": "6ffe308262738770fd276ec82997b34ad815a6bd9c54247244dc02c2f60a5ee3",
+      "tool_versions": {
+        "python": "3.11.9",
+        "scenarioops": "0.1.0",
+        "skeletons_node": "0.1.0"
+      },
+      "validated": true
+    },
+    {
+      "meta_path": "artifacts\\strategies.meta.json",
+      "name": "strategies",
+      "path": "artifacts\\strategies.json",
+      "schema": "strategies",
+      "sha256": "bbcef80ea90211844f382cbeb82cf6b0aaf8f6b4c118a522f8809b37c6e26eb9",
+      "tool_versions": {
+        "python": "3.11.9",
+        "scenarioops": "0.1.0",
+        "strategies_node": "0.1.0"
+      },
+      "validated": true
+    },
+    {
+      "meta_path": "artifacts\\uncertainties.meta.json",
+      "name": "uncertainties",
+      "path": "artifacts\\uncertainties.json",
+      "schema": "uncertainties",
+      "sha256": "2ab45e13e7a92f0aae0bb0adfb385dbc9d72a4eea3702c6717f265dda6dda8e5",
+      "tool_versions": {
+        "python": "3.11.9",
+        "scenarioops": "0.1.0",
+        "uncertainties_node": "0.1.0"
+      },
+      "validated": true
+    },
+    {
+      "meta_path": "artifacts\\washout_report.meta.json",
+      "name": "washout_report",
+      "path": "artifacts\\washout_report.json",
+      "schema": "washout_report.schema",
+      "sha256": "c887adf379a6e3680e398c0dff7193e9af53c7b005d7653b9d91ccf2638667f9",
+      "tool_versions": {
+        "python": "3.11.9",
+        "scenarioops": "0.1.0",
+        "washout_node": "0.1.0"
+      },
+      "validated": true
+    },
+    {
+      "meta_path": "artifacts\\wind_tunnel.meta.json",
+      "name": "wind_tunnel",
+      "path": "artifacts\\wind_tunnel.json",
+      "schema": "wind_tunnel",
+      "sha256": "2541dcb5bfe7728b6ef3d202c4f52a458840ecb967954c734d8c8749dbbd3030",
+      "tool_versions": {
+        "python": "3.11.9",
+        "scenarioops": "0.1.0",
+        "wind_tunnel_node": "0.1.0"
+      },
+      "validated": true
+    },
+    {
+      "meta_path": "trace\\trace_map.meta.json",
+      "name": "trace_map",
+      "path": "trace\\trace_map.json",
+      "schema": "trace_map",
+      "sha256": "518f3481669d1edd9828029d925a5268740444f028c4446088f2fb7fa846711c",
+      "tool_versions": {
+        "python": "3.11.9",
+        "scenarioops": "0.1.0",
+        "trace_map_node": "0.1.0"
+      },
+      "validated": true
+    }
+  ]
+}

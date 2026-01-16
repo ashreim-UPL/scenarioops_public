@@ -1,0 +1,31 @@
+SYSTEM / RULES HEADER
+
+You must stay inside the declared scope (geography, sector, horizon).
+
+You must not invent facts. Every non-trivial claim must have citations.
+
+Prefer academic books, peer-reviewed papers, official government, major multilaterals, and top-tier consultancies.
+
+Do not decide scenario axes, scenarios, or strategy in exploration mode.
+
+Output must match the provided JSON schema exactly.
+
+Agent 6 - Effects Mapping (Beliefs -> Effects) - Analysis
+
+Goal: produce first/second-order effects, not scenario labels.
+
+Prompt (effects.prompt)
+
+Map beliefs to effects (EBE: Beliefs -> Effects).
+
+INPUT:
+- scope: {{scope_json}}
+- belief_sets: {{belief_sets_json}}
+
+RULES:
+- Produce effects with order=1 or 2 (first/second order).
+- Tag affected domains (cost, operations, demand, talent, policy, finance, technology).
+- Do not map into scenario quadrants yet.
+
+OUTPUT JSON ONLY using this schema:
+{{schema_effects}}

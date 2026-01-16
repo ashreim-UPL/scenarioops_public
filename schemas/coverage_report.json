@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Coverage Report",
+  "type": "object",
+  "required": ["steep", "lenses"],
+  "properties": {
+    "steep": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["dimension", "count", "status"],
+        "properties": {
+          "dimension": {
+            "type": "string",
+            "enum": [
+              "political",
+              "economic",
+              "social",
+              "technological",
+              "environmental",
+              "legal"
+            ]
+          },
+          "count": { "type": "integer", "minimum": 0 },
+          "status": { "type": "string", "enum": ["covered", "missing"] }
+        },
+        "additionalProperties": false
+      }
+    },
+    "lenses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["lens", "count", "status"],
+        "properties": {
+          "lens": {
+            "type": "string",
+            "enum": ["macro", "law", "geopolitics", "ethics", "culture"]
+          },
+          "count": { "type": "integer", "minimum": 0 },
+          "status": { "type": "string", "enum": ["covered", "missing"] }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

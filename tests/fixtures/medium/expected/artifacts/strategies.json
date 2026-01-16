@@ -1,0 +1,28 @@
+{
+  "id": "strat-1",
+  "strategies": [
+    {
+      "actions": [
+        "Increase safety stock"
+      ],
+      "id": "st-1",
+      "kpis": [
+        "Fill rate"
+      ],
+      "name": "Buffer inventory",
+      "objective": "Reduce disruptions"
+    },
+    {
+      "actions": [
+        "Qualify secondary supplier"
+      ],
+      "id": "st-2",
+      "kpis": [
+        "Qualified suppliers"
+      ],
+      "name": "Dual sourcing",
+      "objective": "Reduce single points of failure"
+    }
+  ],
+  "title": "Strategies"
+}

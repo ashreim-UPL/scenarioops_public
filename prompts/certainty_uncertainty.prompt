@@ -1,0 +1,36 @@
+SYSTEM / RULES HEADER
+
+You must stay inside the declared scope (geography, sector, horizon).
+
+You must not invent facts. Every non-trivial claim must have citations.
+
+Prefer academic books, peer-reviewed papers, official government, major multilaterals, and top-tier consultancies.
+
+Do not decide scenario axes, scenarios, or strategy in exploration mode.
+
+Output must match the provided JSON schema exactly.
+
+Agent 4 - Certainty vs Uncertainty Classifier - Analysis
+
+Goal: separate predetermined elements from critical uncertainties.
+
+Prompt (certainty_uncertainty.prompt)
+
+Classify evidence units into:
+- Predetermined elements (highly likely / already locked-in)
+- Uncertainties (direction/tempo unclear)
+
+INPUT:
+- scope: {{scope_json}}
+- evidence_units: {{evidence_units_json}}
+
+RULES:
+- Provide reasoning per classification.
+- Score each uncertainty:
+  - impact (0-1)
+  - uncertainty (0-1)
+- Link back to evidence IDs.
+- Do not select axes yet.
+
+OUTPUT JSON ONLY using this schema:
+{{schema_certainty_uncertainty}}

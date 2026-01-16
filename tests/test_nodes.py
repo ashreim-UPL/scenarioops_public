@@ -1,6 +1,4 @@
 import json
-import hashlib
-
 import pytest
 
 from scenarioops.__main__ import main as cli_main
@@ -32,7 +30,6 @@ from scenarioops.graph.state import (
     Uncertainties,
 )
 from scenarioops.graph.tools.storage import write_artifact
-from scenarioops.graph.tools.web_retriever import RetrievedContent
 from scenarioops.llm.client import MockLLMClient
 
 
@@ -41,8 +38,13 @@ def _make_charter_payload() -> dict:
         "id": "charter-001",
         "title": "Resilience Charter",
         "purpose": "Assess operational resilience.",
+        "decision_context": "Budget allocation for resilience.",
         "scope": "Supply chain",
         "time_horizon": "12 months",
+        "stakeholders": ["Operations", "Finance"],
+        "constraints": ["No headcount increase"],
+        "assumptions": ["Stable demand"],
+        "success_criteria": ["Decision-ready scenarios"],
     }
 
 
@@ -84,6 +86,22 @@ def _make_drivers_payload(sources: list[str]) -> dict:
             },
         ]
     }
+
+
+def _make_evidence_units_payload(sources: list[str]) -> dict:
+    units = []
+    for idx, url in enumerate(sources, start=1):
+        units.append(
+            {
+                "id": f"ev-{idx}",
+                "title": "Example",
+                "url": url,
+                "publisher": "example.com",
+                "retrieved_at": "2026-01-01T00:00:00Z",
+                "excerpt": f"Source content {url}",
+            }
+        )
+    return {"evidence_units": units}
 
 
 def _make_uncertainties_payload() -> dict:
@@ -293,24 +311,12 @@ def test_drivers_node_citations(tmp_path) -> None:
     base_dir = tmp_path / "runs"
     sources = ["https://example.com/a", "https://example.com/b", "https://example.com/c"]
 
-    def fake_retriever(url, **kwargs):
-        text = f"Source content {url}"
-        return RetrievedContent(
-            url=url,
-            title="Example",
-            date="2026-01-01T00:00:00Z",
-            text=text,
-            excerpt_hash=hashlib.sha256(text.encode("utf-8")).hexdigest(),
-        )
-
     payload = _make_drivers_payload(sources)
-    state = ScenarioOpsState()
+    state = ScenarioOpsState(evidence_units=_make_evidence_units_payload(sources))
     run_drivers_node(
-        sources,
         run_id=run_id,
         state=state,
         llm_client=MockLLMClient(json_payload=payload),
-        retriever=fake_retriever,
         base_dir=base_dir,
     )
 

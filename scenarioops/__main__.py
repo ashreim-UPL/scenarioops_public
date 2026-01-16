@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Sequence
 
-from scenarioops.graph.build_graph import GraphInputs, run_graph
+from scenarioops.graph.build_graph import GraphInputs, apply_node_result, run_graph
 from scenarioops.graph.nodes.charter import run_charter_node
 from scenarioops.graph.state import ScenarioOpsState
 from scenarioops.llm.client import MockLLMClient
@@ -45,12 +45,17 @@ def _run_charter(args: argparse.Namespace) -> None:
         mock_payload = _load_json_value(args.mock_payload)
         llm_client = MockLLMClient(json_payload=mock_payload)
 
-    run_charter_node(
-        user_params,
+    apply_node_result(
         run_id=run_id,
-        state=ScenarioOpsState(),
-        llm_client=llm_client,
         base_dir=base_dir,
+        state=ScenarioOpsState(),
+        result=run_charter_node(
+            user_params,
+            run_id=run_id,
+            state=ScenarioOpsState(),
+            llm_client=llm_client,
+            base_dir=base_dir,
+        ),
     )
 
 

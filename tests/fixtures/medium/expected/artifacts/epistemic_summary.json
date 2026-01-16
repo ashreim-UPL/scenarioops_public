@@ -1,0 +1,158 @@
+{
+  "assumptions": [
+    {
+      "assumptions": [
+        "Regulators prioritize rapid updates."
+      ],
+      "confidence": 0.5,
+      "confidence_basis": "belief_statement",
+      "evidence_ids": [
+        "ev-1",
+        "ev-2"
+      ],
+      "id": "bel-1",
+      "stance": "dominant",
+      "statement": "Policy changes accelerate and increase compliance load.",
+      "uncertainty_id": "unc-1"
+    },
+    {
+      "assumptions": [
+        "Regulators prefer phased rollouts."
+      ],
+      "confidence": 0.5,
+      "confidence_basis": "belief_statement",
+      "evidence_ids": [
+        "ev-1",
+        "ev-2"
+      ],
+      "id": "bel-2",
+      "stance": "counter",
+      "statement": "Policy updates slow as institutions focus on stability.",
+      "uncertainty_id": "unc-1"
+    },
+    {
+      "assumptions": [
+        "Capital is available for modernization."
+      ],
+      "confidence": 0.5,
+      "confidence_basis": "belief_statement",
+      "evidence_ids": [
+        "ev-2",
+        "ev-3"
+      ],
+      "id": "bel-3",
+      "stance": "dominant",
+      "statement": "Automation adoption accelerates across core processes.",
+      "uncertainty_id": "unc-2"
+    },
+    {
+      "assumptions": [
+        "Budget pressures delay upgrades."
+      ],
+      "confidence": 0.5,
+      "confidence_basis": "belief_statement",
+      "evidence_ids": [
+        "ev-2",
+        "ev-3"
+      ],
+      "id": "bel-4",
+      "stance": "counter",
+      "statement": "Adoption slows due to cost and talent constraints.",
+      "uncertainty_id": "unc-2"
+    }
+  ],
+  "confidence_rules": [
+    "facts: 0.8 (predetermined_element)",
+    "assumptions: 0.5 (belief_statement)",
+    "interpretations: 0.4 (effect_chain)",
+    "unknowns: 1 - uncertainty"
+  ],
+  "facts": [
+    {
+      "confidence": 0.8,
+      "confidence_basis": "predetermined_element",
+      "evidence_ids": [
+        "ev-1"
+      ],
+      "id": "pre-1",
+      "statement": "Compliance baselines remain in effect."
+    }
+  ],
+  "interpretations": [
+    {
+      "belief_id": "bel-1",
+      "confidence": 0.4,
+      "confidence_basis": "effect_chain",
+      "domains": [
+        "policy",
+        "cost"
+      ],
+      "id": "eff-1",
+      "order": 1,
+      "statement": "Compliance costs rise and policy teams expand."
+    },
+    {
+      "belief_id": "bel-2",
+      "confidence": 0.4,
+      "confidence_basis": "effect_chain",
+      "domains": [
+        "policy",
+        "operations"
+      ],
+      "id": "eff-2",
+      "order": 1,
+      "statement": "Planning cycles stabilize with fewer regulatory surprises."
+    },
+    {
+      "belief_id": "bel-3",
+      "confidence": 0.4,
+      "confidence_basis": "effect_chain",
+      "domains": [
+        "technology",
+        "operations",
+        "demand"
+      ],
+      "id": "eff-3",
+      "order": 2,
+      "statement": "Automation improves throughput and demand response."
+    },
+    {
+      "belief_id": "bel-4",
+      "confidence": 0.4,
+      "confidence_basis": "effect_chain",
+      "domains": [
+        "talent",
+        "cost"
+      ],
+      "id": "eff-4",
+      "order": 2,
+      "statement": "Talent gaps slow transformation and limit savings."
+    }
+  ],
+  "unknowns": [
+    {
+      "confidence": 0.30000000000000004,
+      "confidence_basis": "1_minus_uncertainty",
+      "evidence_ids": [
+        "ev-1",
+        "ev-2"
+      ],
+      "id": "unc-1",
+      "impact": 0.8,
+      "statement": "Pace of regulatory changes.",
+      "uncertainty": 0.7
+    },
+    {
+      "confidence": 0.4,
+      "confidence_basis": "1_minus_uncertainty",
+      "evidence_ids": [
+        "ev-2",
+        "ev-3"
+      ],
+      "id": "unc-2",
+      "impact": 0.7,
+      "statement": "Speed of platform and automation uptake.",
+      "uncertainty": 0.6
+    }
+  ]
+}

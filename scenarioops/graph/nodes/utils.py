@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Any, Mapping
 
-from app.config import LLMConfig
+from scenarioops.app.config import LLMConfig
 from scenarioops.llm.client import LLMClient, get_llm_client
 
 
@@ -13,8 +13,15 @@ def prompts_dir() -> Path:
 
 
 def load_prompt(name: str) -> str:
-    path = prompts_dir() / f"{name}.txt"
-    return path.read_text(encoding="utf-8")
+    prompt_root = prompts_dir()
+    candidate = prompt_root / name
+    if candidate.suffix:
+        return candidate.read_text(encoding="utf-8")
+    for ext in (".prompt", ".txt"):
+        path = prompt_root / f"{name}{ext}"
+        if path.exists():
+            return path.read_text(encoding="utf-8")
+    raise FileNotFoundError(f"Prompt not found: {prompt_root / name}")
 
 
 def render_prompt(template: str, context: Mapping[str, Any]) -> str:

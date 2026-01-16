@@ -1,0 +1,23 @@
+﻿{
+  "user_params": {
+    "scope": "country",
+    "value": "UAE",
+    "horizon": 36,
+    "goal": "Resilience planning"
+  },
+  "sources": [
+    "https://example.com/a",
+    "https://example.com/b",
+    "https://example.com/c",
+    "https://example.com/d",
+    "https://example.com/e"
+  ],
+  "signals": [],
+  "run_timestamp": "2026-01-01T00:00:00+00:00",
+  "report_date": "2026-01-01",
+  "settings_overrides": {
+    "mode": "demo",
+    "sources_policy": "fixtures",
+    "llm_provider": "mock"
+  }
+}

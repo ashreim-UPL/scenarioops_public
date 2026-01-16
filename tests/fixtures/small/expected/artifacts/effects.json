@@ -1,0 +1,45 @@
+{
+  "effects": [
+    {
+      "belief_id": "bel-1",
+      "description": "Compliance costs rise and policy teams expand.",
+      "domains": [
+        "policy",
+        "cost"
+      ],
+      "id": "eff-1",
+      "order": 1
+    },
+    {
+      "belief_id": "bel-2",
+      "description": "Planning cycles stabilize with fewer regulatory surprises.",
+      "domains": [
+        "policy",
+        "operations"
+      ],
+      "id": "eff-2",
+      "order": 1
+    },
+    {
+      "belief_id": "bel-3",
+      "description": "Automation improves throughput and demand response.",
+      "domains": [
+        "technology",
+        "operations",
+        "demand"
+      ],
+      "id": "eff-3",
+      "order": 2
+    },
+    {
+      "belief_id": "bel-4",
+      "description": "Talent gaps slow transformation and limit savings.",
+      "domains": [
+        "talent",
+        "cost"
+      ],
+      "id": "eff-4",
+      "order": 2
+    }
+  ]
+}

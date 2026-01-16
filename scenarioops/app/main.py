@@ -6,6 +6,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Sequence
 
+from scenarioops.app.config import (
+    ScenarioOpsSettings,
+    apply_overrides,
+    llm_config_from_settings,
+    load_settings,
+    settings_from_dict,
+)
 from scenarioops.app.workflow import (
     ensure_signals,
     latest_run_id,
@@ -20,6 +27,7 @@ from scenarioops.graph.build_graph import (
     mock_payloads_for_sources,
     run_graph,
 )
+from scenarioops.graph.guards.fixture_guard import detect_fixture_evidence
 from scenarioops.graph.nodes import (
     run_auditor_node,
     run_daily_runner_node,
@@ -36,6 +44,7 @@ from scenarioops.graph.tools.storage import (
 )
 from scenarioops.graph.tools.view_model import build_view_model
 from scenarioops.graph.tools.web_retriever import retrieve_url
+from scenarioops.llm.client import get_gemini_api_key
 
 
 def _load_json_value(value: str) -> Any:
@@ -68,6 +77,62 @@ def _print_result(run_id: str, base_dir: Path | None) -> None:
 
 def _runs_dir(base_dir: Path | None) -> Path:
     return base_dir if base_dir is not None else default_runs_dir()
+
+
+def _load_run_config(run_id: str, base_dir: Path | None) -> dict[str, Any] | None:
+    path = _runs_dir(base_dir) / run_id / "run_config.json"
+    if not path.exists():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def _settings_for_run(
+    run_id: str, base_dir: Path | None, overrides: dict[str, Any]
+) -> ScenarioOpsSettings:
+    run_config = _load_run_config(run_id, base_dir)
+    if run_config:
+        settings = settings_from_dict(run_config)
+        if overrides:
+            settings = apply_overrides(settings, overrides)
+        return settings
+    return load_settings(overrides)
+
+
+def _settings_overrides_from_args(args: argparse.Namespace) -> dict[str, Any]:
+    overrides: dict[str, Any] = {}
+    mode = getattr(args, "mode", None)
+    if mode:
+        overrides["mode"] = mode
+    llm_provider = getattr(args, "llm_provider", None)
+    if llm_provider:
+        overrides["llm_provider"] = llm_provider
+    gemini_model = getattr(args, "gemini_model", None)
+    if gemini_model:
+        overrides["gemini_model"] = gemini_model
+    sources_policy = getattr(args, "sources_policy", None)
+    if sources_policy:
+        overrides["sources_policy"] = sources_policy
+    allow_web = getattr(args, "allow_web", None)
+    if allow_web is not None:
+        overrides["allow_web"] = allow_web
+    min_sources_per_domain = getattr(args, "min_sources_per_domain", None)
+    if min_sources_per_domain is not None:
+        overrides["min_sources_per_domain"] = min_sources_per_domain
+    min_citations_per_driver = getattr(args, "min_citations_per_driver", None)
+    if min_citations_per_driver is not None:
+        overrides["min_citations_per_driver"] = min_citations_per_driver
+    forbid_fixture_citations = getattr(args, "forbid_fixture_citations", None)
+    if forbid_fixture_citations is not None:
+        overrides["forbid_fixture_citations"] = forbid_fixture_citations
+    return overrides
+
+
+def _use_fixtures(settings: ScenarioOpsSettings) -> bool:
+    return settings.sources_policy == "fixtures"
 
 
 def _verify_fail(message: str) -> None:
@@ -125,6 +190,7 @@ def _write_latest(
     command: str,
     base_dir: Path | None = None,
     error_summary: str | None = None,
+    settings: ScenarioOpsSettings | None = None,
 ) -> None:
     write_latest_status(
         run_id=run_id,
@@ -132,6 +198,7 @@ def _write_latest(
         command=command,
         error_summary=error_summary,
         base_dir=base_dir,
+        run_config=settings.as_dict() if settings else None,
     )
 
 
@@ -154,12 +221,125 @@ def _export_view_model(run_id: str, base_dir: Path | None) -> Path:
 
 
 def _run_verify(args: argparse.Namespace) -> None:
-    if not args.demo:
-        _verify_fail("verify requires --demo to run in mock mode.")
+    if args.demo and args.live:
+        _verify_fail("verify requires exactly one of --demo or --live.")
+    if not args.demo and not args.live:
+        _verify_fail("verify requires --demo or --live.")
 
     base_dir = Path(args.base_dir) if args.base_dir else None
     run_id = args.run_id or f"verify-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
-    sources = default_sources()
+    overrides = _settings_overrides_from_args(args)
+
+    if args.demo:
+        overrides["mode"] = "demo"
+        overrides["sources_policy"] = "fixtures"
+        overrides["llm_provider"] = "mock"
+        settings = load_settings(overrides)
+        config = llm_config_from_settings(settings)
+        sources = default_sources()
+        inputs = GraphInputs(
+            user_params={"scope": "country", "value": "UAE", "horizon": 24},
+            sources=sources,
+            signals=[],
+        )
+
+        try:
+            run_graph(
+                inputs,
+                run_id=run_id,
+                base_dir=base_dir,
+                settings=settings,
+                mock_mode=True,
+                generate_strategies=True,
+                report_date="2026-01-01",
+                command="verify",
+            )
+        except Exception as exc:
+            _verify_fail(f"mock build failed: {exc}")
+
+        latest = read_latest_status(base_dir)
+        if not latest or latest.get("run_id") != run_id:
+            _verify_fail("latest.json missing or does not match run_id.")
+        if latest.get("status") != "OK":
+            _verify_fail(f"latest.json status is {latest.get('status')}.")
+
+        try:
+            view_path = _export_view_model(run_id, base_dir)
+        except Exception as exc:
+            _verify_fail(f"view model export failed: {exc}")
+        if not view_path.exists():
+            _verify_fail("view_model.json missing after export.")
+
+        try:
+            run_auditor_node(
+                run_id=run_id,
+                state=ScenarioOpsState(),
+                base_dir=base_dir,
+                settings=settings,
+                config=config,
+            )
+        except Exception as exc:
+            _record_audit_findings(run_id, base_dir)
+            _verify_fail(f"schema audit failed: {exc}")
+
+        scores = {"relevance": 0.9, "credibility": 0.9, "recency": 0.8, "specificity": 0.8}
+        hash_one = hash_scoring_result(score_with_rubric(scores))
+        hash_two = hash_scoring_result(score_with_rubric(scores))
+        if hash_one != hash_two:
+            _verify_fail("scoring hash mismatch across runs.")
+
+        daily_state = state_for_daily(run_id, base_dir, allow_missing=True)
+        signals = []
+        if daily_state.ewi is not None:
+            signals = ensure_signals(daily_state.ewi.indicators)
+        mock_payloads = mock_payloads_for_sources(sources)
+        run_daily_runner_node(
+            signals,
+            run_id=run_id,
+            state=daily_state,
+            llm_client=client_for_node("daily_runner", mock_payloads=mock_payloads),
+            base_dir=base_dir,
+            report_date="2026-01-01",
+            config=config,
+        )
+        brief_path = _runs_dir(base_dir) / run_id / "artifacts" / "daily_brief.md"
+        if not brief_path.exists():
+            _verify_fail("daily_brief.md missing after run-daily.")
+
+        broken_run_id = f"{run_id}-broken"
+        invalid_logic = {"id": "logic-1", "title": "Logic", "axes": "bad", "scenarios": []}
+        write_artifact(
+            run_id=broken_run_id,
+            artifact_name="logic",
+            payload=invalid_logic,
+            ext="json",
+            base_dir=base_dir,
+        )
+        try:
+            run_auditor_node(
+                run_id=broken_run_id, state=ScenarioOpsState(), base_dir=base_dir
+            )
+            _verify_fail("auditor should fail on broken artifact.")
+        except RuntimeError:
+            pass
+
+        print("verify --demo ok")
+        return
+
+    overrides["mode"] = "live"
+    overrides.setdefault("allow_web", True)
+    settings = load_settings(overrides)
+    config = llm_config_from_settings(settings)
+    try:
+        get_gemini_api_key()
+    except RuntimeError:
+        print("verify --live skipped: GEMINI_API_KEY not set")
+        return
+
+    sources = _parse_sources(args.sources)
+    if not sources:
+        _verify_fail("verify --live requires --sources.")
+
     inputs = GraphInputs(
         user_params={"scope": "country", "value": "UAE", "horizon": 24},
         sources=sources,
@@ -167,113 +347,74 @@ def _run_verify(args: argparse.Namespace) -> None:
     )
 
     try:
-        run_graph(
+        state = run_graph(
             inputs,
             run_id=run_id,
             base_dir=base_dir,
-            mock_mode=True,
-            generate_strategies=True,
-            report_date="2026-01-01",
-            command="verify",
+            settings=settings,
+            generate_strategies=False,
+            retriever=retrieve_url,
+            command="verify-live",
         )
     except Exception as exc:
-        _verify_fail(f"mock build failed: {exc}")
+        _verify_fail(f"live build failed: {exc}")
 
-    latest = read_latest_status(base_dir)
-    if not latest or latest.get("run_id") != run_id:
-        _verify_fail("latest.json missing or does not match run_id.")
-    if latest.get("status") != "OK":
-        _verify_fail(f"latest.json status is {latest.get('status')}.")
+    evidence = detect_fixture_evidence(state)
+    if evidence:
+        _verify_fail("fixture markers detected in live verification.")
 
-    try:
-        view_path = _export_view_model(run_id, base_dir)
-    except Exception as exc:
-        _verify_fail(f"view model export failed: {exc}")
-    if not view_path.exists():
-        _verify_fail("view_model.json missing after export.")
-
-    try:
-        run_auditor_node(run_id=run_id, state=ScenarioOpsState(), base_dir=base_dir)
-    except Exception as exc:
-        _record_audit_findings(run_id, base_dir)
-        _verify_fail(f"schema audit failed: {exc}")
-
-    scores = {"relevance": 0.9, "credibility": 0.9, "recency": 0.8, "specificity": 0.8}
-    hash_one = hash_scoring_result(score_with_rubric(scores))
-    hash_two = hash_scoring_result(score_with_rubric(scores))
-    if hash_one != hash_two:
-        _verify_fail("scoring hash mismatch across runs.")
-
-    daily_state = state_for_daily(run_id, base_dir, allow_missing=True)
-    signals = []
-    if daily_state.ewi is not None:
-        signals = ensure_signals(daily_state.ewi.indicators)
-    mock_payloads = mock_payloads_for_sources(sources)
-    run_daily_runner_node(
-        signals,
-        run_id=run_id,
-        state=daily_state,
-        llm_client=client_for_node("daily_runner", mock_payloads=mock_payloads),
-        base_dir=base_dir,
-        report_date="2026-01-01",
-    )
-    brief_path = _runs_dir(base_dir) / run_id / "artifacts" / "daily_brief.md"
-    if not brief_path.exists():
-        _verify_fail("daily_brief.md missing after run-daily.")
-
-    broken_run_id = f"{run_id}-broken"
-    invalid_logic = {"id": "logic-1", "title": "Logic", "axes": "bad", "scenarios": []}
-    write_artifact(
-        run_id=broken_run_id,
-        artifact_name="logic",
-        payload=invalid_logic,
-        ext="json",
-        base_dir=base_dir,
-    )
     try:
         run_auditor_node(
-            run_id=broken_run_id, state=ScenarioOpsState(), base_dir=base_dir
+            run_id=run_id,
+            state=ScenarioOpsState(),
+            base_dir=base_dir,
+            settings=settings,
+            config=config,
         )
-        _verify_fail("auditor should fail on broken artifact.")
-    except RuntimeError:
-        pass
+    except Exception as exc:
+        _record_audit_findings(run_id, base_dir)
+        _verify_fail(f"live audit failed: {exc}")
 
-    print("verify --demo ok")
+    print("verify --live ok")
 
 def _run_build_scenarios(args: argparse.Namespace) -> None:
     run_id = args.run_id or datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
     base_dir = Path(args.base_dir) if args.base_dir else None
     user_params = {"scope": args.scope, "value": args.value, "horizon": args.horizon}
     sources = _parse_sources(args.sources)
-    if not sources and not args.live:
+    overrides = _settings_overrides_from_args(args)
+    settings = load_settings(overrides)
+    use_fixtures = _use_fixtures(settings)
+    if not sources and use_fixtures:
         sources = default_sources()
 
     inputs = GraphInputs(user_params=user_params, sources=sources, signals=[])
     command = "build-scenarios"
     try:
-        if args.live:
-            retriever = lambda url, **kwargs: retrieve_url(
-                url, allow_network=True, public_demo_mode=False, **kwargs
-            )
-            run_graph(
-                inputs,
-                run_id=run_id,
-                base_dir=base_dir,
-                mock_mode=False,
-                generate_strategies=False,
-                retriever=retriever,
-                command=command,
-            )
-        else:
-            run_graph(
-                inputs,
-                run_id=run_id,
-                base_dir=base_dir,
-                mock_mode=True,
-                generate_strategies=False,
-                command=command,
-            )
-        _write_latest(run_id=run_id, status="OK", command=command, base_dir=base_dir)
+        if (
+            getattr(args, "mode", None) == "live"
+            and getattr(args, "allow_web", None) is False
+        ):
+            raise PermissionError("Network disabled (allow_web is False).")
+        if settings.mode == "live" and not settings.allow_web:
+            raise PermissionError("Network disabled (allow_web is False).")
+        run_graph(
+            inputs,
+            run_id=run_id,
+            base_dir=base_dir,
+            mock_mode=use_fixtures,
+            settings=settings,
+            generate_strategies=False,
+            retriever=retrieve_url,
+            command=command,
+        )
+        _write_latest(
+            run_id=run_id,
+            status="OK",
+            command=command,
+            base_dir=base_dir,
+            settings=settings,
+        )
     except Exception as exc:
         _write_latest(
             run_id=run_id,
@@ -281,6 +422,7 @@ def _run_build_scenarios(args: argparse.Namespace) -> None:
             command=command,
             error_summary=str(exc),
             base_dir=base_dir,
+            settings=settings,
         )
         raise
     _print_result(run_id, base_dir)
@@ -292,10 +434,14 @@ def _run_add_strategies(args: argparse.Namespace) -> None:
     if not run_id:
         raise ValueError("No run_id found. Run build-scenarios first.")
 
+    settings = _settings_for_run(
+        run_id, base_dir, _settings_overrides_from_args(args)
+    )
+    config = llm_config_from_settings(settings)
     strategy_notes = Path(args.strategies_file).read_text(encoding="utf-8")
     state = state_for_strategies(run_id, base_dir)
     mock_payloads = (
-        mock_payloads_for_sources(default_sources()) if not args.live else None
+        mock_payloads_for_sources(default_sources()) if _use_fixtures(settings) else None
     )
 
     state = run_strategies_node(
@@ -306,6 +452,7 @@ def _run_add_strategies(args: argparse.Namespace) -> None:
             "strategies", mock_payloads=mock_payloads
         ),
         base_dir=base_dir,
+        config=config,
     )
     state = run_wind_tunnel_node(
         run_id=run_id,
@@ -314,8 +461,15 @@ def _run_add_strategies(args: argparse.Namespace) -> None:
             "wind_tunnel", mock_payloads=mock_payloads
         ),
         base_dir=base_dir,
+        config=config,
     )
-    run_auditor_node(run_id=run_id, state=state, base_dir=base_dir)
+    run_auditor_node(
+        run_id=run_id,
+        state=state,
+        base_dir=base_dir,
+        settings=settings,
+        config=config,
+    )
     _print_result(run_id, base_dir)
 
 
@@ -325,16 +479,20 @@ def _run_daily(args: argparse.Namespace) -> None:
     if not run_id:
         raise ValueError("No run_id found. Run build-scenarios first.")
 
+    settings = _settings_for_run(
+        run_id, base_dir, _settings_overrides_from_args(args)
+    )
+    config = llm_config_from_settings(settings)
     state = state_for_daily(run_id, base_dir, allow_missing=True)
     signals = []
     if args.signals:
         signals = _load_json_value(args.signals)
-    if not signals and not args.live:
+    if not signals and _use_fixtures(settings):
         if state.ewi is not None:
             signals = ensure_signals(state.ewi.indicators)
 
     mock_payloads = (
-        mock_payloads_for_sources(default_sources()) if not args.live else None
+        mock_payloads_for_sources(default_sources()) if _use_fixtures(settings) else None
     )
     command = "run-daily"
     try:
@@ -346,9 +504,22 @@ def _run_daily(args: argparse.Namespace) -> None:
                 "daily_runner", mock_payloads=mock_payloads
             ),
             base_dir=base_dir,
+            config=config,
         )
-        run_auditor_node(run_id=run_id, state=state, base_dir=base_dir)
-        _write_latest(run_id=run_id, status="OK", command=command, base_dir=base_dir)
+        run_auditor_node(
+            run_id=run_id,
+            state=state,
+            base_dir=base_dir,
+            settings=settings,
+            config=config,
+        )
+        _write_latest(
+            run_id=run_id,
+            status="OK",
+            command=command,
+            base_dir=base_dir,
+            settings=settings,
+        )
     except Exception as exc:
         _write_latest(
             run_id=run_id,
@@ -356,6 +527,7 @@ def _run_daily(args: argparse.Namespace) -> None:
             command=command,
             error_summary=str(exc),
             base_dir=base_dir,
+            settings=settings,
         )
         raise
     _print_result(run_id, base_dir)
@@ -371,6 +543,51 @@ def _run_export_view(args: argparse.Namespace) -> None:
     print(json.dumps({"run_id": run_id, "view_model": str(output_path)}, indent=2))
 
 
+def _add_settings_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--mode",
+        choices=["demo", "live"],
+        default=None,
+        help="Override mode from config file.",
+    )
+    parser.add_argument(
+        "--sources-policy",
+        choices=["fixtures", "academic_only", "mixed_reputable"],
+        default=None,
+        help="Override sources policy from config file.",
+    )
+    parser.add_argument(
+        "--allow-web",
+        dest="allow_web",
+        action="store_true",
+        help="Allow network retrieval (overrides config).",
+    )
+    parser.add_argument(
+        "--no-allow-web",
+        dest="allow_web",
+        action="store_false",
+        help="Disable network retrieval (overrides config).",
+    )
+    parser.set_defaults(allow_web=None)
+    parser.add_argument("--min-sources-per-domain", type=int, default=None)
+    parser.add_argument("--min-citations-per-driver", type=int, default=None)
+    parser.add_argument(
+        "--forbid-fixture-citations",
+        dest="forbid_fixture_citations",
+        action="store_true",
+        help="Fail runs when fixture citations are detected.",
+    )
+    parser.add_argument(
+        "--allow-fixture-citations",
+        dest="forbid_fixture_citations",
+        action="store_false",
+        help="Allow fixture citations even in live mode.",
+    )
+    parser.set_defaults(forbid_fixture_citations=None)
+    parser.add_argument("--gemini-model", default=None)
+    parser.add_argument("--llm-provider", default=None)
+
+
 def main(argv: Sequence[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="scenarioops-app")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -382,33 +599,21 @@ def main(argv: Sequence[str] | None = None) -> None:
     build_parser.add_argument("--run-id", default=None)
     build_parser.add_argument("--base-dir", default=None)
     build_parser.add_argument("--sources", default=None)
-    build_parser.add_argument(
-        "--live",
-        action="store_true",
-        help="Use live LLM/retriever instead of mock payloads.",
-    )
+    _add_settings_args(build_parser)
     build_parser.set_defaults(handler=_run_build_scenarios)
 
     strategies_parser = subparsers.add_parser("add-strategies")
     strategies_parser.add_argument("strategies_file")
     strategies_parser.add_argument("--run-id", default=None)
     strategies_parser.add_argument("--base-dir", default=None)
-    strategies_parser.add_argument(
-        "--live",
-        action="store_true",
-        help="Use live LLM instead of mock payloads.",
-    )
+    _add_settings_args(strategies_parser)
     strategies_parser.set_defaults(handler=_run_add_strategies)
 
     daily_parser = subparsers.add_parser("run-daily")
     daily_parser.add_argument("--run-id", default=None)
     daily_parser.add_argument("--base-dir", default=None)
     daily_parser.add_argument("--signals", default=None)
-    daily_parser.add_argument(
-        "--live",
-        action="store_true",
-        help="Use live LLM instead of mock payloads.",
-    )
+    _add_settings_args(daily_parser)
     daily_parser.set_defaults(handler=_run_daily)
 
     export_parser = subparsers.add_parser("export-view")
@@ -418,8 +623,10 @@ def main(argv: Sequence[str] | None = None) -> None:
 
     verify_parser = subparsers.add_parser("verify")
     verify_parser.add_argument("--demo", action="store_true", help="Run offline demo checks.")
+    verify_parser.add_argument("--live", action="store_true", help="Run live verification checks.")
     verify_parser.add_argument("--run-id", default=None)
     verify_parser.add_argument("--base-dir", default=None)
+    verify_parser.add_argument("--sources", default=None, help="Comma-separated URLs for live verify.")
     verify_parser.set_defaults(handler=_run_verify)
 
     args = parser.parse_args(argv)

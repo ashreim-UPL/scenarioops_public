@@ -1,0 +1,42 @@
+{
+  "id": "unc-1",
+  "title": "Critical uncertainties",
+  "uncertainties": [
+    {
+      "criticality": 4,
+      "description": "Pace of compliance changes.",
+      "driver_ids": [
+        "drv-1",
+        "drv-2"
+      ],
+      "extremes": [
+        "slow",
+        "rapid"
+      ],
+      "id": "u1",
+      "implications": [
+        "Planning cycles shrink"
+      ],
+      "name": "Regulatory tempo",
+      "volatility": 3
+    },
+    {
+      "criticality": 5,
+      "description": "Predictability of transit.",
+      "driver_ids": [
+        "drv-2",
+        "drv-3"
+      ],
+      "extremes": [
+        "stable",
+        "turbulent"
+      ],
+      "id": "u2",
+      "implications": [
+        "Buffer stock decisions"
+      ],
+      "name": "Logistics stability",
+      "volatility": 4
+    }
+  ]
+}

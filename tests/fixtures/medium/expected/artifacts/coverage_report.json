@@ -1,0 +1,61 @@
+{
+  "lenses": [
+    {
+      "count": 15,
+      "lens": "macro",
+      "status": "covered"
+    },
+    {
+      "count": 5,
+      "lens": "law",
+      "status": "covered"
+    },
+    {
+      "count": 5,
+      "lens": "geopolitics",
+      "status": "covered"
+    },
+    {
+      "count": 5,
+      "lens": "ethics",
+      "status": "covered"
+    },
+    {
+      "count": 5,
+      "lens": "culture",
+      "status": "covered"
+    }
+  ],
+  "steep": [
+    {
+      "count": 5,
+      "dimension": "political",
+      "status": "covered"
+    },
+    {
+      "count": 5,
+      "dimension": "economic",
+      "status": "covered"
+    },
+    {
+      "count": 5,
+      "dimension": "social",
+      "status": "covered"
+    },
+    {
+      "count": 5,
+      "dimension": "technological",
+      "status": "covered"
+    },
+    {
+      "count": 5,
+      "dimension": "environmental",
+      "status": "covered"
+    },
+    {
+      "count": 5,
+      "dimension": "legal",
+      "status": "covered"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "name": "scenarioops",
+  "version": "1.0.0",
+  "description": "ScenarioOps is a Python project scaffold for scenario planning and execution.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

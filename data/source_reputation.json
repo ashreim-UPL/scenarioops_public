@@ -1,0 +1,24 @@
+{
+  "min_categories": 2,
+  "blocked_domains": ["example.com", "localhost"],
+  "blocked_domain_patterns": ["raw.githubusercontent.com", "gist.githubusercontent.com"],
+  "blocked_blog_hosts": ["medium.com", "substack.com", "blogspot.com", "wordpress.com"],
+  "publisher_categories": {
+    "government": ["gov", "gov.uk", "gov.ae"],
+    "academic": [
+      "edu",
+      "ac.uk",
+      "nature.com",
+      "science.org",
+      "pnas.org",
+      "cell.com",
+      "wiley.com",
+      "springer.com",
+      "tandfonline.com",
+      "arxiv.org"
+    ],
+    "multilateral": ["worldbank.org", "imf.org", "oecd.org", "un.org", "who.int"],
+    "media": ["reuters.com", "bbc.co.uk", "ft.com", "nytimes.com"],
+    "consulting": ["mckinsey.com", "bcg.com", "bain.com"]
+  }
+}

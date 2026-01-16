@@ -21,7 +21,8 @@ def test_build_scenarios_writes_latest_ok(tmp_path: Path) -> None:
         run_id="latest-ok",
         base_dir=str(base_dir),
         sources=None,
-        live=False,
+        mode="demo",
+        sources_policy="fixtures",
     )
 
     _run_build_scenarios(args)
@@ -42,17 +43,19 @@ def test_build_scenarios_writes_latest_fail(tmp_path: Path) -> None:
         run_id="latest-fail",
         base_dir=str(base_dir),
         sources=None,
-        live=True,
+        mode="live",
+        sources_policy="academic_only",
+        allow_web=False,
     )
 
-    with pytest.raises(ValueError):
+    with pytest.raises(Exception):
         _run_build_scenarios(args)
 
     latest = _read_latest(base_dir)
     assert latest["run_id"] == "latest-fail"
     assert latest["status"] == "FAIL"
     assert latest["command"] == "build-scenarios"
-    assert "Sources are required" in latest.get("error_summary", "")
+    assert "Network disabled" in latest.get("error_summary", "")
 
 
 def test_run_daily_writes_latest_ok(tmp_path: Path) -> None:
@@ -61,7 +64,8 @@ def test_run_daily_writes_latest_ok(tmp_path: Path) -> None:
         run_id="daily-ok",
         base_dir=str(base_dir),
         signals=None,
-        live=False,
+        mode="demo",
+        sources_policy="fixtures",
     )
 
     _run_daily(args)

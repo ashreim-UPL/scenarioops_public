@@ -1,0 +1,28 @@
+{
+  "evidence_units": [
+    {
+      "excerpt": "Mock source content for https://example.com/a.",
+      "id": "ev-1",
+      "publisher": "example.com",
+      "retrieved_at": "2026-01-01T00:00:00+00:00",
+      "title": "Mock Source",
+      "url": "https://example.com/a"
+    },
+    {
+      "excerpt": "Mock source content for https://example.com/b.",
+      "id": "ev-2",
+      "publisher": "example.com",
+      "retrieved_at": "2026-01-01T00:00:00+00:00",
+      "title": "Mock Source",
+      "url": "https://example.com/b"
+    },
+    {
+      "excerpt": "Mock source content for https://example.com/c.",
+      "id": "ev-3",
+      "publisher": "example.com",
+      "retrieved_at": "2026-01-01T00:00:00+00:00",
+      "title": "Mock Source",
+      "url": "https://example.com/c"
+    }
+  ]
+}

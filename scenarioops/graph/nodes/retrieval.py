@@ -51,6 +51,7 @@ def run_retrieval_node(
     policy = policy_for_name(settings.sources_policy) if settings else None
     enforce_allowlist = policy.enforce_allowlist if policy else True
     evidence_units: list[dict[str, Any]] = []
+    failures: list[str] = []
     for idx, url in enumerate(sources, start=1):
         try:
             retrieved = retriever(
@@ -75,8 +76,15 @@ def run_retrieval_node(
                 }
             )
         except Exception as exc:
-            print(f"Warning: Failed to retrieve {url}: {exc}")
+            failures.append(f"{url}: {exc}")
             continue
+
+    if failures:
+        raise RuntimeError(
+            "retrieval_failed: " + "; ".join(failures[:3])
+        )
+    if not evidence_units:
+        raise RuntimeError("retrieval_failed: no evidence units retrieved.")
 
     if resolved_mode == "live":
         validate_reputable_sources(evidence_units)

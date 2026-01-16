@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.config import LLMConfig
+from scenarioops.app.config import LLMConfig
 from scenarioops.graph.nodes.utils import get_client, load_prompt, render_prompt
 from scenarioops.graph.state import Ewi, EwiIndicator, ScenarioOpsState
+from scenarioops.graph.tools.normalization import stable_id
 from scenarioops.graph.tools.schema_validate import load_schema, validate_artifact
-from scenarioops.graph.tools.storage import write_artifact
+from scenarioops.graph.tools.storage import log_normalization, write_artifact
 from scenarioops.llm.guards import ensure_dict
 
 
@@ -57,8 +58,18 @@ def run_ewis_node(
     )
 
     indicators = [EwiIndicator(**indicator) for indicator in parsed.get("indicators", [])]
+    ewi_id = parsed.get("id")
+    if not ewi_id:
+        ewi_id = stable_id("ewi", scenario_ids)
+        log_normalization(
+            run_id=run_id,
+            node_name="ewis",
+            operation="stable_id_assigned",
+            details={"field": "id"},
+            base_dir=base_dir,
+        )
     state.ewi = Ewi(
-        id=parsed.get("id", f"ewi-{run_id}"),
+        id=ewi_id,
         title=parsed.get("title", "Early Warning Indicators"),
         indicators=indicators,
     )

@@ -1,0 +1,549 @@
+{
+  "forces": [
+    {
+      "citations": [
+        {
+          "evidence_id": "ev-2",
+          "excerpt_hash": "da0df467e9d00b5400c2ca68f8b35ef0abffda6adf0e8014aa460c7b6e166888",
+          "publisher": "example.com",
+          "url": "https://example.com/b"
+        }
+      ],
+      "description": "Political driver 1 in the scan.",
+      "domain": "political",
+      "id": "force-1",
+      "lenses": [
+        "geopolitics",
+        "macro"
+      ],
+      "name": "Political signal 1",
+      "why_it_matters": "It shapes the operating context."
+    },
+    {
+      "citations": [
+        {
+          "evidence_id": "ev-3",
+          "excerpt_hash": "dca46b1f51972f59a3e29313a9b287583355fcb148a39bad8d478294dc4815d2",
+          "publisher": "example.com",
+          "url": "https://example.com/c"
+        }
+      ],
+      "description": "Political driver 2 in the scan.",
+      "domain": "political",
+      "id": "force-2",
+      "lenses": [
+        "geopolitics",
+        "macro"
+      ],
+      "name": "Political signal 2",
+      "why_it_matters": "It shapes the operating context."
+    },
+    {
+      "citations": [
+        {
+          "evidence_id": "ev-1",
+          "excerpt_hash": "cc674f19f84c0424ff1f840e3c7f7bc9e234a7aaa420869fed631bc611c06b0d",
+          "publisher": "example.com",
+          "url": "https://example.com/a"
+        }
+      ],
+      "description": "Political driver 3 in the scan.",
+      "domain": "political",
+      "id": "force-3",
+      "lenses": [
+        "geopolitics",
+        "macro"
+      ],
+      "name": "Political signal 3",
+      "why_it_matters": "It shapes the operating context."
+    },
+    {
+      "citations": [
+        {
+          "evidence_id": "ev-2",
+          "excerpt_hash": "da0df467e9d00b5400c2ca68f8b35ef0abffda6adf0e8014aa460c7b6e166888",
+          "publisher": "example.com",
+          "url": "https://example.com/b"
+        }
+      ],
+      "description": "Political driver 4 in the scan.",
+      "domain": "political",
+      "id": "force-4",
+      "lenses": [
+        "geopolitics",
+        "macro"
+      ],
+      "name": "Political signal 4",
+      "why_it_matters": "It shapes the operating context."
+    },
+    {
+      "citations": [
+        {
+          "evidence_id": "ev-3",
+          "excerpt_hash": "dca46b1f51972f59a3e29313a9b287583355fcb148a39bad8d478294dc4815d2",
+          "publisher": "example.com",
+          "url": "https://example.com/c"
+        }
+      ],
+      "description": "Political driver 5 in the scan.",
+      "domain": "political",
+      "id": "force-5",
+      "lenses": [
+        "geopolitics",
+        "macro"
+      ],
+      "name": "Political signal 5",
+      "why_it_matters": "It shapes the operating context."
+    },
+    {
+      "citations": [
+        {
+          "evidence_id": "ev-1",
+          "excerpt_hash": "cc674f19f84c0424ff1f840e3c7f7bc9e234a7aaa420869fed631bc611c06b0d",
+          "publisher": "example.com",
+          "url": "https://example.com/a"
+        }
+      ],
+      "description": "Economic driver 1 in the scan.",
+      "domain": "economic",
+      "id": "force-6",
+      "lenses": [
+        "macro"
+      ],
+      "name": "Economic signal 1",
+      "why_it_matters": "It shapes the operating context."
+    },
+    {
+      "citations": [
+        {
+          "evidence_id": "ev-2",
+          "excerpt_hash": "da0df467e9d00b5400c2ca68f8b35ef0abffda6adf0e8014aa460c7b6e166888",
+          "publisher": "example.com",
+          "url": "https://example.com/b"
+        }
+      ],
+      "description": "Economic driver 2 in the scan.",
+      "domain": "economic",
+      "id": "force-7",
+      "lenses": [
+        "macro"
+      ],
+      "name": "Economic signal 2",
+      "why_it_matters": "It shapes the operating context."
+    },
+    {
+      "citations": [
+        {
+          "evidence_id": "ev-3",
+          "excerpt_hash": "dca46b1f51972f59a3e29313a9b287583355fcb148a39bad8d478294dc4815d2",
+          "publisher": "example.com",
+          "url": "https://example.com/c"
+        }
+      ],
+      "description": "Economic driver 3 in the scan.",
+      "domain": "economic",
+      "id": "force-8",
+      "lenses": [
+        "macro"
+      ],
+      "name": "Economic signal 3",
+      "why_it_matters": "It shapes the operating context."
+    },
+    {
+      "citations": [
+        {
+          "evidence_id": "ev-1",
+          "excerpt_hash": "cc674f19f84c0424ff1f840e3c7f7bc9e234a7aaa420869fed631bc611c06b0d",
+          "publisher": "example.com",
+          "url": "https://example.com/a"
+        }
+      ],
+      "description": "Economic driver 4 in the scan.",
+      "domain": "economic",
+      "id": "force-9",
+      "lenses": [
+        "macro"
+      ],
+      "name": "Economic signal 4",
+      "why_it_matters": "It shapes the operating context."
+    },
+    {
+      "citations": [
+        {
+          "evidence_id": "ev-2",
+          "excerpt_hash": "da0df467e9d00b5400c2ca68f8b35ef0abffda6adf0e8014aa460c7b6e166888",
+          "publisher": "example.com",
+          "url": "https://example.com/b"
+        }
+      ],
+      "description": "Economic driver 5 in the scan.",
+      "domain": "economic",
+      "id": "force-10",
+      "lenses": [
+        "macro"
+      ],
+      "name": "Economic signal 5",
+      "why_it_matters": "It shapes the operating context."
+    },
+    {
+      "citations": [
+        {
+          "evidence_id": "ev-3",
+          "excerpt_hash": "dca46b1f51972f59a3e29313a9b287583355fcb148a39bad8d478294dc4815d2",
+          "publisher": "example.com",
+          "url": "https://example.com/c"
+        }
+      ],
+      "description": "Social driver 1 in the scan.",
+      "domain": "social",
+      "id": "force-11",
+      "lenses": [
+        "culture"
+      ],
+      "name": "Social signal 1",
+      "why_it_matters": "It shapes the operating context."
+    },
+    {
+      "citations": [
+        {
+          "evidence_id": "ev-1",
+          "excerpt_hash": "cc674f19f84c0424ff1f840e3c7f7bc9e234a7aaa420869fed631bc611c06b0d",
+          "publisher": "example.com",
+          "url": "https://example.com/a"
+        }
+      ],
+      "description": "Social driver 2 in the scan.",
+      "domain": "social",
+      "id": "force-12",
+      "lenses": [
+        "culture"
+      ],
+      "name": "Social signal 2",
+      "why_it_matters": "It shapes the operating context."
+    },
+    {
+      "citations": [
+        {
+          "evidence_id": "ev-2",
+          "excerpt_hash": "da0df467e9d00b5400c2ca68f8b35ef0abffda6adf0e8014aa460c7b6e166888",
+          "publisher": "example.com",
+          "url": "https://example.com/b"
+        }
+      ],
+      "description": "Social driver 3 in the scan.",
+      "domain": "social",
+      "id": "force-13",
+      "lenses": [
+        "culture"
+      ],
+      "name": "Social signal 3",
+      "why_it_matters": "It shapes the operating context."
+    },
+    {
+      "citations": [
+        {
+          "evidence_id": "ev-3",
+          "excerpt_hash": "dca46b1f51972f59a3e29313a9b287583355fcb148a39bad8d478294dc4815d2",
+          "publisher": "example.com",
+          "url": "https://example.com/c"
+        }
+      ],
+      "description": "Social driver 4 in the scan.",
+      "domain": "social",
+      "id": "force-14",
+      "lenses": [
+        "culture"
+      ],
+      "name": "Social signal 4",
+      "why_it_matters": "It shapes the operating context."
+    },
+    {
+      "citations": [
+        {
+          "evidence_id": "ev-1",
+          "excerpt_hash": "cc674f19f84c0424ff1f840e3c7f7bc9e234a7aaa420869fed631bc611c06b0d",
+          "publisher": "example.com",
+          "url": "https://example.com/a"
+        }
+      ],
+      "description": "Social driver 5 in the scan.",
+      "domain": "social",
+      "id": "force-15",
+      "lenses": [
+        "culture"
+      ],
+      "name": "Social signal 5",
+      "why_it_matters": "It shapes the operating context."
+    },
+    {
+      "citations": [
+        {
+          "evidence_id": "ev-2",
+          "excerpt_hash": "da0df467e9d00b5400c2ca68f8b35ef0abffda6adf0e8014aa460c7b6e166888",
+          "publisher": "example.com",
+          "url": "https://example.com/b"
+        }
+      ],
+      "description": "Technological driver 1 in the scan.",
+      "domain": "technological",
+      "id": "force-16",
+      "lenses": [
+        "macro"
+      ],
+      "name": "Technological signal 1",
+      "why_it_matters": "It shapes the operating context."
+    },
+    {
+      "citations": [
+        {
+          "evidence_id": "ev-3",
+          "excerpt_hash": "dca46b1f51972f59a3e29313a9b287583355fcb148a39bad8d478294dc4815d2",
+          "publisher": "example.com",
+          "url": "https://example.com/c"
+        }
+      ],
+      "description": "Technological driver 2 in the scan.",
+      "domain": "technological",
+      "id": "force-17",
+      "lenses": [
+        "macro"
+      ],
+      "name": "Technological signal 2",
+      "why_it_matters": "It shapes the operating context."
+    },
+    {
+      "citations": [
+        {
+          "evidence_id": "ev-1",
+          "excerpt_hash": "cc674f19f84c0424ff1f840e3c7f7bc9e234a7aaa420869fed631bc611c06b0d",
+          "publisher": "example.com",
+          "url": "https://example.com/a"
+        }
+      ],
+      "description": "Technological driver 3 in the scan.",
+      "domain": "technological",
+      "id": "force-18",
+      "lenses": [
+        "macro"
+      ],
+      "name": "Technological signal 3",
+      "why_it_matters": "It shapes the operating context."
+    },
+    {
+      "citations": [
+        {
+          "evidence_id": "ev-2",
+          "excerpt_hash": "da0df467e9d00b5400c2ca68f8b35ef0abffda6adf0e8014aa460c7b6e166888",
+          "publisher": "example.com",
+          "url": "https://example.com/b"
+        }
+      ],
+      "description": "Technological driver 4 in the scan.",
+      "domain": "technological",
+      "id": "force-19",
+      "lenses": [
+        "macro"
+      ],
+      "name": "Technological signal 4",
+      "why_it_matters": "It shapes the operating context."
+    },
+    {
+      "citations": [
+        {
+          "evidence_id": "ev-3",
+          "excerpt_hash": "dca46b1f51972f59a3e29313a9b287583355fcb148a39bad8d478294dc4815d2",
+          "publisher": "example.com",
+          "url": "https://example.com/c"
+        }
+      ],
+      "description": "Technological driver 5 in the scan.",
+      "domain": "technological",
+      "id": "force-20",
+      "lenses": [
+        "macro"
+      ],
+      "name": "Technological signal 5",
+      "why_it_matters": "It shapes the operating context."
+    },
+    {
+      "citations": [
+        {
+          "evidence_id": "ev-1",
+          "excerpt_hash": "cc674f19f84c0424ff1f840e3c7f7bc9e234a7aaa420869fed631bc611c06b0d",
+          "publisher": "example.com",
+          "url": "https://example.com/a"
+        }
+      ],
+      "description": "Environmental driver 1 in the scan.",
+      "domain": "environmental",
+      "id": "force-21",
+      "lenses": [
+        "ethics"
+      ],
+      "name": "Environmental signal 1",
+      "why_it_matters": "It shapes the operating context."
+    },
+    {
+      "citations": [
+        {
+          "evidence_id": "ev-2",
+          "excerpt_hash": "da0df467e9d00b5400c2ca68f8b35ef0abffda6adf0e8014aa460c7b6e166888",
+          "publisher": "example.com",
+          "url": "https://example.com/b"
+        }
+      ],
+      "description": "Environmental driver 2 in the scan.",
+      "domain": "environmental",
+      "id": "force-22",
+      "lenses": [
+        "ethics"
+      ],
+      "name": "Environmental signal 2",
+      "why_it_matters": "It shapes the operating context."
+    },
+    {
+      "citations": [
+        {
+          "evidence_id": "ev-3",
+          "excerpt_hash": "dca46b1f51972f59a3e29313a9b287583355fcb148a39bad8d478294dc4815d2",
+          "publisher": "example.com",
+          "url": "https://example.com/c"
+        }
+      ],
+      "description": "Environmental driver 3 in the scan.",
+      "domain": "environmental",
+      "id": "force-23",
+      "lenses": [
+        "ethics"
+      ],
+      "name": "Environmental signal 3",
+      "why_it_matters": "It shapes the operating context."
+    },
+    {
+      "citations": [
+        {
+          "evidence_id": "ev-1",
+          "excerpt_hash": "cc674f19f84c0424ff1f840e3c7f7bc9e234a7aaa420869fed631bc611c06b0d",
+          "publisher": "example.com",
+          "url": "https://example.com/a"
+        }
+      ],
+      "description": "Environmental driver 4 in the scan.",
+      "domain": "environmental",
+      "id": "force-24",
+      "lenses": [
+        "ethics"
+      ],
+      "name": "Environmental signal 4",
+      "why_it_matters": "It shapes the operating context."
+    },
+    {
+      "citations": [
+        {
+          "evidence_id": "ev-2",
+          "excerpt_hash": "da0df467e9d00b5400c2ca68f8b35ef0abffda6adf0e8014aa460c7b6e166888",
+          "publisher": "example.com",
+          "url": "https://example.com/b"
+        }
+      ],
+      "description": "Environmental driver 5 in the scan.",
+      "domain": "environmental",
+      "id": "force-25",
+      "lenses": [
+        "ethics"
+      ],
+      "name": "Environmental signal 5",
+      "why_it_matters": "It shapes the operating context."
+    },
+    {
+      "citations": [
+        {
+          "evidence_id": "ev-3",
+          "excerpt_hash": "dca46b1f51972f59a3e29313a9b287583355fcb148a39bad8d478294dc4815d2",
+          "publisher": "example.com",
+          "url": "https://example.com/c"
+        }
+      ],
+      "description": "Legal driver 1 in the scan.",
+      "domain": "legal",
+      "id": "force-26",
+      "lenses": [
+        "law"
+      ],
+      "name": "Legal signal 1",
+      "why_it_matters": "It shapes the operating context."
+    },
+    {
+      "citations": [
+        {
+          "evidence_id": "ev-1",
+          "excerpt_hash": "cc674f19f84c0424ff1f840e3c7f7bc9e234a7aaa420869fed631bc611c06b0d",
+          "publisher": "example.com",
+          "url": "https://example.com/a"
+        }
+      ],
+      "description": "Legal driver 2 in the scan.",
+      "domain": "legal",
+      "id": "force-27",
+      "lenses": [
+        "law"
+      ],
+      "name": "Legal signal 2",
+      "why_it_matters": "It shapes the operating context."
+    },
+    {
+      "citations": [
+        {
+          "evidence_id": "ev-2",
+          "excerpt_hash": "da0df467e9d00b5400c2ca68f8b35ef0abffda6adf0e8014aa460c7b6e166888",
+          "publisher": "example.com",
+          "url": "https://example.com/b"
+        }
+      ],
+      "description": "Legal driver 3 in the scan.",
+      "domain": "legal",
+      "id": "force-28",
+      "lenses": [
+        "law"
+      ],
+      "name": "Legal signal 3",
+      "why_it_matters": "It shapes the operating context."
+    },
+    {
+      "citations": [
+        {
+          "evidence_id": "ev-3",
+          "excerpt_hash": "dca46b1f51972f59a3e29313a9b287583355fcb148a39bad8d478294dc4815d2",
+          "publisher": "example.com",
+          "url": "https://example.com/c"
+        }
+      ],
+      "description": "Legal driver 4 in the scan.",
+      "domain": "legal",
+      "id": "force-29",
+      "lenses": [
+        "law"
+      ],
+      "name": "Legal signal 4",
+      "why_it_matters": "It shapes the operating context."
+    },
+    {
+      "citations": [
+        {
+          "evidence_id": "ev-1",
+          "excerpt_hash": "cc674f19f84c0424ff1f840e3c7f7bc9e234a7aaa420869fed631bc611c06b0d",
+          "publisher": "example.com",
+          "url": "https://example.com/a"
+        }
+      ],
+      "description": "Legal driver 5 in the scan.",
+      "domain": "legal",
+      "id": "force-30",
+      "lenses": [
+        "law"
+      ],
+      "name": "Legal signal 5",
+      "why_it_matters": "It shapes the operating context."
+    }
+  ]
+}

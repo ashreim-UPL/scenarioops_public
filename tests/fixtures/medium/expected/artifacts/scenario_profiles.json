@@ -1,0 +1,1206 @@
+{
+  "id": "scenario-profiles-8c423631bd44",
+  "scenarios": [
+    {
+      "assumptions": [
+        {
+          "confidence": 0.5,
+          "confidence_basis": "belief_statement",
+          "evidence_ids": [
+            "ev-1",
+            "ev-2"
+          ],
+          "id": "bel-1",
+          "stance": "dominant",
+          "statement": "Policy changes accelerate and increase compliance load.",
+          "uncertainty_id": "unc-1"
+        },
+        {
+          "confidence": 0.5,
+          "confidence_basis": "belief_statement",
+          "evidence_ids": [
+            "ev-1",
+            "ev-2"
+          ],
+          "id": "bel-2",
+          "stance": "counter",
+          "statement": "Policy updates slow as institutions focus on stability.",
+          "uncertainty_id": "unc-1"
+        },
+        {
+          "confidence": 0.5,
+          "confidence_basis": "belief_statement",
+          "evidence_ids": [
+            "ev-2",
+            "ev-3"
+          ],
+          "id": "bel-3",
+          "stance": "dominant",
+          "statement": "Automation adoption accelerates across core processes.",
+          "uncertainty_id": "unc-2"
+        },
+        {
+          "confidence": 0.5,
+          "confidence_basis": "belief_statement",
+          "evidence_ids": [
+            "ev-2",
+            "ev-3"
+          ],
+          "id": "bel-4",
+          "stance": "counter",
+          "statement": "Adoption slows due to cost and talent constraints.",
+          "uncertainty_id": "unc-2"
+        }
+      ],
+      "causal_chain": [
+        {
+          "belief_id": "bel-1",
+          "description": "Compliance costs rise and policy teams expand.",
+          "domains": [
+            "policy",
+            "cost"
+          ],
+          "id": "eff-1",
+          "order": 1
+        },
+        {
+          "belief_id": "bel-2",
+          "description": "Planning cycles stabilize with fewer regulatory surprises.",
+          "domains": [
+            "policy",
+            "operations"
+          ],
+          "id": "eff-2",
+          "order": 1
+        },
+        {
+          "belief_id": "bel-3",
+          "description": "Automation improves throughput and demand response.",
+          "domains": [
+            "technology",
+            "operations",
+            "demand"
+          ],
+          "id": "eff-3",
+          "order": 2
+        },
+        {
+          "belief_id": "bel-4",
+          "description": "Talent gaps slow transformation and limit savings.",
+          "domains": [
+            "talent",
+            "cost"
+          ],
+          "id": "eff-4",
+          "order": 2
+        }
+      ],
+      "confidence": {
+        "basis": "driver_mean",
+        "overall": 0.5
+      },
+      "drivers": [
+        {
+          "category": "policy",
+          "citations": [
+            {
+              "evidence_id": "ev-1",
+              "excerpt_hash": "cc674f19f84c0424ff1f840e3c7f7bc9e234a7aaa420869fed631bc611c06b0d",
+              "publisher": "example.com",
+              "url": "https://example.com/a"
+            }
+          ],
+          "confidence": 0.5,
+          "confidence_basis": "default",
+          "id": "drv-1",
+          "impact": "medium",
+          "name": "Regulatory shift",
+          "trend": "tightening"
+        },
+        {
+          "category": "market",
+          "citations": [
+            {
+              "evidence_id": "ev-2",
+              "excerpt_hash": "da0df467e9d00b5400c2ca68f8b35ef0abffda6adf0e8014aa460c7b6e166888",
+              "publisher": "example.com",
+              "url": "https://example.com/b"
+            }
+          ],
+          "confidence": 0.5,
+          "confidence_basis": "default",
+          "id": "drv-2",
+          "impact": "high",
+          "name": "Supplier consolidation",
+          "trend": "consolidating"
+        },
+        {
+          "category": "operations",
+          "citations": [
+            {
+              "evidence_id": "ev-3",
+              "excerpt_hash": "dca46b1f51972f59a3e29313a9b287583355fcb148a39bad8d478294dc4815d2",
+              "publisher": "example.com",
+              "url": "https://example.com/c"
+            }
+          ],
+          "confidence": 0.5,
+          "confidence_basis": "default",
+          "id": "drv-3",
+          "impact": "high",
+          "name": "Logistics volatility",
+          "trend": "volatile"
+        }
+      ],
+      "epistemic_refs": {
+        "assumptions": [
+          "bel-1",
+          "bel-2",
+          "bel-3",
+          "bel-4"
+        ],
+        "facts": [
+          "pre-1"
+        ],
+        "interpretations": [
+          "eff-1",
+          "eff-2",
+          "eff-3",
+          "eff-4"
+        ],
+        "unknowns": [
+          "unc-1",
+          "unc-2"
+        ]
+      },
+      "id": "S1",
+      "implications": [
+        {
+          "description": "market: Stable demand",
+          "type": "operating_rule"
+        },
+        {
+          "description": "operations: Predictable lanes",
+          "type": "operating_rule"
+        },
+        {
+          "description": "policy: Incremental updates",
+          "type": "operating_rule"
+        }
+      ],
+      "logic": "Slow + Stable",
+      "name": "Steady climb",
+      "narrative": "Steady demand with incremental policy shifts.",
+      "opportunities": [
+        {
+          "description": "Scale buffers",
+          "source_test_id": "wt-1"
+        }
+      ],
+      "options": [
+        {
+          "action": "KEEP",
+          "feasibility_score": 0.8,
+          "outcome": "Resilient",
+          "rubric_score": 0.8600000000000001,
+          "strategy_id": "st-1"
+        }
+      ],
+      "risks": [
+        {
+          "description": "Demand spike",
+          "source_test_id": "wt-1"
+        }
+      ],
+      "signals": [
+        {
+          "description": "Track metric movement.",
+          "id": "S1-ewi-0",
+          "metric": "days",
+          "name": "EWI 0",
+          "signal": "Rising"
+        },
+        {
+          "description": "Track metric movement.",
+          "id": "S1-ewi-1",
+          "metric": "days",
+          "name": "EWI 1",
+          "signal": "Rising"
+        },
+        {
+          "description": "Track metric movement.",
+          "id": "S1-ewi-2",
+          "metric": "days",
+          "name": "EWI 2",
+          "signal": "Rising"
+        },
+        {
+          "description": "Track metric movement.",
+          "id": "S1-ewi-3",
+          "metric": "days",
+          "name": "EWI 3",
+          "signal": "Rising"
+        },
+        {
+          "description": "Track metric movement.",
+          "id": "S1-ewi-4",
+          "metric": "days",
+          "name": "EWI 4",
+          "signal": "Rising"
+        }
+      ],
+      "unknowns": [
+        {
+          "confidence": 0.30000000000000004,
+          "evidence_ids": [
+            "ev-1",
+            "ev-2"
+          ],
+          "id": "unc-1",
+          "impact": 0.8,
+          "statement": "Pace of regulatory changes.",
+          "uncertainty": 0.7
+        },
+        {
+          "confidence": 0.4,
+          "evidence_ids": [
+            "ev-2",
+            "ev-3"
+          ],
+          "id": "unc-2",
+          "impact": 0.7,
+          "statement": "Speed of platform and automation uptake.",
+          "uncertainty": 0.6
+        }
+      ],
+      "what_would_change_my_mind": [
+        {
+          "indicator_id": "S1-ewi-0",
+          "metric": "days",
+          "signal": "Rising"
+        },
+        {
+          "indicator_id": "S1-ewi-1",
+          "metric": "days",
+          "signal": "Rising"
+        },
+        {
+          "indicator_id": "S1-ewi-2",
+          "metric": "days",
+          "signal": "Rising"
+        },
+        {
+          "indicator_id": "S1-ewi-3",
+          "metric": "days",
+          "signal": "Rising"
+        },
+        {
+          "indicator_id": "S1-ewi-4",
+          "metric": "days",
+          "signal": "Rising"
+        }
+      ]
+    },
+    {
+      "assumptions": [
+        {
+          "confidence": 0.5,
+          "confidence_basis": "belief_statement",
+          "evidence_ids": [
+            "ev-1",
+            "ev-2"
+          ],
+          "id": "bel-1",
+          "stance": "dominant",
+          "statement": "Policy changes accelerate and increase compliance load.",
+          "uncertainty_id": "unc-1"
+        },
+        {
+          "confidence": 0.5,
+          "confidence_basis": "belief_statement",
+          "evidence_ids": [
+            "ev-1",
+            "ev-2"
+          ],
+          "id": "bel-2",
+          "stance": "counter",
+          "statement": "Policy updates slow as institutions focus on stability.",
+          "uncertainty_id": "unc-1"
+        },
+        {
+          "confidence": 0.5,
+          "confidence_basis": "belief_statement",
+          "evidence_ids": [
+            "ev-2",
+            "ev-3"
+          ],
+          "id": "bel-3",
+          "stance": "dominant",
+          "statement": "Automation adoption accelerates across core processes.",
+          "uncertainty_id": "unc-2"
+        },
+        {
+          "confidence": 0.5,
+          "confidence_basis": "belief_statement",
+          "evidence_ids": [
+            "ev-2",
+            "ev-3"
+          ],
+          "id": "bel-4",
+          "stance": "counter",
+          "statement": "Adoption slows due to cost and talent constraints.",
+          "uncertainty_id": "unc-2"
+        }
+      ],
+      "causal_chain": [
+        {
+          "belief_id": "bel-1",
+          "description": "Compliance costs rise and policy teams expand.",
+          "domains": [
+            "policy",
+            "cost"
+          ],
+          "id": "eff-1",
+          "order": 1
+        },
+        {
+          "belief_id": "bel-2",
+          "description": "Planning cycles stabilize with fewer regulatory surprises.",
+          "domains": [
+            "policy",
+            "operations"
+          ],
+          "id": "eff-2",
+          "order": 1
+        },
+        {
+          "belief_id": "bel-3",
+          "description": "Automation improves throughput and demand response.",
+          "domains": [
+            "technology",
+            "operations",
+            "demand"
+          ],
+          "id": "eff-3",
+          "order": 2
+        },
+        {
+          "belief_id": "bel-4",
+          "description": "Talent gaps slow transformation and limit savings.",
+          "domains": [
+            "talent",
+            "cost"
+          ],
+          "id": "eff-4",
+          "order": 2
+        }
+      ],
+      "confidence": {
+        "basis": "driver_mean",
+        "overall": 0.5
+      },
+      "drivers": [
+        {
+          "category": "policy",
+          "citations": [
+            {
+              "evidence_id": "ev-1",
+              "excerpt_hash": "cc674f19f84c0424ff1f840e3c7f7bc9e234a7aaa420869fed631bc611c06b0d",
+              "publisher": "example.com",
+              "url": "https://example.com/a"
+            }
+          ],
+          "confidence": 0.5,
+          "confidence_basis": "default",
+          "id": "drv-1",
+          "impact": "medium",
+          "name": "Regulatory shift",
+          "trend": "tightening"
+        },
+        {
+          "category": "market",
+          "citations": [
+            {
+              "evidence_id": "ev-2",
+              "excerpt_hash": "da0df467e9d00b5400c2ca68f8b35ef0abffda6adf0e8014aa460c7b6e166888",
+              "publisher": "example.com",
+              "url": "https://example.com/b"
+            }
+          ],
+          "confidence": 0.5,
+          "confidence_basis": "default",
+          "id": "drv-2",
+          "impact": "high",
+          "name": "Supplier consolidation",
+          "trend": "consolidating"
+        },
+        {
+          "category": "operations",
+          "citations": [
+            {
+              "evidence_id": "ev-3",
+              "excerpt_hash": "dca46b1f51972f59a3e29313a9b287583355fcb148a39bad8d478294dc4815d2",
+              "publisher": "example.com",
+              "url": "https://example.com/c"
+            }
+          ],
+          "confidence": 0.5,
+          "confidence_basis": "default",
+          "id": "drv-3",
+          "impact": "high",
+          "name": "Logistics volatility",
+          "trend": "volatile"
+        }
+      ],
+      "epistemic_refs": {
+        "assumptions": [
+          "bel-1",
+          "bel-2",
+          "bel-3",
+          "bel-4"
+        ],
+        "facts": [
+          "pre-1"
+        ],
+        "interpretations": [
+          "eff-1",
+          "eff-2",
+          "eff-3",
+          "eff-4"
+        ],
+        "unknowns": [
+          "unc-1",
+          "unc-2"
+        ]
+      },
+      "id": "S2",
+      "implications": [
+        {
+          "description": "market: Steady demand",
+          "type": "operating_rule"
+        },
+        {
+          "description": "operations: Stable lanes",
+          "type": "operating_rule"
+        },
+        {
+          "description": "policy: Rapid compliance shifts",
+          "type": "operating_rule"
+        }
+      ],
+      "logic": "Rapid + Stable",
+      "name": "Policy shock",
+      "narrative": "Rapid compliance changes with steady logistics.",
+      "opportunities": [
+        {
+          "description": "Shift routing",
+          "source_test_id": "wt-2"
+        }
+      ],
+      "options": [
+        {
+          "action": "KEEP",
+          "feasibility_score": 0.7,
+          "outcome": "Stressed",
+          "rubric_score": 0.8600000000000001,
+          "strategy_id": "st-2"
+        }
+      ],
+      "risks": [
+        {
+          "description": "Port delays",
+          "source_test_id": "wt-2"
+        }
+      ],
+      "signals": [
+        {
+          "description": "Track metric movement.",
+          "id": "S2-ewi-0",
+          "metric": "days",
+          "name": "EWI 0",
+          "signal": "Rising"
+        },
+        {
+          "description": "Track metric movement.",
+          "id": "S2-ewi-1",
+          "metric": "days",
+          "name": "EWI 1",
+          "signal": "Rising"
+        },
+        {
+          "description": "Track metric movement.",
+          "id": "S2-ewi-2",
+          "metric": "days",
+          "name": "EWI 2",
+          "signal": "Rising"
+        },
+        {
+          "description": "Track metric movement.",
+          "id": "S2-ewi-3",
+          "metric": "days",
+          "name": "EWI 3",
+          "signal": "Rising"
+        },
+        {
+          "description": "Track metric movement.",
+          "id": "S2-ewi-4",
+          "metric": "days",
+          "name": "EWI 4",
+          "signal": "Rising"
+        }
+      ],
+      "unknowns": [
+        {
+          "confidence": 0.30000000000000004,
+          "evidence_ids": [
+            "ev-1",
+            "ev-2"
+          ],
+          "id": "unc-1",
+          "impact": 0.8,
+          "statement": "Pace of regulatory changes.",
+          "uncertainty": 0.7
+        },
+        {
+          "confidence": 0.4,
+          "evidence_ids": [
+            "ev-2",
+            "ev-3"
+          ],
+          "id": "unc-2",
+          "impact": 0.7,
+          "statement": "Speed of platform and automation uptake.",
+          "uncertainty": 0.6
+        }
+      ],
+      "what_would_change_my_mind": [
+        {
+          "indicator_id": "S2-ewi-0",
+          "metric": "days",
+          "signal": "Rising"
+        },
+        {
+          "indicator_id": "S2-ewi-1",
+          "metric": "days",
+          "signal": "Rising"
+        },
+        {
+          "indicator_id": "S2-ewi-2",
+          "metric": "days",
+          "signal": "Rising"
+        },
+        {
+          "indicator_id": "S2-ewi-3",
+          "metric": "days",
+          "signal": "Rising"
+        },
+        {
+          "indicator_id": "S2-ewi-4",
+          "metric": "days",
+          "signal": "Rising"
+        }
+      ]
+    },
+    {
+      "assumptions": [
+        {
+          "confidence": 0.5,
+          "confidence_basis": "belief_statement",
+          "evidence_ids": [
+            "ev-1",
+            "ev-2"
+          ],
+          "id": "bel-1",
+          "stance": "dominant",
+          "statement": "Policy changes accelerate and increase compliance load.",
+          "uncertainty_id": "unc-1"
+        },
+        {
+          "confidence": 0.5,
+          "confidence_basis": "belief_statement",
+          "evidence_ids": [
+            "ev-1",
+            "ev-2"
+          ],
+          "id": "bel-2",
+          "stance": "counter",
+          "statement": "Policy updates slow as institutions focus on stability.",
+          "uncertainty_id": "unc-1"
+        },
+        {
+          "confidence": 0.5,
+          "confidence_basis": "belief_statement",
+          "evidence_ids": [
+            "ev-2",
+            "ev-3"
+          ],
+          "id": "bel-3",
+          "stance": "dominant",
+          "statement": "Automation adoption accelerates across core processes.",
+          "uncertainty_id": "unc-2"
+        },
+        {
+          "confidence": 0.5,
+          "confidence_basis": "belief_statement",
+          "evidence_ids": [
+            "ev-2",
+            "ev-3"
+          ],
+          "id": "bel-4",
+          "stance": "counter",
+          "statement": "Adoption slows due to cost and talent constraints.",
+          "uncertainty_id": "unc-2"
+        }
+      ],
+      "causal_chain": [
+        {
+          "belief_id": "bel-1",
+          "description": "Compliance costs rise and policy teams expand.",
+          "domains": [
+            "policy",
+            "cost"
+          ],
+          "id": "eff-1",
+          "order": 1
+        },
+        {
+          "belief_id": "bel-2",
+          "description": "Planning cycles stabilize with fewer regulatory surprises.",
+          "domains": [
+            "policy",
+            "operations"
+          ],
+          "id": "eff-2",
+          "order": 1
+        },
+        {
+          "belief_id": "bel-3",
+          "description": "Automation improves throughput and demand response.",
+          "domains": [
+            "technology",
+            "operations",
+            "demand"
+          ],
+          "id": "eff-3",
+          "order": 2
+        },
+        {
+          "belief_id": "bel-4",
+          "description": "Talent gaps slow transformation and limit savings.",
+          "domains": [
+            "talent",
+            "cost"
+          ],
+          "id": "eff-4",
+          "order": 2
+        }
+      ],
+      "confidence": {
+        "basis": "driver_mean",
+        "overall": 0.5
+      },
+      "drivers": [
+        {
+          "category": "policy",
+          "citations": [
+            {
+              "evidence_id": "ev-1",
+              "excerpt_hash": "cc674f19f84c0424ff1f840e3c7f7bc9e234a7aaa420869fed631bc611c06b0d",
+              "publisher": "example.com",
+              "url": "https://example.com/a"
+            }
+          ],
+          "confidence": 0.5,
+          "confidence_basis": "default",
+          "id": "drv-1",
+          "impact": "medium",
+          "name": "Regulatory shift",
+          "trend": "tightening"
+        },
+        {
+          "category": "market",
+          "citations": [
+            {
+              "evidence_id": "ev-2",
+              "excerpt_hash": "da0df467e9d00b5400c2ca68f8b35ef0abffda6adf0e8014aa460c7b6e166888",
+              "publisher": "example.com",
+              "url": "https://example.com/b"
+            }
+          ],
+          "confidence": 0.5,
+          "confidence_basis": "default",
+          "id": "drv-2",
+          "impact": "high",
+          "name": "Supplier consolidation",
+          "trend": "consolidating"
+        },
+        {
+          "category": "operations",
+          "citations": [
+            {
+              "evidence_id": "ev-3",
+              "excerpt_hash": "dca46b1f51972f59a3e29313a9b287583355fcb148a39bad8d478294dc4815d2",
+              "publisher": "example.com",
+              "url": "https://example.com/c"
+            }
+          ],
+          "confidence": 0.5,
+          "confidence_basis": "default",
+          "id": "drv-3",
+          "impact": "high",
+          "name": "Logistics volatility",
+          "trend": "volatile"
+        }
+      ],
+      "epistemic_refs": {
+        "assumptions": [
+          "bel-1",
+          "bel-2",
+          "bel-3",
+          "bel-4"
+        ],
+        "facts": [
+          "pre-1"
+        ],
+        "interpretations": [
+          "eff-1",
+          "eff-2",
+          "eff-3",
+          "eff-4"
+        ],
+        "unknowns": [
+          "unc-1",
+          "unc-2"
+        ]
+      },
+      "id": "S3",
+      "implications": [
+        {
+          "description": "market: Steady demand",
+          "type": "operating_rule"
+        },
+        {
+          "description": "operations: Volatile lanes",
+          "type": "operating_rule"
+        },
+        {
+          "description": "policy: Slow compliance",
+          "type": "operating_rule"
+        }
+      ],
+      "logic": "Slow + Turbulent",
+      "name": "Turbulent road",
+      "narrative": "Volatile transport with slow policy movement.",
+      "opportunities": [
+        {
+          "description": "Scale buffers",
+          "source_test_id": "wt-3"
+        }
+      ],
+      "options": [
+        {
+          "action": "KEEP",
+          "feasibility_score": 0.8,
+          "outcome": "Resilient",
+          "rubric_score": 0.8600000000000001,
+          "strategy_id": "st-1"
+        }
+      ],
+      "risks": [
+        {
+          "description": "Demand spike",
+          "source_test_id": "wt-3"
+        }
+      ],
+      "signals": [
+        {
+          "description": "Track metric movement.",
+          "id": "S3-ewi-0",
+          "metric": "days",
+          "name": "EWI 0",
+          "signal": "Rising"
+        },
+        {
+          "description": "Track metric movement.",
+          "id": "S3-ewi-1",
+          "metric": "days",
+          "name": "EWI 1",
+          "signal": "Rising"
+        },
+        {
+          "description": "Track metric movement.",
+          "id": "S3-ewi-2",
+          "metric": "days",
+          "name": "EWI 2",
+          "signal": "Rising"
+        },
+        {
+          "description": "Track metric movement.",
+          "id": "S3-ewi-3",
+          "metric": "days",
+          "name": "EWI 3",
+          "signal": "Rising"
+        },
+        {
+          "description": "Track metric movement.",
+          "id": "S3-ewi-4",
+          "metric": "days",
+          "name": "EWI 4",
+          "signal": "Rising"
+        }
+      ],
+      "unknowns": [
+        {
+          "confidence": 0.30000000000000004,
+          "evidence_ids": [
+            "ev-1",
+            "ev-2"
+          ],
+          "id": "unc-1",
+          "impact": 0.8,
+          "statement": "Pace of regulatory changes.",
+          "uncertainty": 0.7
+        },
+        {
+          "confidence": 0.4,
+          "evidence_ids": [
+            "ev-2",
+            "ev-3"
+          ],
+          "id": "unc-2",
+          "impact": 0.7,
+          "statement": "Speed of platform and automation uptake.",
+          "uncertainty": 0.6
+        }
+      ],
+      "what_would_change_my_mind": [
+        {
+          "indicator_id": "S3-ewi-0",
+          "metric": "days",
+          "signal": "Rising"
+        },
+        {
+          "indicator_id": "S3-ewi-1",
+          "metric": "days",
+          "signal": "Rising"
+        },
+        {
+          "indicator_id": "S3-ewi-2",
+          "metric": "days",
+          "signal": "Rising"
+        },
+        {
+          "indicator_id": "S3-ewi-3",
+          "metric": "days",
+          "signal": "Rising"
+        },
+        {
+          "indicator_id": "S3-ewi-4",
+          "metric": "days",
+          "signal": "Rising"
+        }
+      ]
+    },
+    {
+      "assumptions": [
+        {
+          "confidence": 0.5,
+          "confidence_basis": "belief_statement",
+          "evidence_ids": [
+            "ev-1",
+            "ev-2"
+          ],
+          "id": "bel-1",
+          "stance": "dominant",
+          "statement": "Policy changes accelerate and increase compliance load.",
+          "uncertainty_id": "unc-1"
+        },
+        {
+          "confidence": 0.5,
+          "confidence_basis": "belief_statement",
+          "evidence_ids": [
+            "ev-1",
+            "ev-2"
+          ],
+          "id": "bel-2",
+          "stance": "counter",
+          "statement": "Policy updates slow as institutions focus on stability.",
+          "uncertainty_id": "unc-1"
+        },
+        {
+          "confidence": 0.5,
+          "confidence_basis": "belief_statement",
+          "evidence_ids": [
+            "ev-2",
+            "ev-3"
+          ],
+          "id": "bel-3",
+          "stance": "dominant",
+          "statement": "Automation adoption accelerates across core processes.",
+          "uncertainty_id": "unc-2"
+        },
+        {
+          "confidence": 0.5,
+          "confidence_basis": "belief_statement",
+          "evidence_ids": [
+            "ev-2",
+            "ev-3"
+          ],
+          "id": "bel-4",
+          "stance": "counter",
+          "statement": "Adoption slows due to cost and talent constraints.",
+          "uncertainty_id": "unc-2"
+        }
+      ],
+      "causal_chain": [
+        {
+          "belief_id": "bel-1",
+          "description": "Compliance costs rise and policy teams expand.",
+          "domains": [
+            "policy",
+            "cost"
+          ],
+          "id": "eff-1",
+          "order": 1
+        },
+        {
+          "belief_id": "bel-2",
+          "description": "Planning cycles stabilize with fewer regulatory surprises.",
+          "domains": [
+            "policy",
+            "operations"
+          ],
+          "id": "eff-2",
+          "order": 1
+        },
+        {
+          "belief_id": "bel-3",
+          "description": "Automation improves throughput and demand response.",
+          "domains": [
+            "technology",
+            "operations",
+            "demand"
+          ],
+          "id": "eff-3",
+          "order": 2
+        },
+        {
+          "belief_id": "bel-4",
+          "description": "Talent gaps slow transformation and limit savings.",
+          "domains": [
+            "talent",
+            "cost"
+          ],
+          "id": "eff-4",
+          "order": 2
+        }
+      ],
+      "confidence": {
+        "basis": "driver_mean",
+        "overall": 0.5
+      },
+      "drivers": [
+        {
+          "category": "policy",
+          "citations": [
+            {
+              "evidence_id": "ev-1",
+              "excerpt_hash": "cc674f19f84c0424ff1f840e3c7f7bc9e234a7aaa420869fed631bc611c06b0d",
+              "publisher": "example.com",
+              "url": "https://example.com/a"
+            }
+          ],
+          "confidence": 0.5,
+          "confidence_basis": "default",
+          "id": "drv-1",
+          "impact": "medium",
+          "name": "Regulatory shift",
+          "trend": "tightening"
+        },
+        {
+          "category": "market",
+          "citations": [
+            {
+              "evidence_id": "ev-2",
+              "excerpt_hash": "da0df467e9d00b5400c2ca68f8b35ef0abffda6adf0e8014aa460c7b6e166888",
+              "publisher": "example.com",
+              "url": "https://example.com/b"
+            }
+          ],
+          "confidence": 0.5,
+          "confidence_basis": "default",
+          "id": "drv-2",
+          "impact": "high",
+          "name": "Supplier consolidation",
+          "trend": "consolidating"
+        },
+        {
+          "category": "operations",
+          "citations": [
+            {
+              "evidence_id": "ev-3",
+              "excerpt_hash": "dca46b1f51972f59a3e29313a9b287583355fcb148a39bad8d478294dc4815d2",
+              "publisher": "example.com",
+              "url": "https://example.com/c"
+            }
+          ],
+          "confidence": 0.5,
+          "confidence_basis": "default",
+          "id": "drv-3",
+          "impact": "high",
+          "name": "Logistics volatility",
+          "trend": "volatile"
+        }
+      ],
+      "epistemic_refs": {
+        "assumptions": [
+          "bel-1",
+          "bel-2",
+          "bel-3",
+          "bel-4"
+        ],
+        "facts": [
+          "pre-1"
+        ],
+        "interpretations": [
+          "eff-1",
+          "eff-2",
+          "eff-3",
+          "eff-4"
+        ],
+        "unknowns": [
+          "unc-1",
+          "unc-2"
+        ]
+      },
+      "id": "S4",
+      "implications": [
+        {
+          "description": "market: Demand stress",
+          "type": "operating_rule"
+        },
+        {
+          "description": "operations: Volatile lanes",
+          "type": "operating_rule"
+        },
+        {
+          "description": "policy: Rapid changes",
+          "type": "operating_rule"
+        }
+      ],
+      "logic": "Rapid + Turbulent",
+      "name": "Full volatility",
+      "narrative": "Rapid policy changes and volatile transport.",
+      "opportunities": [
+        {
+          "description": "Shift routing",
+          "source_test_id": "wt-4"
+        }
+      ],
+      "options": [
+        {
+          "action": "KEEP",
+          "feasibility_score": 0.7,
+          "outcome": "Stressed",
+          "rubric_score": 0.8600000000000001,
+          "strategy_id": "st-2"
+        }
+      ],
+      "risks": [
+        {
+          "description": "Port delays",
+          "source_test_id": "wt-4"
+        }
+      ],
+      "signals": [
+        {
+          "description": "Track metric movement.",
+          "id": "S4-ewi-0",
+          "metric": "days",
+          "name": "EWI 0",
+          "signal": "Rising"
+        },
+        {
+          "description": "Track metric movement.",
+          "id": "S4-ewi-1",
+          "metric": "days",
+          "name": "EWI 1",
+          "signal": "Rising"
+        },
+        {
+          "description": "Track metric movement.",
+          "id": "S4-ewi-2",
+          "metric": "days",
+          "name": "EWI 2",
+          "signal": "Rising"
+        },
+        {
+          "description": "Track metric movement.",
+          "id": "S4-ewi-3",
+          "metric": "days",
+          "name": "EWI 3",
+          "signal": "Rising"
+        },
+        {
+          "description": "Track metric movement.",
+          "id": "S4-ewi-4",
+          "metric": "days",
+          "name": "EWI 4",
+          "signal": "Rising"
+        }
+      ],
+      "unknowns": [
+        {
+          "confidence": 0.30000000000000004,
+          "evidence_ids": [
+            "ev-1",
+            "ev-2"
+          ],
+          "id": "unc-1",
+          "impact": 0.8,
+          "statement": "Pace of regulatory changes.",
+          "uncertainty": 0.7
+        },
+        {
+          "confidence": 0.4,
+          "evidence_ids": [
+            "ev-2",
+            "ev-3"
+          ],
+          "id": "unc-2",
+          "impact": 0.7,
+          "statement": "Speed of platform and automation uptake.",
+          "uncertainty": 0.6
+        }
+      ],
+      "what_would_change_my_mind": [
+        {
+          "indicator_id": "S4-ewi-0",
+          "metric": "days",
+          "signal": "Rising"
+        },
+        {
+          "indicator_id": "S4-ewi-1",
+          "metric": "days",
+          "signal": "Rising"
+        },
+        {
+          "indicator_id": "S4-ewi-2",
+          "metric": "days",
+          "signal": "Rising"
+        },
+        {
+          "indicator_id": "S4-ewi-3",
+          "metric": "days",
+          "signal": "Rising"
+        },
+        {
+          "indicator_id": "S4-ewi-4",
+          "metric": "days",
+          "signal": "Rising"
+        }
+      ]
+    }
+  ],
+  "title": "Scenario Profiles"
+}

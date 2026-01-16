@@ -8,6 +8,7 @@ The JSON object MUST strictly adhere to this structure:
   "id": "A unique UUID string (e.g. '550e8400-e29b-41d4-a716-446655440000')",
   "title": "A concise, professional title for this foresight project (e.g. 'Future of 6G Infrastructure')",
   "purpose": "A clear statement of why this analysis is being conducted",
+  "decision_context": "The decision this charter must support (e.g. 'capital allocation', 'market entry', 'risk posture')",
   "scope": "The specific domain, geography, or market segment being analyzed",
   "time_horizon": "The strategic timeframe (e.g. '5 years', '2030', '18 months')",
   "stakeholders": [
@@ -26,7 +27,7 @@ The JSON object MUST strictly adhere to this structure:
 }
 
 CRITICAL RULES:
-1. "title", "purpose", "scope", and "time_horizon" are REQUIRED.
+1. "title", "purpose", "decision_context", "scope", and "time_horizon" are REQUIRED.
 2. Derive these values from the "Context" provided below.
 3. If specific details are missing in the Context, infer reasonable professional defaults based on the topic.
 4. "id" MUST be unique.

@@ -1,0 +1,22 @@
+{
+  "actions": [
+    "No remediation needed."
+  ],
+  "findings": [
+    {
+      "evidence": [
+        "https://example.com/a",
+        "https://example.com/b",
+        "https://example.com/c"
+      ],
+      "finding": "Fixture citation url detected.",
+      "id": "fixture-citation-url",
+      "recommendations": []
+    }
+  ],
+  "id": "audit-medium",
+  "lessons": [],
+  "period_end": "medium",
+  "period_start": "medium",
+  "summary": "audit passed"
+}

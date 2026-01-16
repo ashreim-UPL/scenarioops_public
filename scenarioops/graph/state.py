@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -8,6 +9,7 @@ class Charter:
     id: str
     title: str
     purpose: str
+    decision_context: str
     scope: str
     time_horizon: str
     stakeholders: list[str] = field(default_factory=list)
@@ -203,6 +205,15 @@ class AuditReport:
 @dataclass
 class ScenarioOpsState:
     charter: Charter | None = None
+    focal_issue: dict[str, Any] | None = None
+    driving_forces: dict[str, Any] | None = None
+    washout_report: dict[str, Any] | None = None
+    evidence_units: dict[str, Any] | None = None
+    certainty_uncertainty: dict[str, Any] | None = None
+    belief_sets: dict[str, Any] | None = None
+    effects: dict[str, Any] | None = None
+    coverage_report: dict[str, Any] | None = None
+    epistemic_summary: dict[str, Any] | None = None
     drivers: Drivers | None = None
     uncertainties: Uncertainties | None = None
     logic: Logic | None = None
@@ -211,5 +222,7 @@ class ScenarioOpsState:
     ewi: Ewi | None = None
     strategies: Strategies | None = None
     wind_tunnel: WindTunnel | None = None
+    scenario_profiles: dict[str, Any] | None = None
+    trace_map: dict[str, Any] | None = None
     daily_brief: DailyBrief | None = None
     audit_report: AuditReport | None = None

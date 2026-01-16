@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Driving Forces",
+  "type": "object",
+  "required": ["forces"],
+  "properties": {
+    "forces": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/force" }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "force": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "domain",
+        "lenses",
+        "description",
+        "why_it_matters",
+        "citations"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "domain": {
+          "type": "string",
+          "enum": [
+            "political",
+            "economic",
+            "social",
+            "technological",
+            "environmental",
+            "legal"
+          ]
+        },
+        "lenses": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": ["macro", "law", "geopolitics", "ethics", "culture"]
+          }
+        },
+        "description": { "type": "string", "minLength": 1 },
+        "why_it_matters": { "type": "string", "minLength": 1 },
+        "citations": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["url"],
+            "properties": {
+              "url": { "type": "string", "minLength": 1 },
+              "excerpt_hash": { "type": "string", "minLength": 1 },
+              "publisher": { "type": "string", "minLength": 1 },
+              "evidence_id": { "type": "string", "minLength": 1 }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
