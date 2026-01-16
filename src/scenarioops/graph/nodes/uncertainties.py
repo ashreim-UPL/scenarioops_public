@@ -46,6 +46,52 @@ def _validate_uncertainty_links(payload: dict[str, Any], driver_ids: set[str]) -
             raise ValueError(f"Uncertainty {entry.get('id')} references missing drivers: {missing}")
 
 
+def _fallback_uncertainties(driver_payload: list[dict[str, Any]]) -> dict[str, Any]:
+    drivers: list[dict[str, str]] = []
+    for entry in driver_payload:
+        if not isinstance(entry, dict):
+            continue
+        driver_id = entry.get("id")
+        name = entry.get("name")
+        if not isinstance(driver_id, str) or not driver_id.strip():
+            driver_id = stable_id("driver", name, entry.get("description"))
+        if not isinstance(name, str) or not name.strip():
+            name = "Unknown driver"
+        drivers.append({"id": str(driver_id), "name": str(name)})
+
+    if len(drivers) < 2:
+        raise ValueError("Need at least two drivers to build fallback uncertainties.")
+
+    pairs: list[tuple[dict[str, str], dict[str, str]]] = []
+    for idx in range(0, len(drivers) - 1, 2):
+        pairs.append((drivers[idx], drivers[idx + 1]))
+    if not pairs:
+        pairs.append((drivers[0], drivers[1]))
+
+    uncertainties: list[dict[str, Any]] = []
+    for idx, (left, right) in enumerate(pairs, start=1):
+        name = f"{left['name']} vs {right['name']}"
+        uncertainties.append(
+            {
+                "id": stable_id("uncertainty", left["id"], right["id"], idx),
+                "name": name,
+                "description": f"Uncertainty in the balance between {left['name']} and {right['name']}.",
+                "extremes": [f"{left['name']} dominates", f"{right['name']} dominates"],
+                "driver_ids": [left["id"], right["id"]],
+                "criticality": 3,
+                "volatility": 3,
+                "implications": [],
+            }
+        )
+
+    return {
+        "id": stable_id("uncertainties", [entry["id"] for entry in drivers]),
+        "title": "Critical uncertainties (fallback)",
+        "uncertainties": uncertainties,
+        "metadata": {"fallback": True, "reason": "llm_output_not_json"},
+    }
+
+
 def run_uncertainties_node(
     *,
     run_id: str,
@@ -67,8 +113,33 @@ def run_uncertainties_node(
 
     client = get_client(llm_client, config)
     schema = load_schema("uncertainties")
-    response = client.generate_json(prompt, schema)
-    parsed = ensure_dict(response, node_name="uncertainties")
+    strict_prompt = (
+        f"{prompt}\n\nReturn ONLY a JSON object that matches the schema. "
+        "No prose, no markdown, no extra keys."
+    )
+    try:
+        response = client.generate_json(prompt, schema)
+        parsed = ensure_dict(response, node_name="uncertainties")
+    except Exception as exc:
+        log_normalization(
+            run_id=run_id,
+            node_name="uncertainties",
+            operation="retry_strict_json",
+            details={"error": str(exc)},
+            base_dir=base_dir,
+        )
+        try:
+            response = client.generate_json(strict_prompt, schema)
+            parsed = ensure_dict(response, node_name="uncertainties")
+        except Exception as retry_exc:
+            log_normalization(
+                run_id=run_id,
+                node_name="uncertainties",
+                operation="fallback_uncertainties",
+                details={"error": str(retry_exc)},
+                base_dir=base_dir,
+            )
+            parsed = _fallback_uncertainties(driver_payload)
 
     validate_artifact("uncertainties", parsed)
     driver_ids = {

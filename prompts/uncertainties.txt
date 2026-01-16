@@ -1,1 +1,4 @@
 Rank critical uncertainties grounded in driver evidence.
+Return ONLY a JSON object with keys: id, title, uncertainties.
+Each uncertainty must include: id, name, description, extremes (2 items), driver_ids (>=2).
+No prose, no markdown, no extra keys.

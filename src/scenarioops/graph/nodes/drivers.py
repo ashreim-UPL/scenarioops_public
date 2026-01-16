@@ -66,6 +66,12 @@ def _relax_drivers_schema(schema: Mapping[str, Any]) -> dict[str, Any]:
     required = driver_schema.get("required")
     if isinstance(required, list):
         driver_schema["required"] = []
+    driver_schema["additionalProperties"] = True
+    citations = driver_schema.get("properties", {}).get("citations")
+    if isinstance(citations, dict):
+        items = citations.get("items")
+        if isinstance(items, dict):
+            items["additionalProperties"] = True
     try:
         relaxed["properties"]["drivers"]["items"] = driver_schema
     except Exception:
@@ -138,6 +144,111 @@ def _drivers_from_forces(
     return drivers
 
 
+def _normalize_citation_value(
+    value: Any,
+    evidence_hashes: Mapping[str, str],
+    evidence_publishers: Mapping[str, str],
+    evidence_ids: Mapping[str, str],
+) -> dict[str, str] | None:
+    url = ""
+    if isinstance(value, str):
+        url = value.strip()
+    elif isinstance(value, Mapping):
+        url = str(
+            value.get("url")
+            or value.get("link")
+            or value.get("source")
+            or value.get("source_url")
+            or value.get("href")
+            or ""
+        ).strip()
+    if not url:
+        return None
+    normalized = _normalize_url(url)
+    excerpt_hash = ""
+    if isinstance(value, Mapping):
+        excerpt_hash = str(value.get("excerpt_hash") or "")
+    if not excerpt_hash:
+        excerpt_hash = evidence_hashes.get(normalized) or _excerpt_hash(url)
+    publisher = ""
+    evidence_id = ""
+    if isinstance(value, Mapping):
+        publisher = str(value.get("publisher") or "")
+        evidence_id = str(value.get("evidence_id") or "")
+    if not publisher:
+        publisher = evidence_publishers.get(normalized) or "unknown"
+    if not evidence_id:
+        evidence_id = evidence_ids.get(normalized) or normalized
+    return {
+        "url": url,
+        "excerpt_hash": str(excerpt_hash),
+        "publisher": str(publisher),
+        "evidence_id": str(evidence_id),
+    }
+
+
+def _normalize_driver_entry(
+    entry: Mapping[str, Any],
+    *,
+    evidence_hashes: Mapping[str, str],
+    evidence_publishers: Mapping[str, str],
+    evidence_ids: Mapping[str, str],
+) -> dict[str, Any]:
+    data = dict(entry)
+    driver_data = data.get("driver")
+    if isinstance(driver_data, Mapping):
+        if not data.get("name"):
+            data["name"] = driver_data.get("name") or driver_data.get("title")
+        if not data.get("description"):
+            data["description"] = driver_data.get("description") or driver_data.get("summary")
+        if not data.get("category"):
+            data["category"] = driver_data.get("category") or driver_data.get("domain")
+        if not data.get("trend"):
+            data["trend"] = driver_data.get("trend")
+        if not data.get("impact"):
+            data["impact"] = driver_data.get("impact")
+        if not data.get("citations") and driver_data.get("citations"):
+            data["citations"] = driver_data.get("citations")
+
+    if "citations" not in data and "citation" in data:
+        data["citations"] = data.get("citation")
+
+    citations = data.get("citations", [])
+    if isinstance(citations, Mapping) or isinstance(citations, str):
+        citations = [citations]
+    normalized_citations: list[dict[str, str]] = []
+    if isinstance(citations, list):
+        for item in citations:
+            normalized = _normalize_citation_value(
+                item,
+                evidence_hashes=evidence_hashes,
+                evidence_publishers=evidence_publishers,
+                evidence_ids=evidence_ids,
+            )
+            if normalized:
+                normalized_citations.append(normalized)
+    data["citations"] = normalized_citations
+
+    allowed_keys = {
+        "id",
+        "name",
+        "description",
+        "category",
+        "trend",
+        "impact",
+        "citations",
+        "evidence",
+        "signals",
+        "confidence",
+        "notes",
+    }
+    cleaned: dict[str, Any] = {}
+    for key in allowed_keys:
+        if key in data:
+            cleaned[key] = data[key]
+    return cleaned
+
+
 def run_drivers_node(
     *,
     run_id: str,
@@ -200,6 +311,28 @@ def run_drivers_node(
             f"received {type(drivers_payload)}. raw={raw}"
         )
     drivers_payload = ensure_list(drivers_payload, node_name="drivers")
+
+    normalized_payload: list[dict[str, Any]] = []
+    for entry in drivers_payload:
+        if not isinstance(entry, Mapping):
+            normalized_payload.append({})
+            continue
+        normalized = _normalize_driver_entry(
+            entry,
+            evidence_hashes=evidence_hashes,
+            evidence_publishers=evidence_publishers,
+            evidence_ids=evidence_ids,
+        )
+        if normalized != entry:
+            log_normalization(
+                run_id=run_id,
+                node_name="drivers",
+                operation="normalized_driver_payload",
+                details={"keys": sorted(set(entry.keys()) - set(normalized.keys()))},
+                base_dir=base_dir,
+            )
+        normalized_payload.append(normalized)
+    drivers_payload = normalized_payload
 
     required_fields = ("id", "name", "description", "category", "trend", "impact", "citations")
     missing_required = False
