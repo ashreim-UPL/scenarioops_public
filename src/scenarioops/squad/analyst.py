@@ -8,6 +8,9 @@ from scenarioops.graph.nodes.narratives import run_narratives_node
 from scenarioops.graph.nodes.skeletons import run_skeletons_node
 from scenarioops.graph.nodes.drivers import run_drivers_node
 from scenarioops.graph.nodes.uncertainties import run_uncertainties_node
+from scenarioops.graph.nodes.beliefs import run_beliefs_node
+from scenarioops.graph.nodes.effects import run_effects_node
+from scenarioops.graph.nodes.epistemic_summary import run_epistemic_summary_node
 from scenarioops.graph.nodes.utils import get_client
 from scenarioops.graph.state import ScenarioOpsState
 from .types import Gemini3Client
@@ -23,6 +26,7 @@ class Analyst:
         run_id: str,
         base_dir: Path | None = None,
         config: LLMConfig | None = None,
+        settings=None,
         llm_client=None,
     ) -> ScenarioOpsState:
         """Executes the analysis pipeline."""
@@ -46,6 +50,7 @@ class Analyst:
                 llm_client=client,
                 base_dir=base_dir,
                 config=config,
+                settings=settings,
             ),
         )
 
@@ -62,6 +67,54 @@ class Analyst:
                 llm_client=client,
                 base_dir=base_dir,
                 config=config,
+            ),
+        )
+
+        state = record_node_event(
+            run_id=run_id,
+            node_name="beliefs",
+            inputs=["uncertainties.json", "evidence_units.json"],
+            outputs=["belief_sets.json"],
+            tools=[llm_label],
+            base_dir=base_dir,
+            action=lambda: run_beliefs_node(
+                run_id=run_id,
+                state=state,
+                llm_client=client,
+                base_dir=base_dir,
+                config=config,
+                settings=settings,
+            ),
+        )
+
+        state = record_node_event(
+            run_id=run_id,
+            node_name="effects",
+            inputs=["belief_sets.json"],
+            outputs=["effects.json"],
+            tools=[llm_label],
+            base_dir=base_dir,
+            action=lambda: run_effects_node(
+                run_id=run_id,
+                state=state,
+                llm_client=client,
+                base_dir=base_dir,
+                config=config,
+                settings=settings,
+            ),
+        )
+
+        state = record_node_event(
+            run_id=run_id,
+            node_name="epistemic_summary",
+            inputs=["certainty_uncertainty.json", "belief_sets.json", "effects.json"],
+            outputs=["epistemic_summary.json"],
+            tools=["system"],
+            base_dir=base_dir,
+            action=lambda: run_epistemic_summary_node(
+                run_id=run_id,
+                state=state,
+                base_dir=base_dir,
             ),
         )
 

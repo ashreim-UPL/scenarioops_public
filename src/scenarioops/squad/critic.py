@@ -50,8 +50,26 @@ class Critic:
                     llm_client=client,
                     base_dir=base_dir,
                     config=config,
+                    settings=settings,
                 ),
             )
+
+        state = record_node_event(
+            run_id=run_id,
+            node_name="washout_report",
+            inputs=["driving_forces.json"],
+            outputs=["washout_report.json"],
+            tools=[llm_label],
+            base_dir=base_dir,
+            action=lambda: run_washout_node(
+                run_id=run_id,
+                state=state,
+                llm_client=client,
+                base_dir=base_dir,
+                config=config,
+                settings=settings,
+            ),
+        )
 
         # Final Auditor check
         state = record_node_event(

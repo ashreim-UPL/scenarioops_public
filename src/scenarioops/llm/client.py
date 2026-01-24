@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 from typing import Any, Mapping, Protocol, TYPE_CHECKING
 
@@ -30,24 +31,50 @@ class GeminiClient:
     temperature: float = 0.2
 
     def generate_json(self, prompt: str, schema: Mapping[str, Any]) -> dict[str, Any]:
-        raw = self._generate_text(prompt)
+        raw = self._generate_text(
+            prompt,
+            response_mime_type="application/json",
+            max_output_tokens=_max_output_tokens(),
+        )
         if not isinstance(raw, str):
             raise TypeError(f"Expected raw model output as str, got {type(raw)}.")
 
+        raw = raw.strip()
         try:
             parsed = json.loads(raw)
         except json.JSONDecodeError as exc:
-            extracted = _extract_first_json_object(raw)
-            if extracted is None:
-                raise ValueError(
-                    f"Unable to locate JSON object in output: {raw[:500]!r}"
-                ) from exc
-            parsed = json.loads(extracted)
+            stripped = _strip_code_fences(raw)
+            if stripped != raw:
+                try:
+                    parsed = json.loads(stripped)
+                except json.JSONDecodeError:
+                    parsed = None
+            else:
+                parsed = None
+            if parsed is None:
+                extracted = _extract_first_json_object(stripped or raw)
+                if extracted is None:
+                    raise ValueError(
+                        "Unable to locate JSON object in output. "
+                        "The model response may be truncated. "
+                        "Set GEMINI_MAX_OUTPUT_TOKENS higher or reduce output size. "
+                        f"Output sample: {raw[:500]!r}"
+                    ) from exc
+                parsed = json.loads(extracted)
 
         if not isinstance(parsed, dict):
-            raise TypeError(
-                f"Expected JSON object, got {type(parsed)}. Raw: {raw[:500]!r}"
-            )
+            if isinstance(parsed, list) and isinstance(schema, Mapping):
+                wrapped = _wrap_single_array_payload(parsed, schema)
+                if wrapped is not None:
+                    parsed = wrapped
+                else:
+                    raise TypeError(
+                        f"Expected JSON object, got {type(parsed)}. Raw: {raw[:500]!r}"
+                    )
+            else:
+                raise TypeError(
+                    f"Expected JSON object, got {type(parsed)}. Raw: {raw[:500]!r}"
+                )
 
         schema_name = "unknown"
         if isinstance(schema, Mapping):
@@ -58,13 +85,24 @@ class GeminiClient:
     def generate_markdown(self, prompt: str) -> str:
         return self._generate_text(prompt)
 
-    def _generate_text(self, prompt: str) -> str:
+    def _generate_text(
+        self,
+        prompt: str,
+        *,
+        response_mime_type: str | None = None,
+        max_output_tokens: int | None = None,
+    ) -> str:
         url = _gemini_url(self.model, self.api_key)
         headers = {"Content-Type": "application/json"}
         # Include thoughtSignature capability implicitly by using the preview model
+        generation_config: dict[str, Any] = {"temperature": self.temperature}
+        if response_mime_type:
+            generation_config["responseMimeType"] = response_mime_type
+        if max_output_tokens:
+            generation_config["maxOutputTokens"] = max_output_tokens
         payload = {
             "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {"temperature": self.temperature},
+            "generationConfig": generation_config,
         }
         response = self.transport.post_json(url, headers, payload)
         if not isinstance(response, Mapping):
@@ -89,6 +127,57 @@ def _wrap_payload(payload: Mapping[str, Any], raw: str) -> dict[str, Any]:
     if isinstance(payload, _JsonPayload):
         return payload
     return _JsonPayload(payload, raw)
+
+
+_CODE_FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)```", re.IGNORECASE | re.DOTALL)
+
+
+def _wrap_single_array_payload(
+    payload: list[Any], schema: Mapping[str, Any]
+) -> dict[str, Any] | None:
+    if schema.get("type") != "object":
+        return None
+    required = schema.get("required")
+    if not isinstance(required, list) or len(required) != 1:
+        return None
+    properties = schema.get("properties")
+    if not isinstance(properties, Mapping):
+        return None
+    key = required[0]
+    prop = properties.get(key)
+    if not isinstance(prop, Mapping):
+        return None
+    if prop.get("type") != "array":
+        return None
+    return {key: payload}
+
+
+def _strip_code_fences(raw: str) -> str:
+    match = _CODE_FENCE_RE.search(raw)
+    if match:
+        return match.group(1).strip()
+    stripped = raw.strip()
+    if stripped.startswith("```"):
+        lines = stripped.splitlines()
+        if len(lines) > 1:
+            body = "\n".join(lines[1:])
+            if "```" in body:
+                body = body[: body.rfind("```")].strip()
+            return body.strip()
+    return raw
+
+
+def _max_output_tokens() -> int | None:
+    for key in ("GEMINI_MAX_OUTPUT_TOKENS", "GEMINI_JSON_MAX_OUTPUT_TOKENS"):
+        raw = os.environ.get(key)
+        if not raw:
+            continue
+        try:
+            value = int(raw)
+        except ValueError:
+            continue
+        return value if value > 0 else None
+    return 4096
 
 
 def _extract_first_json_object(raw: str) -> str | None:
@@ -268,6 +357,159 @@ class MockLLMClient:
                     {"id": "S4", "name": "Fast/Plenty", "logic": "Fast + Plenty"}
                 ]
             }
+        elif schema_title == "Query Expansion":
+            payload = {
+                "primary": ["global macro outlook", "regulatory outlook"],
+                "secondary": ["industry supply chain risks", "competitor landscape"],
+                "tertiary": ["company operations risks", "product roadmap shifts"],
+                "counter": ["evidence against slowdown", "evidence against regulation"],
+            }
+        elif schema_title == "Forces" or schema_title == "Forces Payload":
+            payload = {
+                "forces": [
+                    {
+                        "force_id": "force-1",
+                        "layer": "primary",
+                        "domain": "economic",
+                        "label": "Capital cost volatility",
+                        "mechanism": "Rate shifts raise financing costs and delay projects.",
+                        "directionality": "Higher rates reduce investment capacity.",
+                        "affected_dimensions": ["capital", "cost"],
+                        "evidence_unit_ids": ["ev-1"],
+                        "confidence": 0.7,
+                        "confidence_rationale": "Backed by macro evidence.",
+                    },
+                    {
+                        "force_id": "force-2",
+                        "layer": "secondary",
+                        "domain": "technological",
+                        "label": "Platform adoption shifts",
+                        "mechanism": "Ecosystem standards change customer switching costs.",
+                        "directionality": "Higher adoption increases stickiness.",
+                        "affected_dimensions": ["demand"],
+                        "evidence_unit_ids": ["ev-1"],
+                        "confidence": 0.6,
+                        "confidence_rationale": "Observed industry signals.",
+                    },
+                    {
+                        "force_id": "force-3",
+                        "layer": "tertiary",
+                        "domain": "legal",
+                        "label": "Compliance overhead",
+                        "mechanism": "New reporting rules increase audit burden.",
+                        "directionality": "Higher compliance raises operating cost.",
+                        "affected_dimensions": ["cost", "risk"],
+                        "evidence_unit_ids": ["ev-1"],
+                        "confidence": 0.6,
+                        "confidence_rationale": "Regulatory updates noted.",
+                    }
+                ],
+            }
+        elif schema_title == "Clusters" or schema_title == "Clusters Payload":
+            payload = {
+                "clusters": [
+                    {
+                        "cluster_id": "cluster-1",
+                        "cluster_label": "Capital market pressure",
+                        "underlying_dynamic": "Financing conditions tighten",
+                        "why_these_forces_belong_together": "Shared capital cost dynamics.",
+                    }
+                ],
+            }
+        elif schema_title == "Uncertainty Axes" or schema_title == "Uncertainty Axes Payload":
+            payload = {
+                "axes": [
+                    {
+                        "axis_id": "axis-1",
+                        "axis_name": "Capital access",
+                        "pole_a": "Tight capital",
+                        "pole_b": "Loose capital",
+                        "impact_score": 4,
+                        "uncertainty_score": 4,
+                        "tension_basis": {
+                            "cluster_ids": ["cluster-1"],
+                            "force_ids": ["force-1"],
+                        },
+                        "what_would_change_mind": ["Credit spreads narrow"],
+                        "independence_notes": "Distinct from demand shocks.",
+                    },
+                    {
+                        "axis_id": "axis-2",
+                        "axis_name": "Demand resilience",
+                        "pole_a": "Weak demand",
+                        "pole_b": "Strong demand",
+                        "impact_score": 4,
+                        "uncertainty_score": 3,
+                        "tension_basis": {
+                            "cluster_ids": ["cluster-1"],
+                            "force_ids": ["force-1"],
+                        },
+                        "what_would_change_mind": ["Order backlog grows"],
+                        "independence_notes": "Demand side distinct from finance.",
+                    }
+                ]
+            }
+        elif schema_title == "Scenarios" or schema_title == "Scenarios Payload":
+            payload = {
+                "scenarios": [
+                    {
+                        "scenario_id": "S1",
+                        "name": "Tight/Weak",
+                        "axis_states": {"axis-1": "Tight capital", "axis-2": "Weak demand"},
+                        "narrative": "Investment stalls and demand softens.",
+                        "signposts": ["Credit spreads widen", "Orders slow"],
+                        "implications": ["Cost control priority"],
+                        "no_regret_moves": ["Reduce discretionary spend"],
+                        "contingent_moves": ["Delay expansion"],
+                        "evidence_touchpoints": {
+                            "cluster_ids": ["cluster-1", "cluster-2"],
+                            "force_ids": ["force-1", "force-2"]
+                        },
+                    },
+                    {
+                        "scenario_id": "S2",
+                        "name": "Loose/Weak",
+                        "axis_states": {"axis-1": "Loose capital", "axis-2": "Weak demand"},
+                        "narrative": "Capital is available but demand lags.",
+                        "signposts": ["Low rates persist", "Orders slow"],
+                        "implications": ["Selective investment"],
+                        "no_regret_moves": ["Optimize portfolio"],
+                        "contingent_moves": ["Shift to services"],
+                        "evidence_touchpoints": {
+                            "cluster_ids": ["cluster-1", "cluster-2"],
+                            "force_ids": ["force-1", "force-2"]
+                        },
+                    },
+                    {
+                        "scenario_id": "S3",
+                        "name": "Tight/Strong",
+                        "axis_states": {"axis-1": "Tight capital", "axis-2": "Strong demand"},
+                        "narrative": "Demand strong but financing constrained.",
+                        "signposts": ["Orders surge", "Credit tightens"],
+                        "implications": ["Prioritize high ROI projects"],
+                        "no_regret_moves": ["Accelerate top SKUs"],
+                        "contingent_moves": ["Seek partners"],
+                        "evidence_touchpoints": {
+                            "cluster_ids": ["cluster-1", "cluster-2"],
+                            "force_ids": ["force-1", "force-2"]
+                        },
+                    },
+                    {
+                        "scenario_id": "S4",
+                        "name": "Loose/Strong",
+                        "axis_states": {"axis-1": "Loose capital", "axis-2": "Strong demand"},
+                        "narrative": "Growth accelerates with ample capital.",
+                        "signposts": ["Capex expands", "Orders surge"],
+                        "implications": ["Scale operations"],
+                        "no_regret_moves": ["Invest in capacity"],
+                        "contingent_moves": ["Acquire suppliers"],
+                        "evidence_touchpoints": {
+                            "cluster_ids": ["cluster-1", "cluster-2"],
+                            "force_ids": ["force-1", "force-2"]
+                        },
+                    }
+                ],
+            }
         elif schema_title == "Skeleton" or schema_title == "Skeletons":
             payload = {
                 "id": "sk-1",
@@ -289,16 +531,14 @@ class MockLLMClient:
                         "name": "Invest in R&D",
                         "objective": "Innovate",
                         "actions": ["Build Lab"],
-                        "kpis": ["Patents"],
-                        "projected_roi": 0.15
+                        "kpis": ["Patents"]
                     },
                     {
                         "id": "st-2",
                         "name": "Lobbying",
                         "objective": "Influence",
                         "actions": ["Hire firm"],
-                        "kpis": ["Meetings"],
-                        "projected_roi": 0.05
+                        "kpis": ["Meetings"]
                     }
                 ]
             }

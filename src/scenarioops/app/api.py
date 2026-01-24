@@ -39,6 +39,8 @@ app = FastAPI(title="ScenarioOps API")
 class BuildRequest(BaseModel):
     scope: Literal["world", "region", "country"]
     value: str
+    company: str | None = None
+    geography: str | None = None
     horizon: int = Field(..., ge=1)
     sources: list[str] | None = None
     run_id: str | None = None
@@ -98,6 +100,10 @@ def _artifact_path(run_id: str, artifact_name: str) -> Path:
 def build(payload: BuildRequest) -> RunResponse:
     run_id = payload.run_id or datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
     user_params = {"scope": payload.scope, "value": payload.value, "horizon": payload.horizon}
+    if payload.company:
+        user_params["company"] = payload.company
+    if payload.geography:
+        user_params["geography"] = payload.geography
     sources = payload.sources or []
     overrides = {"mode": "demo" if payload.mock else "live"}
     if payload.mock:

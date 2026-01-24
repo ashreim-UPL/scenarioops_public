@@ -5,7 +5,10 @@ from typing import Any, Iterable
 
 from scenarioops.app.config import LLMConfig, ScenarioOpsSettings
 from scenarioops.graph.nodes.retrieval import run_retrieval_node
+from scenarioops.graph.nodes.retrieval_real import run_retrieval_real_node
 from scenarioops.graph.nodes.scan import run_scan_node
+from scenarioops.graph.nodes.classify import run_classify_node
+from scenarioops.graph.nodes.coverage import run_coverage_node
 from scenarioops.graph.state import ScenarioOpsState
 from scenarioops.graph.nodes.utils import get_client
 from .types import Gemini3Client, AgentState
@@ -33,7 +36,18 @@ class Sentinel:
     def _generate_search_queries(self) -> list[str]:
         # Generate PESTEL queries grounded in company/country
         queries = []
-        scope = f"in {self.country} for {self.company}"
+        company = str(self.company or "").strip()
+        country = str(self.country or "").strip()
+        company_ok = company and company.lower() not in {"unknown", "unknown company"}
+        country_ok = country and country.lower() not in {"unknown", "unknown country"}
+        if company_ok and country_ok:
+            scope = f"in {country} for {company}"
+        elif company_ok:
+            scope = f"for {company}"
+        elif country_ok:
+            scope = f"in {country}"
+        else:
+            scope = "globally"
         # We select a subset of templates to avoid explosion
         for domain, templates in PESTEL_QUERY_TEMPLATES.items():
             for tmpl in templates[:1]: # Take first template per domain
@@ -45,6 +59,7 @@ class Sentinel:
         state: ScenarioOpsState,
         sources: list[str],
         run_id: str,
+        user_params: dict[str, Any] | None = None,
         base_dir: Path | None = None,
         config: LLMConfig | None = None,
         settings: ScenarioOpsSettings | None = None,
@@ -146,14 +161,20 @@ class Sentinel:
             outputs=["evidence_units.json"],
             tools=[retriever_label, f"search:{'on' if self.enable_search else 'off'}"],
             base_dir=base_dir,
-            action=lambda: run_retrieval_node(
+            action=lambda: run_retrieval_real_node(
                 effective_sources,
                 run_id=run_id,
                 state=state,
+                user_params=user_params or {},
+                focal_issue=state.focal_issue if isinstance(state.focal_issue, dict) else None,
                 base_dir=base_dir,
-                allow_web=self.enable_search,
+                config=config,
                 settings=settings,
+                llm_client=client,
                 retriever=resolved_retriever,
+                simulate_evidence=getattr(settings, "simulate_evidence", False)
+                if settings
+                else False,
             ),
         )
 
@@ -165,6 +186,38 @@ class Sentinel:
             tools=[llm_label],
             base_dir=base_dir,
             action=lambda: run_scan_node(
+                run_id=run_id,
+                state=state,
+                llm_client=client,
+                base_dir=base_dir,
+                config=config,
+                settings=settings,
+            ),
+        )
+
+        state = record_node_event(
+            run_id=run_id,
+            node_name="coverage_report",
+            inputs=["driving_forces.json"],
+            outputs=["coverage_report.json"],
+            tools=["system"],
+            base_dir=base_dir,
+            action=lambda: run_coverage_node(
+                run_id=run_id,
+                state=state,
+                base_dir=base_dir,
+                settings=settings,
+            ),
+        )
+
+        state = record_node_event(
+            run_id=run_id,
+            node_name="certainty_uncertainty",
+            inputs=["evidence_units.json"],
+            outputs=["certainty_uncertainty.json"],
+            tools=[llm_label],
+            base_dir=base_dir,
+            action=lambda: run_classify_node(
                 run_id=run_id,
                 state=state,
                 llm_client=client,

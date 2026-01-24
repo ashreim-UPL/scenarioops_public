@@ -26,8 +26,14 @@ SourcesPolicyLiteral = Literal["fixtures", "academic_only", "mixed_reputable"]
 _ALLOWED_MODES = {"demo", "live"}
 _ALLOWED_PROVIDERS = {"gemini", "mock"}
 _ALLOWED_POLICIES = {"fixtures", "academic_only", "mixed_reputable"}
-_BOOL_FIELDS = {"allow_web", "forbid_fixture_citations"}
-_INT_FIELDS = {"min_sources_per_domain", "min_citations_per_driver"}
+_BOOL_FIELDS = {"allow_web", "forbid_fixture_citations", "simulate_evidence"}
+_INT_FIELDS = {
+    "min_sources_per_domain",
+    "min_citations_per_driver",
+    "seed",
+    "min_forces",
+    "min_forces_per_domain",
+}
 
 
 @dataclass(frozen=True)
@@ -39,7 +45,11 @@ class ScenarioOpsSettings:
     allow_web: bool = False
     min_sources_per_domain: int = 8
     min_citations_per_driver: int = 2
+    min_forces: int = 60
+    min_forces_per_domain: int = 10
     forbid_fixture_citations: bool = True
+    simulate_evidence: bool = False
+    seed: int | None = None
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -50,7 +60,11 @@ class ScenarioOpsSettings:
             "allow_web": self.allow_web,
             "min_sources_per_domain": self.min_sources_per_domain,
             "min_citations_per_driver": self.min_citations_per_driver,
+            "min_forces": self.min_forces,
+            "min_forces_per_domain": self.min_forces_per_domain,
             "forbid_fixture_citations": self.forbid_fixture_citations,
+            "simulate_evidence": self.simulate_evidence,
+            "seed": self.seed,
         }
 
 

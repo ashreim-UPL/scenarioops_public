@@ -22,6 +22,7 @@ from scenarioops.app.workflow import (
 )
 from scenarioops.graph.types import GraphInputs
 from scenarioops.graph.setup import (
+    apply_node_result,
     client_for_node,
     default_sources,
     mock_payloads_for_sources,
@@ -34,6 +35,7 @@ from scenarioops.graph.nodes import (
     run_strategies_node,
     run_wind_tunnel_node,
 )
+from scenarioops.graph.nodes.charter import run_charter_node
 from scenarioops.graph.state import ScenarioOpsState
 from scenarioops.graph.tools.scoring import hash_scoring_result, score_with_rubric
 from scenarioops.graph.tools.storage import (
@@ -44,7 +46,7 @@ from scenarioops.graph.tools.storage import (
 )
 from scenarioops.graph.tools.view_model import build_view_model
 from scenarioops.graph.tools.web_retriever import retrieve_url
-from scenarioops.llm.client import get_gemini_api_key
+from scenarioops.llm.client import MockLLMClient, get_gemini_api_key
 
 
 def _load_json_value(value: str) -> Any:
@@ -81,6 +83,27 @@ def _log_json(event: str, data: dict[str, Any] | None = None) -> None:
     if data:
         payload.update(data)
     logger.info(json.dumps(payload))
+
+
+def _run_charter(args: argparse.Namespace) -> None:
+    if not args.params:
+        raise ValueError("--params is required for charter.")
+    user_params = _load_json_value(args.params)
+    run_id = args.run_id or datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+    base_dir = Path(args.base_dir) if args.base_dir else None
+    llm_client = None
+    if args.mock_payload:
+        mock_payload = _load_json_value(args.mock_payload)
+        llm_client = MockLLMClient(json_payload=mock_payload)
+
+    result = run_charter_node(
+        user_params,
+        run_id=run_id,
+        state=ScenarioOpsState(),
+        llm_client=llm_client,
+        base_dir=base_dir,
+    )
+    apply_node_result(run_id=run_id, base_dir=base_dir, state=ScenarioOpsState(), result=result)
 
 def _runs_dir(base_dir: Path | None) -> Path:
     return base_dir if base_dir is not None else default_runs_dir()
@@ -132,9 +155,21 @@ def _settings_overrides_from_args(args: argparse.Namespace) -> dict[str, Any]:
     min_citations_per_driver = getattr(args, "min_citations_per_driver", None)
     if min_citations_per_driver is not None:
         overrides["min_citations_per_driver"] = min_citations_per_driver
+    min_forces = getattr(args, "min_forces", None)
+    if min_forces is not None:
+        overrides["min_forces"] = min_forces
+    min_forces_per_domain = getattr(args, "min_forces_per_domain", None)
+    if min_forces_per_domain is not None:
+        overrides["min_forces_per_domain"] = min_forces_per_domain
     forbid_fixture_citations = getattr(args, "forbid_fixture_citations", None)
     if forbid_fixture_citations is not None:
         overrides["forbid_fixture_citations"] = forbid_fixture_citations
+    simulate_evidence = getattr(args, "simulate_evidence", None)
+    if simulate_evidence is not None:
+        overrides["simulate_evidence"] = simulate_evidence
+    seed = getattr(args, "seed", None)
+    if seed is not None:
+        overrides["seed"] = seed
     return overrides
 
 
@@ -249,16 +284,17 @@ def _run_verify(args: argparse.Namespace) -> None:
         )
 
         try:
-            run_graph(
-                inputs,
-                run_id=run_id,
-                base_dir=base_dir,
-                settings=settings,
-                mock_mode=True,
-                generate_strategies=True,
-                report_date="2026-01-01",
-                command="verify",
-            )
+                run_graph(
+                    inputs,
+                    run_id=run_id,
+                    base_dir=base_dir,
+                    settings=settings,
+                    mock_mode=True,
+                    generate_strategies=True,
+                    report_date="2026-01-01",
+                    legacy_mode=True,
+                    command="verify",
+                )
         except Exception as exc:
             _verify_fail(f"mock build failed: {exc}")
 
@@ -383,9 +419,19 @@ def _run_verify(args: argparse.Namespace) -> None:
     _log_json("verify_ok", {"mode": "live"})
 
 def _run_build_scenarios(args: argparse.Namespace) -> None:
-    run_id = args.run_id or datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
     base_dir = Path(args.base_dir) if args.base_dir else None
+    resume_from = getattr(args, "resume_from", None)
+    run_id = args.run_id or datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+    if resume_from and not args.run_id:
+        latest = latest_run_id(base_dir)
+        if not latest:
+            raise ValueError("No run_id found to resume from. Run build-scenarios first.")
+        run_id = latest
     user_params = {"scope": args.scope, "value": args.value, "horizon": args.horizon}
+    if getattr(args, "company", None):
+        user_params["company"] = args.company
+    if getattr(args, "geography", None):
+        user_params["geography"] = args.geography
     sources = _parse_sources(args.sources)
     overrides = _settings_overrides_from_args(args)
     
@@ -417,9 +463,11 @@ def _run_build_scenarios(args: argparse.Namespace) -> None:
             base_dir=base_dir,
             mock_mode=use_fixtures,
             settings=settings,
-            generate_strategies=False,
+            generate_strategies=not getattr(args, "no_strategies", False),
             retriever=retrieve_url,
             command=command,
+            legacy_mode=getattr(args, "legacy_mode", False),
+            resume_from=resume_from,
         )
         _write_latest(
             run_id=run_id,
@@ -584,6 +632,22 @@ def _add_settings_args(parser: argparse.ArgumentParser) -> None:
     parser.set_defaults(allow_web=None)
     parser.add_argument("--min-sources-per-domain", type=int, default=None)
     parser.add_argument("--min-citations-per-driver", type=int, default=None)
+    parser.add_argument("--min-forces", type=int, default=None)
+    parser.add_argument("--min-forces-per-domain", type=int, default=None)
+    parser.add_argument(
+        "--simulate-evidence",
+        dest="simulate_evidence",
+        action="store_true",
+        help="Allow simulated evidence units (explicit opt-in).",
+    )
+    parser.add_argument(
+        "--no-simulate-evidence",
+        dest="simulate_evidence",
+        action="store_false",
+        help="Disallow simulated evidence units.",
+    )
+    parser.set_defaults(simulate_evidence=None)
+    parser.add_argument("--seed", type=int, default=None)
     parser.add_argument(
         "--forbid-fixture-citations",
         dest="forbid_fixture_citations",
@@ -602,16 +666,55 @@ def _add_settings_args(parser: argparse.ArgumentParser) -> None:
 
 
 def main(argv: Sequence[str] | None = None) -> None:
-    parser = argparse.ArgumentParser(prog="scenarioops-app")
+    parser = argparse.ArgumentParser(prog="scenarioops")
     subparsers = parser.add_subparsers(dest="command", required=True)
+
+    charter_parser = subparsers.add_parser("charter", help="Generate a scenario charter.")
+    charter_parser.add_argument("--params", required=True, help="JSON string or path.")
+    charter_parser.add_argument("--run-id", default=None)
+    charter_parser.add_argument("--base-dir", default=None)
+    charter_parser.add_argument("--mock-payload", default=None)
+    charter_parser.set_defaults(handler=_run_charter)
 
     build_parser = subparsers.add_parser("build-scenarios")
     build_parser.add_argument("--scope", required=True, choices=["world", "region", "country"])
     build_parser.add_argument("--value", required=True)
+    build_parser.add_argument("--company", default=None)
+    build_parser.add_argument("--geography", default=None)
     build_parser.add_argument("--horizon", required=True, type=int)
     build_parser.add_argument("--run-id", default=None)
     build_parser.add_argument("--base-dir", default=None)
     build_parser.add_argument("--sources", default=None)
+    build_parser.add_argument(
+        "--resume-from",
+        default=None,
+        choices=[
+            "charter",
+            "focal_issue",
+            "company_profile",
+            "retrieval_real",
+            "forces",
+            "ebe_rank",
+            "clusters",
+            "uncertainty_axes",
+            "scenarios",
+            "strategies",
+            "wind_tunnel",
+            "auditor",
+        ],
+        help="Resume execution from a specific node using existing artifacts.",
+    )
+    build_parser.add_argument(
+        "--no-strategies",
+        action="store_true",
+        help="Skip strategy and wind-tunnel generation.",
+    )
+    build_parser.add_argument(
+        "--legacy-mode",
+        action="store_true",
+        help="Use legacy pipeline (pre-professionalization).",
+    )
+    build_parser.set_defaults(legacy_mode=False)
     _add_settings_args(build_parser)
     build_parser.set_defaults(handler=_run_build_scenarios)
 
