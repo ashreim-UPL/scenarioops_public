@@ -1,6 +1,11 @@
 mode: demo
 llm_provider: gemini
-gemini_model: gemini-2.0-flash 
+llm_model: gemini-1.5-pro-latest
+search_model: gemini-1.5-flash-latest
+summarizer_model: gemini-1.5-flash-latest
+embed_model: local-hash-256
+image_model: imagen-3.0-generate-002
+gemini_model: gemini-1.5-pro-latest
 sources_policy: academic_only
 allow_web: false
 min_sources_per_domain: 8

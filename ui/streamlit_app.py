@@ -29,6 +29,16 @@ SRC_DIR = ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.append(str(SRC_DIR))
 
+from scenarioops.app.config import (
+    ALLOWED_EMBED_MODELS,
+    ALLOWED_IMAGE_MODELS,
+    ALLOWED_TEXT_MODELS,
+    DEFAULT_EMBED_MODEL,
+    DEFAULT_IMAGE_MODEL,
+    DEFAULT_LLM_MODEL,
+    DEFAULT_SEARCH_MODEL,
+    DEFAULT_SUMMARIZER_MODEL,
+)
 from scenarioops.graph.tools.view_model import build_view_model
 
 RUNS_DIR = ROOT / "storage" / "runs"
@@ -810,6 +820,39 @@ with st.sidebar:
             value=True,
         )
         seed = st.number_input("Seed (optional)", min_value=0, value=0, step=1)
+
+        text_models = sorted(ALLOWED_TEXT_MODELS)
+        embed_models = sorted(ALLOWED_EMBED_MODELS)
+        image_models = sorted(ALLOWED_IMAGE_MODELS)
+
+        def _model_index(options: list[str], default: str) -> int:
+            return options.index(default) if default in options else 0
+
+        llm_model = st.selectbox(
+            "LLM model",
+            text_models,
+            index=_model_index(text_models, DEFAULT_LLM_MODEL),
+        )
+        search_model = st.selectbox(
+            "Search model",
+            text_models,
+            index=_model_index(text_models, DEFAULT_SEARCH_MODEL),
+        )
+        summarizer_model = st.selectbox(
+            "Summarizer model",
+            text_models,
+            index=_model_index(text_models, DEFAULT_SUMMARIZER_MODEL),
+        )
+        embed_model = st.selectbox(
+            "Embedding model",
+            embed_models,
+            index=_model_index(embed_models, DEFAULT_EMBED_MODEL),
+        )
+        image_model = st.selectbox(
+            "Image model",
+            image_models,
+            index=_model_index(image_models, DEFAULT_IMAGE_MODEL),
+        )
         
         planning_target = st.selectbox(
             "Planning Target",
@@ -926,6 +969,16 @@ with st.sidebar:
             args.append("--no-strategies")
         if seed:
             args.extend(["--seed", str(seed)])
+        if llm_model:
+            args.extend(["--llm-model", llm_model])
+        if search_model:
+            args.extend(["--search-model", search_model])
+        if summarizer_model:
+            args.extend(["--summarizer-model", summarizer_model])
+        if embed_model:
+            args.extend(["--embed-model", embed_model])
+        if image_model:
+            args.extend(["--image-model", image_model])
         
         # Logic: If live, force allow-web. If demo, allow toggle.
         # Also ensure fixtures policy for demo if needed, or academic/mixed for live.

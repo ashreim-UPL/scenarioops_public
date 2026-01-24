@@ -143,6 +143,21 @@ def _settings_overrides_from_args(args: argparse.Namespace) -> dict[str, Any]:
     gemini_model = getattr(args, "gemini_model", None)
     if gemini_model:
         overrides["gemini_model"] = gemini_model
+    llm_model = getattr(args, "llm_model", None)
+    if llm_model:
+        overrides["llm_model"] = llm_model
+    search_model = getattr(args, "search_model", None)
+    if search_model:
+        overrides["search_model"] = search_model
+    summarizer_model = getattr(args, "summarizer_model", None)
+    if summarizer_model:
+        overrides["summarizer_model"] = summarizer_model
+    embed_model = getattr(args, "embed_model", None)
+    if embed_model:
+        overrides["embed_model"] = embed_model
+    image_model = getattr(args, "image_model", None)
+    if image_model:
+        overrides["image_model"] = image_model
     sources_policy = getattr(args, "sources_policy", None)
     if sources_policy:
         overrides["sources_policy"] = sources_policy
@@ -662,6 +677,11 @@ def _add_settings_args(parser: argparse.ArgumentParser) -> None:
     )
     parser.set_defaults(forbid_fixture_citations=None)
     parser.add_argument("--gemini-model", default=None)
+    parser.add_argument("--llm-model", default=None)
+    parser.add_argument("--search-model", default=None)
+    parser.add_argument("--summarizer-model", default=None)
+    parser.add_argument("--embed-model", default=None)
+    parser.add_argument("--image-model", default=None)
     parser.add_argument("--llm-provider", default=None)
 
 

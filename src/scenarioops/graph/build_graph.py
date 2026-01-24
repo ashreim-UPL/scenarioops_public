@@ -100,6 +100,13 @@ def run_graph(
         "legacy_mode": legacy_mode,
         "resume_from": resume_from,
         "settings": settings.as_dict() if settings else {},
+        "models": {
+            "llm_model": settings.llm_model if settings else None,
+            "search_model": settings.search_model if settings else None,
+            "summarizer_model": settings.summarizer_model if settings else None,
+            "embed_model": settings.embed_model if settings else None,
+            "image_model": settings.image_model if settings else None,
+        },
         "prompt_manifest_sha256": prompt_manifest_hash,
         "retriever": {
             "allow_web": bool(settings.allow_web) if settings else False,

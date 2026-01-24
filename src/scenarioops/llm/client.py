@@ -679,7 +679,7 @@ def get_llm_client(config: "LLMConfig") -> LLMClient:
         )
         return GeminiClient(
             api_key=api_key,
-            model=getattr(config, "model_name", "gemini-3-pro-preview"),
+            model=getattr(config, "model_name", "gemini-1.5-pro-latest"),
             transport=transport,
             temperature=getattr(config, "temperature", 0.2),
         )

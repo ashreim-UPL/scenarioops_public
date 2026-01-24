@@ -12,9 +12,31 @@ class LLMTimeouts:
     request_seconds: float = 60.0
 
 
+DEFAULT_LLM_MODEL = "gemini-1.5-pro-latest"
+DEFAULT_SEARCH_MODEL = "gemini-1.5-flash-latest"
+DEFAULT_SUMMARIZER_MODEL = "gemini-1.5-flash-latest"
+DEFAULT_IMAGE_MODEL = "imagen-3.0-generate-002"
+DEFAULT_EMBED_MODEL = "local-hash-256"
+
+ALLOWED_TEXT_MODELS = {
+    "gemini-1.5-pro-latest",
+    "gemini-1.5-flash-latest",
+    "gemini-2.0-flash",
+    "gemini-2.0-flash-lite",
+    "gemini-2.0-pro",
+    "gemini-2.0-pro-latest",
+}
+ALLOWED_IMAGE_MODELS = {
+    "imagen-3.0-generate-002",
+    "imagen-3.0-fast-generate-001",
+}
+ALLOWED_EMBED_MODELS = {
+    "local-hash-256",
+}
+
 @dataclass(frozen=True)
 class LLMConfig:
-    model_name: str = "gemini-1.5-pro"
+    model_name: str = DEFAULT_LLM_MODEL
     temperature: float = 0.2
     timeouts: LLMTimeouts = field(default_factory=LLMTimeouts)
     mode: LLMModeLiteral = "mock"
@@ -34,13 +56,34 @@ _INT_FIELDS = {
     "min_forces",
     "min_forces_per_domain",
 }
+_MODEL_FIELDS = {
+    "gemini_model",
+    "llm_model",
+    "search_model",
+    "summarizer_model",
+    "embed_model",
+    "image_model",
+}
+_MODEL_ALLOWED = {
+    "gemini_model": ALLOWED_TEXT_MODELS,
+    "llm_model": ALLOWED_TEXT_MODELS,
+    "search_model": ALLOWED_TEXT_MODELS,
+    "summarizer_model": ALLOWED_TEXT_MODELS,
+    "embed_model": ALLOWED_EMBED_MODELS,
+    "image_model": ALLOWED_IMAGE_MODELS,
+}
 
 
 @dataclass(frozen=True)
 class ScenarioOpsSettings:
     mode: ModeLiteral = "demo"
     llm_provider: ProviderLiteral = "gemini"
-    gemini_model: str = "gemini-2.0-flash"
+    gemini_model: str = DEFAULT_LLM_MODEL
+    llm_model: str = DEFAULT_LLM_MODEL
+    search_model: str = DEFAULT_SEARCH_MODEL
+    summarizer_model: str = DEFAULT_SUMMARIZER_MODEL
+    embed_model: str = DEFAULT_EMBED_MODEL
+    image_model: str = DEFAULT_IMAGE_MODEL
     sources_policy: SourcesPolicyLiteral = "academic_only"
     allow_web: bool = False
     min_sources_per_domain: int = 8
@@ -56,6 +99,11 @@ class ScenarioOpsSettings:
             "mode": self.mode,
             "llm_provider": self.llm_provider,
             "gemini_model": self.gemini_model,
+            "llm_model": self.llm_model,
+            "search_model": self.search_model,
+            "summarizer_model": self.summarizer_model,
+            "embed_model": self.embed_model,
+            "image_model": self.image_model,
             "sources_policy": self.sources_policy,
             "allow_web": self.allow_web,
             "min_sources_per_domain": self.min_sources_per_domain,
@@ -148,6 +196,17 @@ def _apply_overrides(
                 raise ValueError(f"Unsupported sources_policy: {policy}")
             updated[key] = policy
             continue
+        if key in _MODEL_FIELDS:
+            model = str(value).strip()
+            if not model:
+                raise ValueError(f"Invalid model for {key}: empty value")
+            allowed = _MODEL_ALLOWED.get(key)
+            if allowed and model not in allowed:
+                raise ValueError(
+                    f"Unsupported {key}: {model}. Allowed: {', '.join(sorted(allowed))}"
+                )
+            updated[key] = model
+            continue
         updated[key] = str(value)
     return replace(settings, **updated)
 
@@ -160,7 +219,10 @@ def apply_overrides(
 
 def settings_from_dict(values: Mapping[str, Any]) -> ScenarioOpsSettings:
     settings = ScenarioOpsSettings()
-    return _apply_overrides(settings, values)
+    payload = dict(values)
+    if "settings" in payload and isinstance(payload["settings"], Mapping):
+        payload = dict(payload["settings"])
+    return _apply_overrides(settings, payload)
 
 
 def load_settings(
@@ -183,4 +245,5 @@ def llm_config_from_settings(settings: ScenarioOpsSettings) -> LLMConfig:
         mode = "gemini"
     else:
         mode = "mock"
-    return LLMConfig(model_name=settings.gemini_model, mode=mode)
+    model_name = settings.llm_model or settings.gemini_model or DEFAULT_LLM_MODEL
+    return LLMConfig(model_name=model_name, mode=mode)
