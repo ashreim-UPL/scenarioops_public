@@ -55,7 +55,10 @@ _INT_FIELDS = {
     "seed",
     "min_forces",
     "min_forces_per_domain",
+    "min_evidence_ok",
+    "min_evidence_total",
 }
+_FLOAT_FIELDS = {"max_failed_ratio"}
 _MODEL_FIELDS = {
     "gemini_model",
     "llm_model",
@@ -90,6 +93,9 @@ class ScenarioOpsSettings:
     min_citations_per_driver: int = 2
     min_forces: int = 60
     min_forces_per_domain: int = 10
+    min_evidence_ok: int = 10
+    min_evidence_total: int = 15
+    max_failed_ratio: float | None = None
     forbid_fixture_citations: bool = True
     simulate_evidence: bool = False
     seed: int | None = None
@@ -110,6 +116,9 @@ class ScenarioOpsSettings:
             "min_citations_per_driver": self.min_citations_per_driver,
             "min_forces": self.min_forces,
             "min_forces_per_domain": self.min_forces_per_domain,
+            "min_evidence_ok": self.min_evidence_ok,
+            "min_evidence_total": self.min_evidence_total,
+            "max_failed_ratio": self.max_failed_ratio,
             "forbid_fixture_citations": self.forbid_fixture_citations,
             "simulate_evidence": self.simulate_evidence,
             "seed": self.seed,
@@ -177,6 +186,15 @@ def _apply_overrides(
                 updated[key] = int(value)
             except (TypeError, ValueError) as exc:
                 raise ValueError(f"Invalid int for {key}: {value}") from exc
+            continue
+        if key in _FLOAT_FIELDS:
+            if value is None:
+                updated[key] = None
+                continue
+            try:
+                updated[key] = float(value)
+            except (TypeError, ValueError) as exc:
+                raise ValueError(f"Invalid float for {key}: {value}") from exc
             continue
         if key == "mode":
             mode = str(value).strip().lower()

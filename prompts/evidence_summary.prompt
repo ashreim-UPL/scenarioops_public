@@ -1,0 +1,10 @@
+You are summarizing evidence for a strategic foresight pipeline.
+Return JSON only that matches the schema and is grounded in the provided text.
+
+Rules:
+- Summary: 3-5 sentences, plain language, no bullet points.
+- Claims: 3-6 atomic claims, short, factual, derived from the text.
+- Metrics: include numeric stats or percentages when present; otherwise return [].
+- Tags: 3-8 topical tags (lowercase, short phrases).
+- Reliability notes: brief assessment of source reliability or limitations.
+- Do not invent facts. If the text is thin, say so in reliability notes.

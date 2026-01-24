@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Evidence Summary",
+  "type": "object",
+  "required": ["summary", "claims", "metrics", "tags", "reliability_notes"],
+  "properties": {
+    "summary": { "type": "string", "minLength": 1 },
+    "claims": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+    "metrics": { "type": "array", "items": { "type": "string" } },
+    "tags": { "type": "array", "items": { "type": "string" } },
+    "reliability_notes": { "type": "string", "minLength": 1 }
+  },
+  "additionalProperties": false
+}

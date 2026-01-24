@@ -10,4 +10,9 @@ sources_policy: academic_only
 allow_web: false
 min_sources_per_domain: 8
 min_citations_per_driver: 2
+min_evidence_ok: 10
+min_evidence_total: 15
+max_failed_ratio: 0.4
+min_forces: 60
+min_forces_per_domain: 10
 forbid_fixture_citations: true

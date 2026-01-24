@@ -17,6 +17,7 @@ _JSON_MAPPING: Final[dict[str, str]] = {
     "certainty_uncertainty": "certainty_uncertainty.schema",
     "belief_sets": "belief_sets.schema",
     "effects": "effects.schema",
+    "retrieval_report": "retrieval_report",
     "epistemic_summary": "epistemic_summary",
     "uncertainties": "uncertainties",
     "uncertainty_axes": "uncertainty_axes",

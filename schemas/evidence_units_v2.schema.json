@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Evidence Units",
+  "title": "Evidence Units v2",
   "type": "object",
   "required": [
     "run_id",

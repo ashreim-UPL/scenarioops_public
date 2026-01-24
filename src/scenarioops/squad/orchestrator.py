@@ -319,7 +319,7 @@ def run_squad_orchestrator(
             run_id=run_id,
             node_name="retrieval_real",
             inputs=["sources", "focal_issue.json"],
-            outputs=["evidence_units.json"],
+            outputs=["evidence_units.json", "retrieval_report.json"],
             tools=[llm_label, "search:gemini"],
             base_dir=base_dir,
             action=lambda: run_retrieval_real_node(
@@ -503,7 +503,7 @@ _NODE_EVENT_META: dict[str, dict[str, list[str]]] = {
     "charter": {"inputs": ["user_params"], "outputs": ["charter.json"]},
     "focal_issue": {"inputs": ["charter.json"], "outputs": ["focal_issue.json"]},
     "company_profile": {"inputs": ["user_params", "sources"], "outputs": ["company_profile.json"]},
-    "retrieval_real": {"inputs": ["sources", "focal_issue.json"], "outputs": ["evidence_units.json"]},
+    "retrieval_real": {"inputs": ["sources", "focal_issue.json"], "outputs": ["evidence_units.json", "retrieval_report.json"]},
     "forces": {"inputs": ["evidence_units.json"], "outputs": ["forces.json"]},
     "ebe_rank": {"inputs": ["forces.json", "evidence_units.json"], "outputs": ["forces_ranked.json"]},
     "clusters": {"inputs": ["forces.json"], "outputs": ["clusters.json"]},
@@ -601,6 +601,8 @@ def _load_cached_evidence(
         except Exception:
             continue
         if not isinstance(payload, dict):
+            continue
+        if payload.get("schema_version") != "2.0":
             continue
         metadata = payload.get("metadata", {})
         if not isinstance(metadata, Mapping):
@@ -736,6 +738,7 @@ def _load_resume_state(
                 )
                 payload = {
                     **metadata,
+                    "schema_version": "2.0",
                     "simulated": False,
                     "evidence_units": cached.get("evidence_units", []),
                 }

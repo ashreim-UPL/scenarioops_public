@@ -364,6 +364,17 @@ class MockLLMClient:
                 "tertiary": ["company operations risks", "product roadmap shifts"],
                 "counter": ["evidence against slowdown", "evidence against regulation"],
             }
+        elif schema_title == "Evidence Summary":
+            payload = {
+                "summary": "Mock summary based on provided evidence text.",
+                "claims": [
+                    "Mock claim derived from evidence.",
+                    "Second mock claim derived from evidence."
+                ],
+                "metrics": ["42%"],
+                "tags": ["mock", "evidence", "summary"],
+                "reliability_notes": "Mock reliability notes for testing.",
+            }
         elif schema_title == "Forces" or schema_title == "Forces Payload":
             payload = {
                 "forces": [

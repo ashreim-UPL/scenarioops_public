@@ -176,6 +176,15 @@ def _settings_overrides_from_args(args: argparse.Namespace) -> dict[str, Any]:
     min_forces_per_domain = getattr(args, "min_forces_per_domain", None)
     if min_forces_per_domain is not None:
         overrides["min_forces_per_domain"] = min_forces_per_domain
+    min_evidence_ok = getattr(args, "min_evidence_ok", None)
+    if min_evidence_ok is not None:
+        overrides["min_evidence_ok"] = min_evidence_ok
+    min_evidence_total = getattr(args, "min_evidence_total", None)
+    if min_evidence_total is not None:
+        overrides["min_evidence_total"] = min_evidence_total
+    max_failed_ratio = getattr(args, "max_failed_ratio", None)
+    if max_failed_ratio is not None:
+        overrides["max_failed_ratio"] = max_failed_ratio
     forbid_fixture_citations = getattr(args, "forbid_fixture_citations", None)
     if forbid_fixture_citations is not None:
         overrides["forbid_fixture_citations"] = forbid_fixture_citations
@@ -647,6 +656,9 @@ def _add_settings_args(parser: argparse.ArgumentParser) -> None:
     parser.set_defaults(allow_web=None)
     parser.add_argument("--min-sources-per-domain", type=int, default=None)
     parser.add_argument("--min-citations-per-driver", type=int, default=None)
+    parser.add_argument("--min-evidence-ok", type=int, default=None)
+    parser.add_argument("--min-evidence-total", type=int, default=None)
+    parser.add_argument("--max-failed-ratio", type=float, default=None)
     parser.add_argument("--min-forces", type=int, default=None)
     parser.add_argument("--min-forces-per-domain", type=int, default=None)
     parser.add_argument(

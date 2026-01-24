@@ -80,6 +80,7 @@ def build_view_model(run_dir: Path) -> dict[str, Any]:
     drivers_by_domain = _group_drivers_by_domain(drivers)
 
     washout_report = _load_json(artifacts_dir / "washout_report.json")
+    retrieval_report = _load_json(artifacts_dir / "retrieval_report.json")
     evidence_units_payload = _load_json(artifacts_dir / "evidence_units.json") or {}
     evidence_units = evidence_units_payload.get("evidence_units", [])
     if not isinstance(evidence_units, list):
@@ -141,6 +142,7 @@ def build_view_model(run_dir: Path) -> dict[str, Any]:
         "forces_ranked": forces_ranked,
         "clusters": clusters,
         "washout_report": washout_report,
+        "retrieval_report": retrieval_report,
         "evidence_units": evidence_units,
         "belief_sets": belief_sets,
         "effects": effects,

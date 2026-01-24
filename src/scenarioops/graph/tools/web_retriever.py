@@ -6,6 +6,7 @@ from email.utils import parsedate_to_datetime
 import hashlib
 import json
 from html.parser import HTMLParser
+import re
 from pathlib import Path
 import time
 from typing import Any
@@ -23,6 +24,8 @@ class RetrievedContent:
     date: str | None
     text: str
     excerpt_hash: str
+    content_type: str | None
+    http_status: int | None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -31,6 +34,8 @@ class RetrievedContent:
             "date": self.date,
             "text": self.text,
             "excerpt_hash": self.excerpt_hash,
+            "content_type": self.content_type,
+            "http_status": self.http_status,
         }
 
 
@@ -139,6 +144,8 @@ def _load_cache(url: str, cache_dir: Path) -> RetrievedContent | None:
         date=payload.get("date"),
         text=payload.get("text", ""),
         excerpt_hash=payload.get("excerpt_hash", ""),
+        content_type=payload.get("content_type"),
+        http_status=payload.get("http_status"),
     )
 
 
@@ -228,6 +235,8 @@ def retrieve_url(
                 date=cached.date,
                 text=sanitized,
                 excerpt_hash=_hash_excerpt(sanitized),
+                content_type=cached.content_type,
+                http_status=cached.http_status,
             )
         _log_retrieval(
             run_id=run_id,
@@ -260,13 +269,17 @@ def retrieve_url(
             encoding = response.headers.get_content_charset() or "utf-8"
             text = raw.decode(encoding, errors="replace")
             title = ""
+            extracted_text = text
             if "text/html" in content_type:
                 parser = _HTMLTextExtractor()
                 parser.feed(text)
                 title = parser.title.strip()
-                text = parser.text
-            text = strip_instruction_patterns(text)
+                extracted_text = parser.text
+                if not extracted_text.strip():
+                    extracted_text = re.sub(r"<[^>]+>", " ", text)
+            extracted_text = strip_instruction_patterns(extracted_text)
             date = _parse_date(response.headers.get("Last-Modified"))
+            http_status = getattr(response, "status", None)
     except Exception as exc:
         _log_retrieval(
             run_id=run_id,
@@ -277,13 +290,15 @@ def retrieve_url(
         )
         raise
 
-    excerpt_hash = _hash_excerpt(text)
+    excerpt_hash = _hash_excerpt(extracted_text)
     result = RetrievedContent(
         url=url,
         title=title or urlparse(url).hostname or url,
         date=date,
-        text=text,
+        text=extracted_text,
         excerpt_hash=excerpt_hash,
+        content_type=content_type,
+        http_status=http_status,
     )
     _write_cache(url, result, cache_root)
     _log_retrieval(
@@ -291,6 +306,6 @@ def retrieve_url(
         url=url,
         status="ok",
         base_dir=base_dir,
-        detail=f"bytes={len(text)}",
+        detail=f"bytes={len(extracted_text)} content_type={content_type}",
     )
     return result

@@ -25,6 +25,8 @@ def _mock_retriever(url: str, **_: Any) -> RetrievedContent:
         date="2026-01-01T00:00:00+00:00",
         text=text,
         excerpt_hash=excerpt_hash,
+        content_type="text/plain",
+        http_status=200,
     )
 
 def mock_retriever(url: str, **kwargs: Any) -> RetrievedContent:

@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
+from scenarioops.app.config import DEFAULT_SEARCH_MODEL
 from scenarioops.graph.tools.storage import ensure_run_dirs
 from scenarioops.llm.client import get_gemini_api_key
 from scenarioops.llm.transport import RequestsTransport, Transport
@@ -140,7 +141,7 @@ def search_web(
             pass
     _rate_limit(rate_limit_per_sec)
     api_key = api_key or get_gemini_api_key()
-    model_name = model_name or os.environ.get("GEMINI_SEARCH_MODEL") or "gemini-2.0-flash"
+    model_name = model_name or os.environ.get("GEMINI_SEARCH_MODEL") or DEFAULT_SEARCH_MODEL
     payload = {
         "contents": [{"parts": [{"text": _search_prompt(query, max_results)}]}],
         "tools": [{"google_search": {}}],

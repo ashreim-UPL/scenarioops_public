@@ -820,6 +820,26 @@ with st.sidebar:
             value=True,
         )
         seed = st.number_input("Seed (optional)", min_value=0, value=0, step=1)
+        min_evidence_ok = st.number_input(
+            "Min evidence (ok)",
+            min_value=0,
+            value=10,
+            step=1,
+        )
+        min_evidence_total = st.number_input(
+            "Min evidence (total)",
+            min_value=0,
+            value=15,
+            step=1,
+        )
+        max_failed_ratio = st.number_input(
+            "Max failed ratio",
+            min_value=0.0,
+            max_value=1.0,
+            value=0.4,
+            step=0.05,
+            format="%.2f",
+        )
 
         text_models = sorted(ALLOWED_TEXT_MODELS)
         embed_models = sorted(ALLOWED_EMBED_MODELS)
@@ -969,6 +989,9 @@ with st.sidebar:
             args.append("--no-strategies")
         if seed:
             args.extend(["--seed", str(seed)])
+        args.extend(["--min-evidence-ok", str(min_evidence_ok)])
+        args.extend(["--min-evidence-total", str(min_evidence_total)])
+        args.extend(["--max-failed-ratio", str(max_failed_ratio)])
         if llm_model:
             args.extend(["--llm-model", llm_model])
         if search_model:

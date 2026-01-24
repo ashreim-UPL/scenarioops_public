@@ -110,7 +110,10 @@ def _evidence_ids(state: ScenarioOpsState) -> set[str]:
     ids: set[str] = set()
     for unit in units:
         if isinstance(unit, Mapping):
-            value = unit.get("evidence_unit_id")
+            status = str(unit.get("status", "ok")).lower()
+            if status != "ok":
+                continue
+            value = unit.get("id") or unit.get("evidence_unit_id")
             if isinstance(value, str) and value.strip():
                 ids.add(value)
     return ids
@@ -222,17 +225,21 @@ def _trim_evidence_units(
         window = filtered
     trimmed: list[dict[str, Any]] = []
     for unit in window:
-        excerpt = str(unit.get("excerpt", "") or "")
+        status = str(unit.get("status", "ok")).lower()
+        if status != "ok":
+            continue
+        excerpt = str(unit.get("summary") or unit.get("excerpt") or "")
         if len(excerpt) > max_excerpt_chars:
             excerpt = excerpt[: max_excerpt_chars].rstrip() + "..."
         trimmed.append(
             {
-                "evidence_unit_id": unit.get("evidence_unit_id"),
+                "evidence_unit_id": unit.get("id") or unit.get("evidence_unit_id"),
                 "title": unit.get("title"),
                 "publisher": unit.get("publisher"),
                 "date_published": unit.get("date_published"),
                 "url": unit.get("url"),
                 "excerpt": excerpt,
+                "summary": unit.get("summary") or excerpt,
                 "claims": unit.get("claims", [])[:3],
                 "metrics": unit.get("metrics", [])[:3],
                 "reliability_grade": unit.get("reliability_grade"),
@@ -727,6 +734,12 @@ def run_force_builder_node(
     evidence_units = state.evidence_units.get("evidence_units", [])
     if not isinstance(evidence_units, list):
         raise TypeError("Evidence units payload must include a list.")
+    evidence_units = [
+        unit
+        for unit in evidence_units
+        if isinstance(unit, Mapping)
+        and str(unit.get("status", "ok")).lower() == "ok"
+    ]
 
     forces_dir = _forces_artifacts_dir(run_id, base_dir)
     manifest_path = _manifest_path(run_id, base_dir)

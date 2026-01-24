@@ -97,7 +97,10 @@ def run_ebe_rank_node(
         for unit in evidence_units:
             if not isinstance(unit, Mapping):
                 continue
-            unit_id = unit.get("evidence_unit_id")
+            status = str(unit.get("status", "ok")).lower()
+            if status != "ok":
+                continue
+            unit_id = unit.get("id") or unit.get("evidence_unit_id")
             grade = str(unit.get("reliability_grade", "")).upper()
             if unit_id and grade in _GRADE_SCORE:
                 evidence_scores[str(unit_id)] = _GRADE_SCORE[grade]
