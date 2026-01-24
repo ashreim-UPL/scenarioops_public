@@ -54,3 +54,20 @@ def test_generate_json_rejects_array() -> None:
 
     with pytest.raises(TypeError):
         client.generate_json("prompt", _schema())
+
+
+def test_generate_json_wraps_single_array_payload() -> None:
+    raw = '[{"force_id": "f-1"}]'
+    client = GeminiClient(api_key="test", model="stub", transport=StubTransport(raw))
+    schema = {
+        "title": "Forces Payload",
+        "type": "object",
+        "required": ["forces"],
+        "properties": {"forces": {"type": "array"}},
+        "additionalProperties": False,
+    }
+
+    payload = client.generate_json("prompt", schema)
+
+    assert isinstance(payload.get("forces"), list)
+    assert payload["forces"][0]["force_id"] == "f-1"

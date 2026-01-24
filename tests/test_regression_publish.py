@@ -13,6 +13,8 @@ def _hash_artifacts(base_dir: Path, run_id: str) -> dict[str, str]:
     artifacts_dir = base_dir / run_id / "artifacts"
     hashes: dict[str, str] = {}
     for path in artifacts_dir.iterdir():
+        if path.is_dir():
+            continue
         if path.name.endswith(".meta.json"):
             continue
         payload = path.read_bytes()
