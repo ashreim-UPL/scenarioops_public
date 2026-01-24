@@ -375,6 +375,18 @@ class MockLLMClient:
                 "tags": ["mock", "evidence", "summary"],
                 "reliability_notes": "Mock reliability notes for testing.",
             }
+        elif schema_title == "Annual Report Summary":
+            payload = {
+                "annual_report_summary": "Mock annual report summary covering key sections.",
+                "key_risks": [
+                    "Mock risk: market volatility",
+                    "Mock risk: supply chain disruption"
+                ],
+                "strategic_priorities": [
+                    "Mock priority: expand R&D",
+                    "Mock priority: optimize cost base"
+                ],
+            }
         elif schema_title == "Forces" or schema_title == "Forces Payload":
             payload = {
                 "forces": [

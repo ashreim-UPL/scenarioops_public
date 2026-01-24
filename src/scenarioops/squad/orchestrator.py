@@ -153,20 +153,28 @@ def run_squad_orchestrator(
             node_name="company_profile",
             inputs=["user_params", "sources"],
             outputs=["company_profile.json"],
-            tools=["system"],
+            tools=[llm_label],
             base_dir=base_dir,
             action=lambda: run_company_profile_node(
                 user_params=inputs.user_params,
                 sources=list(inputs.sources or []),
+                input_docs=list(inputs.input_docs or []),
                 run_id=run_id,
                 state=state,
+                base_dir=base_dir,
                 settings=settings,
+                config=config,
             ),
         )
         state = apply_node_result(run_id, base_dir, state, company_profile_result)
 
     if _should_run("ingest_docs", resume_from):
-        if inputs.input_docs:
+        has_input_docs = bool(inputs.input_docs)
+        has_preloaded = bool(
+            state.evidence_units
+            and state.evidence_units.get("evidence_units")
+        )
+        if has_input_docs or has_preloaded:
             ingest_result = record_node_event(
                 run_id=run_id,
                 node_name="ingest_docs",
@@ -538,7 +546,7 @@ _PRO_STEPS = [
 _NODE_EVENT_META: dict[str, dict[str, list[str]]] = {
     "charter": {"inputs": ["user_params"], "outputs": ["charter.json"]},
     "focal_issue": {"inputs": ["charter.json"], "outputs": ["focal_issue.json"]},
-    "company_profile": {"inputs": ["user_params", "sources"], "outputs": ["company_profile.json"]},
+    "company_profile": {"inputs": ["user_params", "sources", "input_docs"], "outputs": ["company_profile.json"]},
     "ingest_docs": {"inputs": ["input_docs"], "outputs": ["evidence_units_uploads.json"]},
     "retrieval_real": {"inputs": ["sources", "focal_issue.json"], "outputs": ["evidence_units.json", "retrieval_report.json"]},
     "forces": {"inputs": ["evidence_units.json"], "outputs": ["forces.json"]},

@@ -147,7 +147,14 @@ def run_ingest_docs_node(
     settings: ScenarioOpsSettings | None = None,
     config: LLMConfig | None = None,
 ) -> ScenarioOpsState:
-    if not doc_paths:
+    existing_units: list[Mapping[str, Any]] = []
+    if state.evidence_units:
+        prior_units = state.evidence_units.get("evidence_units")
+        if isinstance(prior_units, list):
+            existing_units = prior_units
+
+    doc_list = [str(path) for path in (doc_paths or []) if path]
+    if not doc_list and not existing_units:
         return state
 
     resolved_settings = settings or ScenarioOpsSettings()
@@ -192,7 +199,7 @@ def run_ingest_docs_node(
         unit_counter += 1
         return unit_id
 
-    for raw_path in doc_paths:
+    for raw_path in doc_list:
         if not raw_path:
             continue
         source_path = Path(raw_path)
@@ -429,12 +436,6 @@ def run_ingest_docs_node(
                 vector_store.add_documents([doc])
             evidence_units.append(unit)
 
-    existing_units: list[Mapping[str, Any]] = []
-    if state.evidence_units:
-        prior_units = state.evidence_units.get("evidence_units")
-        if isinstance(prior_units, list):
-            existing_units = prior_units
-
     combined_units = _dedupe_units([*existing_units, *evidence_units])
     if not combined_units:
         return state
@@ -452,7 +453,7 @@ def run_ingest_docs_node(
         payload=payload,
         ext="json",
         input_values={
-            "document_count": len(doc_paths),
+            "document_count": len(doc_list),
             "unit_count": len(combined_units),
         },
         tool_versions={"ingest_docs_node": "0.1.0"},

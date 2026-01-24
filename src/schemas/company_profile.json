@@ -26,6 +26,11 @@
       },
       "additionalProperties": false
     },
+    "annual_report_status": { "type": "string" },
+    "annual_report_source": { "type": ["string", "null"] },
+    "annual_report_summary": { "type": "string" },
+    "key_risks": { "type": "array", "items": { "type": "string" } },
+    "strategic_priorities": { "type": "array", "items": { "type": "string" } },
     "simulated": { "type": "boolean" },
     "metadata": { "type": "object", "additionalProperties": true }
   },

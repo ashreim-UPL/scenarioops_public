@@ -1,0 +1,8 @@
+You are summarizing a company's latest annual report for strategic planning.
+Return JSON only that matches the schema and is grounded in the provided text.
+
+Requirements:
+- annual_report_summary: 6-10 sentences, cover business overview, segments, risks, capex, R&D, guidance, and geography.
+- key_risks: 3-6 concise risks named in the report.
+- strategic_priorities: 3-6 concise priorities or focus areas.
+- Do not invent facts. If a section is not covered in the text, say so in the summary.
