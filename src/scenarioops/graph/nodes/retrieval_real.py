@@ -21,6 +21,7 @@ from scenarioops.graph.tools.traceability import build_run_metadata
 from scenarioops.graph.tools.web_retriever import RetrievedContent, retrieve_url
 from scenarioops.graph.tools.search import search_web
 from scenarioops.graph.tools.evidence_processing import fallback_summary, summarize_text
+from scenarioops.graph.tools.vectordb import open_run_vector_store
 from scenarioops.llm.client import get_llm_client
 from scenarioops.llm.guards import ensure_dict
 from scenarioops.sources.policy import PESTEL_QUERY_TEMPLATES
@@ -269,6 +270,18 @@ def run_retrieval_real_node(
         seed_queries=seed_queries,
         focal_issue=str(focal_issue.get("focal_issue", "")) if focal_issue else None,
     )
+    embed_seed = int(resolved_settings.seed or 0)
+    vector_store = None
+    vector_store_notes: list[str] = []
+    try:
+        vector_store = open_run_vector_store(
+            run_id,
+            base_dir=base_dir,
+            embed_model=resolved_settings.embed_model,
+            seed=embed_seed,
+        )
+    except Exception as exc:
+        vector_store_notes.append(f"vectordb_unavailable:{exc}")
     cache_key_payload: dict[str, Any] = {
         "company": company,
         "geography": geography,
@@ -276,6 +289,7 @@ def run_retrieval_real_node(
         "prompt_sha": prompt_bundle.sha256,
         "cache_version": _CACHE_VERSION,
         "summarizer_model": resolved_settings.summarizer_model,
+        "embed_model": resolved_settings.embed_model,
     }
     if sources:
         cache_key_payload["sources"] = sorted({str(url) for url in sources})
@@ -291,7 +305,27 @@ def run_retrieval_real_node(
         if isinstance(prior_units, list):
             existing_units = _dedupe_units(prior_units)
 
-    existing_units = _dedupe_units(existing_units)
+    prefetched_units: list[dict[str, Any]] = []
+    vectordb_hits = 0
+    if vector_store:
+        queries = []
+        focal_text = str(focal_issue.get("focal_issue", "")) if focal_issue else ""
+        if focal_text:
+            queries.append(focal_text)
+        queries.extend(seed_queries)
+        seen_queries: set[str] = set()
+        for query in queries:
+            if not query or query in seen_queries:
+                continue
+            seen_queries.add(query)
+            matches = vector_store.query(query, top_k=max(min_total, 5))
+            for match in matches:
+                meta_unit = match.metadata.get("evidence_unit")
+                if isinstance(meta_unit, Mapping):
+                    prefetched_units.append(dict(meta_unit))
+                    vectordb_hits += 1
+
+    existing_units = _dedupe_units(existing_units + prefetched_units)
     cached_payload = None
     cache_hit = False
     cache_notes: list[str] = []
@@ -496,6 +530,15 @@ def run_retrieval_real_node(
             "domain_tags": [],
             "simulated": simulated_flag,
         }
+        if status == "ok" and vector_store and summary:
+            doc_id = f"ev:{unit_id}"
+            unit["embedding_ref"] = doc_id
+            doc = vector_store.build_document(
+                doc_id=doc_id,
+                text=summary,
+                metadata={"evidence_unit": unit},
+            )
+            vector_store.add_documents([doc])
         return unit
 
     def _build_failed_unit(
@@ -569,7 +612,39 @@ def run_retrieval_real_node(
             "domain_tags": [],
             "simulated": True,
         }
+        if vector_store and unit.get("summary"):
+            doc_id = f"ev:{unit_id}"
+            unit["embedding_ref"] = doc_id
+            doc = vector_store.build_document(
+                doc_id=doc_id,
+                text=str(unit.get("summary", "")),
+                metadata={"evidence_unit": unit},
+            )
+            vector_store.add_documents([doc])
         return unit
+
+    if vector_store:
+        for unit in retrieved_units:
+            if not isinstance(unit, Mapping):
+                continue
+            if str(unit.get("status", "ok")).lower() != "ok":
+                continue
+            if unit.get("embedding_ref"):
+                continue
+            summary_text = str(unit.get("summary", "")).strip()
+            if not summary_text:
+                continue
+            unit_id = str(unit.get("id") or unit.get("evidence_unit_id") or "")
+            if not unit_id:
+                continue
+            doc_id = f"ev:{unit_id}"
+            unit["embedding_ref"] = doc_id
+            doc = vector_store.build_document(
+                doc_id=doc_id,
+                text=summary_text,
+                metadata={"evidence_unit": unit},
+            )
+            vector_store.add_documents([doc])
 
     counts = _count_units(retrieved_units)
     need_more = counts["ok"] < min_ok or counts["total"] < min_total
@@ -716,9 +791,12 @@ def run_retrieval_real_node(
         if status == "ok":
             status = "partial"
         notes.append("failed_ratio_exceeded")
+    notes.extend(vector_store_notes)
     notes.extend(cache_notes)
     if search_failures:
         notes.append("search_errors_present")
+    if vectordb_hits:
+        notes.append(f"vectordb_hits:{vectordb_hits}")
 
     retrieval_report = {
         **metadata,
