@@ -13,6 +13,9 @@ streamlit        # Dashboard UI
 pandas           # Data Manipulation
 plotly           # Strategic Visualization
 pyvis            # Network Graph UI
+numpy            # Numeric ops for embeddings/clustering
+scikit-learn     # Clustering + vectorization
+pyarrow          # Parquet cache support
 
 # --- Observability ---
 python-json-logger # Codex C3 Structured Logging
