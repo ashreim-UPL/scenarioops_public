@@ -65,16 +65,22 @@ def ensure_run_dirs(run_id: str, base_dir: Path | None = None) -> dict[str, Path
         base_dir = default_runs_dir()
     run_dir = base_dir / run_id
     artifacts_dir = run_dir / "artifacts"
+    inputs_dir = run_dir / "inputs"
+    derived_dir = run_dir / "derived"
     logs_dir = run_dir / "logs"
     trace_dir = run_dir / "trace"
     reports_dir = run_dir / "reports"
     artifacts_dir.mkdir(parents=True, exist_ok=True)
+    inputs_dir.mkdir(parents=True, exist_ok=True)
+    derived_dir.mkdir(parents=True, exist_ok=True)
     logs_dir.mkdir(parents=True, exist_ok=True)
     trace_dir.mkdir(parents=True, exist_ok=True)
     reports_dir.mkdir(parents=True, exist_ok=True)
     return {
         "run_dir": run_dir,
         "artifacts_dir": artifacts_dir,
+        "inputs_dir": inputs_dir,
+        "derived_dir": derived_dir,
         "logs_dir": logs_dir,
         "trace_dir": trace_dir,
         "reports_dir": reports_dir,

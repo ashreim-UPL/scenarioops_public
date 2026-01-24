@@ -114,7 +114,12 @@ def build(payload: BuildRequest) -> RunResponse:
     if not sources and use_fixtures:
         sources = default_sources()
 
-    inputs = GraphInputs(user_params=user_params, sources=sources, signals=[])
+    inputs = GraphInputs(
+        user_params=user_params,
+        sources=sources,
+        signals=[],
+        input_docs=[],
+    )
     try:
         run_graph(
             inputs,

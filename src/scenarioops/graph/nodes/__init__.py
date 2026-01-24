@@ -12,6 +12,7 @@ from .effects import run_effects_node
 from .cluster import run_cluster_node
 from .ebe_rank import run_ebe_rank_node
 from .force_builder import run_force_builder_node
+from .ingest_docs import run_ingest_docs_node
 from .evidence import run_evidence_node
 from .ewis import run_ewis_node
 from .focal_issue import run_focal_issue_node
@@ -44,6 +45,7 @@ __all__ = [
     "run_cluster_node",
     "run_ebe_rank_node",
     "run_force_builder_node",
+    "run_ingest_docs_node",
     "run_evidence_node",
     "run_ewis_node",
     "run_focal_issue_node",

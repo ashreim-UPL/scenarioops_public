@@ -13,6 +13,7 @@ _JSON_MAPPING: Final[dict[str, str]] = {
     "clusters": "clusters",
     "washout_report": "washout_report.schema",
     "evidence_units": "evidence_units.schema",
+    "evidence_units_uploads": "evidence_units.schema",
     "coverage_report": "coverage_report",
     "certainty_uncertainty": "certainty_uncertainty.schema",
     "belief_sets": "belief_sets.schema",

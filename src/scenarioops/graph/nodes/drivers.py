@@ -29,6 +29,18 @@ def _normalize_url(url: str) -> str:
     return f"{scheme}://{netloc}{path}"
 
 
+def _safe_url(value: Any) -> str:
+    if isinstance(value, str):
+        return value.strip()
+    if not isinstance(value, Mapping):
+        return ""
+    for key in ("url", "file_name", "source_url"):
+        candidate = value.get(key)
+        if isinstance(candidate, str) and candidate.strip():
+            return candidate.strip()
+    return ""
+
+
 def _excerpt_hash(text: str, length: int = 1000) -> str:
     excerpt = text[:length]
     return hashlib.sha256(excerpt.encode("utf-8")).hexdigest()
@@ -56,7 +68,7 @@ def _validate_citations(
                 f"Driver {entry.get('id')} requires at least {min_citations} citations."
             )
         for citation in citations:
-            url = str(citation.get("url", ""))
+            url = _safe_url(citation)
             normalized = _normalize_url(url)
             if normalized not in evidence_hashes:
                 if not allow_fixture_citations:
@@ -113,7 +125,7 @@ def _drivers_from_forces(
         for citation in citations:
             if not isinstance(citation, Mapping):
                 continue
-            url = str(citation.get("url", "")).strip()
+            url = _safe_url(citation)
             if not url:
                 continue
             normalized = _normalize_url(url)
@@ -157,15 +169,11 @@ def _normalize_citation_value(
     evidence_publishers: Mapping[str, str],
     evidence_ids: Mapping[str, str],
 ) -> dict[str, str] | None:
-    url = ""
-    if isinstance(value, str):
-        url = value.strip()
-    elif isinstance(value, Mapping):
+    url = _safe_url(value)
+    if not url and isinstance(value, Mapping):
         url = str(
-            value.get("url")
-            or value.get("link")
+            value.get("link")
             or value.get("source")
-            or value.get("source_url")
             or value.get("href")
             or ""
         ).strip()
@@ -279,10 +287,14 @@ def run_drivers_node(
     for entry in evidence_units:
         if not isinstance(entry, Mapping):
             continue
-        url = str(entry.get("url", ""))
+        url = _safe_url(entry)
         excerpt = str(entry.get("excerpt", ""))
-        publisher = str(entry.get("publisher", "")) or url
-        evidence_id = str(entry.get("evidence_unit_id") or entry.get("id") or "") or url
+        publisher = str(entry.get("publisher", "")) or url or str(entry.get("file_name", ""))
+        evidence_id = (
+            str(entry.get("evidence_unit_id") or entry.get("id") or "")
+            or url
+            or str(entry.get("file_name", ""))
+        )
         excerpt_hash = _excerpt_hash(excerpt)
         normalized = _normalize_url(url)
         evidence_hashes[normalized] = excerpt_hash
@@ -405,7 +417,7 @@ def run_drivers_node(
     for entry in drivers_payload:
         citations = entry.get("citations", [])
         for citation in citations:
-            url = str(citation.get("url", ""))
+            url = _safe_url(citation)
             normalized = _normalize_url(url)
             if normalized in evidence_hashes:
                 citation["excerpt_hash"] = evidence_hashes[normalized]

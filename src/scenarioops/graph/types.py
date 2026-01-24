@@ -29,3 +29,4 @@ class GraphInputs:
     user_params: Mapping[str, Any]
     sources: Sequence[str]
     signals: Sequence[Mapping[str, Any]]
+    input_docs: Sequence[str] = field(default_factory=list)

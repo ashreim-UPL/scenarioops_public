@@ -39,7 +39,12 @@
         "properties": {
           "id": { "type": "string", "minLength": 1 },
           "evidence_unit_id": { "type": "string" },
-          "url": { "type": "string", "minLength": 1 },
+          "url": {
+            "anyOf": [
+              { "type": "string", "minLength": 1 },
+              { "type": "null" }
+            ]
+          },
           "title": { "type": "string", "minLength": 1 },
           "status": { "type": "string", "enum": ["ok", "partial", "failed"] },
           "failure_reason": { "type": ["string", "null"] },
@@ -52,6 +57,8 @@
           "http_status": { "type": ["integer", "null"] },
           "source_method": { "type": "string", "minLength": 1 },
           "embedding_ref": { "type": ["string", "null"] },
+          "file_name": { "type": "string" },
+          "sha256": { "type": "string" },
           "raw_text": { "type": "string" },
           "excerpt": { "type": "string" },
           "publisher": { "type": "string" },

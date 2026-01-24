@@ -29,6 +29,7 @@ from scenarioops.graph.nodes.company_profile import run_company_profile_node
 from scenarioops.graph.nodes.focal_issue import run_focal_issue_node
 from scenarioops.graph.nodes.retrieval_real import run_retrieval_real_node
 from scenarioops.graph.nodes.force_builder import run_force_builder_node
+from scenarioops.graph.nodes.ingest_docs import run_ingest_docs_node
 from scenarioops.graph.nodes.ebe_rank import run_ebe_rank_node
 from scenarioops.graph.nodes.cluster import run_cluster_node
 from scenarioops.graph.nodes.uncertainty_axes import run_uncertainty_axes_node
@@ -163,6 +164,40 @@ def run_squad_orchestrator(
             ),
         )
         state = apply_node_result(run_id, base_dir, state, company_profile_result)
+
+    if _should_run("ingest_docs", resume_from):
+        if inputs.input_docs:
+            ingest_result = record_node_event(
+                run_id=run_id,
+                node_name="ingest_docs",
+                inputs=["input_docs"],
+                outputs=["evidence_units_uploads.json"],
+                tools=["system"],
+                base_dir=base_dir,
+                action=lambda: run_ingest_docs_node(
+                    doc_paths=list(inputs.input_docs),
+                    run_id=run_id,
+                    state=state,
+                    user_params=inputs.user_params,
+                    base_dir=base_dir,
+                    settings=settings,
+                    config=config,
+                ),
+            )
+            state = apply_node_result(run_id, base_dir, state, ingest_result)
+        else:
+            log_node_event(
+                run_id=run_id,
+                node_name="ingest_docs",
+                inputs=["input_docs"],
+                outputs=["evidence_units_uploads.json"],
+                schema_validated=True,
+                duration_seconds=0.0,
+                base_dir=base_dir,
+                tools=["system"],
+                status="SKIPPED",
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
     
     if legacy_mode:
         # 1. Sentinel (Exploration)
@@ -488,6 +523,7 @@ _PRO_STEPS = [
     "charter",
     "focal_issue",
     "company_profile",
+    "ingest_docs",
     "retrieval_real",
     "forces",
     "ebe_rank",
@@ -503,6 +539,7 @@ _NODE_EVENT_META: dict[str, dict[str, list[str]]] = {
     "charter": {"inputs": ["user_params"], "outputs": ["charter.json"]},
     "focal_issue": {"inputs": ["charter.json"], "outputs": ["focal_issue.json"]},
     "company_profile": {"inputs": ["user_params", "sources"], "outputs": ["company_profile.json"]},
+    "ingest_docs": {"inputs": ["input_docs"], "outputs": ["evidence_units_uploads.json"]},
     "retrieval_real": {"inputs": ["sources", "focal_issue.json"], "outputs": ["evidence_units.json", "retrieval_report.json"]},
     "forces": {"inputs": ["evidence_units.json"], "outputs": ["forces.json"]},
     "ebe_rank": {"inputs": ["forces.json", "evidence_units.json"], "outputs": ["forces_ranked.json"]},
@@ -697,6 +734,26 @@ def _load_resume_state(
             _record_hydrated_event(
                 run_id=run_id, node_name="company_profile", base_dir=base_dir
             )
+        elif node_name == "ingest_docs":
+            uploads_path = artifacts_dir / "evidence_units_uploads.json"
+            if uploads_path.exists():
+                state.evidence_units = _load_and_validate_json(uploads_path)
+                _record_hydrated_event(
+                    run_id=run_id, node_name="ingest_docs", base_dir=base_dir
+                )
+            else:
+                log_node_event(
+                    run_id=run_id,
+                    node_name="ingest_docs",
+                    inputs=_NODE_EVENT_META.get("ingest_docs", {}).get("inputs", []),
+                    outputs=_NODE_EVENT_META.get("ingest_docs", {}).get("outputs", []),
+                    schema_validated=True,
+                    duration_seconds=0.0,
+                    base_dir=base_dir,
+                    tools=["hydrate"],
+                    status="SKIPPED",
+                    timestamp=datetime.now(timezone.utc).isoformat(),
+                )
         elif node_name == "retrieval_real":
             evidence_path = artifacts_dir / "evidence_units.json"
             if evidence_path.exists():

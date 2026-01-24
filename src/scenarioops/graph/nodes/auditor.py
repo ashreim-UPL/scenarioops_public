@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 from scenarioops.app.config import LLMConfig
 from scenarioops.app.config import ScenarioOpsSettings
@@ -42,11 +42,19 @@ def _extract_citations(payload: Any) -> list[dict[str, Any]]:
     return citations
 
 
+def _safe_citation_url(citation: Mapping[str, Any]) -> str:
+    for key in ("url", "file_name", "source_url"):
+        value = citation.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return ""
+
+
 def _fixture_findings(citations: list[dict[str, Any]]) -> list[AuditFinding]:
     fixture_urls: list[str] = []
     fixture_hashes: list[str] = []
     for citation in citations:
-        url = str(citation.get("url", "")).lower()
+        url = _safe_citation_url(citation).lower()
         if "example.com" in url:
             fixture_urls.append(url)
         excerpt_hash = str(citation.get("excerpt_hash", ""))
@@ -81,7 +89,7 @@ def _publisher_findings(citations: list[dict[str, Any]]) -> list[AuditFinding]:
         publisher = str(citation.get("publisher", "")).strip()
         source_type = str(citation.get("source_type", "")).strip()
         if not publisher and not source_type:
-            url = str(citation.get("url", "")).strip()
+            url = _safe_citation_url(citation)
             missing.append(url or "unknown")
     if not missing:
         return []

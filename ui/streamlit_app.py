@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
+import re
 import time
 import subprocess
 import sys
@@ -212,6 +213,7 @@ PRO_STEP_ORDER = [
     ("charter", "Charter"),
     ("focal_issue", "Focal Issue"),
     ("company_profile", "Company Profile"),
+    ("ingest_docs", "Uploads"),
     ("retrieval_real", "Retrieval"),
     ("forces", "Forces"),
     ("ebe_rank", "EBE Rank"),
@@ -235,6 +237,7 @@ NODE_FUNCTIONS = {
     "charter": "run_charter_node",
     "focal_issue": "run_focal_issue_node",
     "company_profile": "run_company_profile_node",
+    "ingest_docs": "run_ingest_docs_node",
     "retrieval_real": "run_retrieval_real_node",
     "forces": "run_force_builder_node",
     "ebe_rank": "run_ebe_rank_node",
@@ -319,6 +322,11 @@ COMPANY_GEO_HINTS = {
 
 def _normalize_label(value: str) -> str:
     return " ".join(value.lower().strip().split())
+
+
+def _safe_filename(name: str) -> str:
+    cleaned = re.sub(r"[^A-Za-z0-9._-]+", "_", name)
+    return cleaned.strip("_") or "document"
 
 
 def _geo_select(label: str, options: list[str], key_prefix: str) -> str:
@@ -873,6 +881,13 @@ with st.sidebar:
             image_models,
             index=_model_index(image_models, DEFAULT_IMAGE_MODEL),
         )
+
+        upload_files = st.file_uploader(
+            "Upload documents",
+            type=["pdf", "docx", "txt", "csv"],
+            accept_multiple_files=True,
+            help="Documents are ingested before retrieval.",
+        )
         
         planning_target = st.selectbox(
             "Planning Target",
@@ -965,6 +980,20 @@ with st.sidebar:
         st.session_state["log_queue"] = queue.Queue()
         st.session_state["log_threads_started"] = False
         st.session_state["pipeline_mode"] = "legacy" if legacy_mode else "pro"
+
+        upload_paths: list[str] = []
+        if upload_files:
+            uploads_dir = RUNS_DIR / run_id / "inputs"
+            uploads_dir.mkdir(parents=True, exist_ok=True)
+            for upload in upload_files:
+                safe_name = _safe_filename(upload.name)
+                target_path = uploads_dir / safe_name
+                counter = 1
+                while target_path.exists():
+                    target_path = uploads_dir / f"{target_path.stem}-{counter}{target_path.suffix}"
+                    counter += 1
+                target_path.write_bytes(upload.getbuffer())
+                upload_paths.append(str(target_path))
         
         args = [
             "build-scenarios",
@@ -1002,6 +1031,9 @@ with st.sidebar:
             args.extend(["--embed-model", embed_model])
         if image_model:
             args.extend(["--image-model", image_model])
+        if upload_paths:
+            args.append("--input-docs")
+            args.extend(upload_paths)
         
         # Logic: If live, force allow-web. If demo, allow toggle.
         # Also ensure fixtures policy for demo if needed, or academic/mixed for live.

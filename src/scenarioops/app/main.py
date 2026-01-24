@@ -305,6 +305,7 @@ def _run_verify(args: argparse.Namespace) -> None:
             user_params={"scope": "country", "value": "UAE", "horizon": 24},
             sources=sources,
             signals=[],
+            input_docs=[],
         )
 
         try:
@@ -409,6 +410,7 @@ def _run_verify(args: argparse.Namespace) -> None:
         user_params={"scope": "country", "value": "UAE", "horizon": 24},
         sources=sources,
         signals=[],
+        input_docs=[],
     )
 
     try:
@@ -471,7 +473,13 @@ def _run_build_scenarios(args: argparse.Namespace) -> None:
     else:
         _log_json("debug_sources", {"sources": sources, "origin": "args_or_empty"})
 
-    inputs = GraphInputs(user_params=user_params, sources=sources, signals=[])
+    input_docs = [str(path) for path in (getattr(args, "input_docs", None) or [])]
+    inputs = GraphInputs(
+        user_params=user_params,
+        sources=sources,
+        signals=[],
+        input_docs=input_docs,
+    )
     command = "build-scenarios"
     try:
         if (
@@ -718,12 +726,19 @@ def main(argv: Sequence[str] | None = None) -> None:
     build_parser.add_argument("--base-dir", default=None)
     build_parser.add_argument("--sources", default=None)
     build_parser.add_argument(
+        "--input-docs",
+        nargs="*",
+        default=None,
+        help="Document paths to ingest before retrieval.",
+    )
+    build_parser.add_argument(
         "--resume-from",
         default=None,
         choices=[
             "charter",
             "focal_issue",
             "company_profile",
+            "ingest_docs",
             "retrieval_real",
             "forces",
             "ebe_rank",

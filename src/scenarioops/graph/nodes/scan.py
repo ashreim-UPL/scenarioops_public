@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Iterable, Mapping
 
 from scenarioops.app.config import LLMConfig
 from scenarioops.app.config import ScenarioOpsSettings
@@ -41,15 +41,31 @@ def _evidence_maps(
     for entry in evidence_units:
         if not isinstance(entry, dict):
             continue
-        url = str(entry.get("url", ""))
+        url = _safe_citation_url(entry)
         excerpt = str(entry.get("excerpt", ""))
-        publisher = str(entry.get("publisher", "")) or url
-        evidence_id = str(entry.get("evidence_unit_id") or entry.get("id") or "") or url
+        publisher = str(entry.get("publisher", "")) or url or str(entry.get("file_name", ""))
+        evidence_id = (
+            str(entry.get("evidence_unit_id") or entry.get("id") or "")
+            or url
+            or str(entry.get("file_name", ""))
+        )
         normalized = _normalize_citation_url(url)
         hashes[normalized] = _hash_excerpt(excerpt)
         publishers[normalized] = publisher
         evidence_ids[normalized] = evidence_id
     return hashes, publishers, evidence_ids
+
+
+def _safe_citation_url(value: Any) -> str:
+    if isinstance(value, str):
+        return value.strip()
+    if not isinstance(value, Mapping):
+        return ""
+    for key in ("url", "file_name", "source_url"):
+        candidate = value.get(key)
+        if isinstance(candidate, str) and candidate.strip():
+            return candidate.strip()
+    return ""
 
 
 def _focus_payload(
@@ -154,7 +170,7 @@ def run_scan_node(
             for citation in raw_citations:
                 if not isinstance(citation, dict):
                     raise ValueError("Driving force citations must be objects.")
-                url = str(citation.get("url", ""))
+                url = _safe_citation_url(citation)
                 normalized = _normalize_citation_url(url)
                 if normalized not in evidence_hashes:
                     if not allow_fixture_citations:
