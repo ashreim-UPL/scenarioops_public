@@ -16,7 +16,7 @@ The core execution engine uses a graph-based approach (`run_graph`) where state 
 ## 2. Logic Mapping
 
 ### Entry Points
-*   **CLI:** `scenarioops/__main__.py` redirects to `scenarioops/app/main.py`. Handles commands like `build-scenarios`, `run-daily`, `verify`.
+*   **CLI:** `scenarioops` (console script) dispatches to `scenarioops.app.main`. Handles commands like `build-scenarios`, `run-daily`, `verify`.
 *   **API:** `scenarioops/app/api.py` (FastAPI). Exposes endpoints `/build`, `/strategies`, `/daily`.
 *   **UI:** `ui/streamlit_app.py` (Streamlit). Provides an interactive dashboard to trigger runs and visualize artifacts.
 

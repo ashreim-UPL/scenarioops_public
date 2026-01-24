@@ -4,7 +4,8 @@
 Command:
 
 ```sh
-python -m scenarioops.app.main build-scenarios --scope country --value UAE --horizon 24 --run-id demo-run
+$RUN_ID="demo-run"
+scenarioops build-scenarios --scope country --value UAE --horizon 24 --run-id $RUN_ID
 ```
 
 Say: "We generate the base scenario artifacts and set a fixed run ID for repeatability."
@@ -49,7 +50,7 @@ Say: "Scenario cards summarize premises, rules, and leading indicators."
 Command:
 
 ```sh
-python -m scenarioops.app.main run-daily --run-id demo-run
+scenarioops run-daily --run-id $RUN_ID
 ```
 
 Click:

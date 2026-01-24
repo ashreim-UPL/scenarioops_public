@@ -4,7 +4,7 @@
 1. Create a new run with core artifacts:
 
 ```sh
-python -m scenarioops.app.main build-scenarios --scope country --value UAE --horizon 24
+scenarioops build-scenarios --scope country --value UAE --horizon 24
 ```
 
 Outputs:
@@ -15,14 +15,15 @@ Outputs:
 If you want to add strategies and run the wind tunnel:
 
 ```sh
-python -m scenarioops.app.main add-strategies demo/demo_strategies.txt --run-id <run_id>
+$RUN_ID="RUN_ID_HERE"
+scenarioops add-strategies demo/demo_strategies.txt --run-id $RUN_ID
 ```
 
 ## Run Daily
 Run the daily brief workflow:
 
 ```sh
-python -m scenarioops.app.main run-daily --run-id <run_id>
+scenarioops run-daily --run-id $RUN_ID
 ```
 
 Outputs:
@@ -34,7 +35,7 @@ Outputs:
 Bundle artifacts into a UI-friendly view model:
 
 ```sh
-python -m scenarioops.app.main export-view --run-id <run_id>
+scenarioops export-view --run-id $RUN_ID
 ```
 
 Output:
@@ -44,7 +45,7 @@ Output:
 Example cron (daily at 06:00):
 
 ```sh
-0 6 * * * /usr/bin/python -m scenarioops.app.main run-daily --run-id <run_id>
+0 6 * * * /usr/bin/scenarioops run-daily --run-id RUN_ID_HERE
 ```
 
 Cloud schedulers can trigger the same command with the repo environment activated.

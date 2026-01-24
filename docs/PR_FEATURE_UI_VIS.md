@@ -8,9 +8,9 @@
 
 ## How to Run
 ```sh
-python -m scenarioops.app.main build-scenarios --scope country --value UAE --horizon 24
-python -m scenarioops.app.main export-view
-python -m scenarioops.app.main run-daily
+scenarioops build-scenarios --scope country --value UAE --horizon 24
+scenarioops export-view
+scenarioops run-daily
 streamlit run ui/streamlit_app.py
 ```
 
