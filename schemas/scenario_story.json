@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Scenario Story",
+  "type": "object",
+  "required": ["story_text", "visual_prompt"],
+  "properties": {
+    "story_text": { "type": "string", "minLength": 1 },
+    "visual_prompt": { "type": "string", "minLength": 1 }
+  },
+  "additionalProperties": false
+}

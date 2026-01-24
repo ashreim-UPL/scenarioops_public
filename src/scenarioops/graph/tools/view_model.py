@@ -110,6 +110,10 @@ def build_view_model(run_dir: Path) -> dict[str, Any]:
     scenarios_v2 = scenarios_payload.get("scenarios", [])
     if isinstance(scenarios_v2, list) and scenarios_v2:
         scenarios = scenarios_v2
+    scenarios_enriched_payload = _load_json(artifacts_dir / "scenarios_enriched.json") or {}
+    scenarios_enriched = scenarios_enriched_payload.get("scenarios", [])
+    if isinstance(scenarios_enriched, list) and scenarios_enriched:
+        scenarios = scenarios_enriched
 
     narratives = _load_narratives(artifacts_dir)
 

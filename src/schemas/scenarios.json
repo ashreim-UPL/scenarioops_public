@@ -47,6 +47,9 @@
           "implications": { "type": "array", "items": { "type": "string" } },
           "no_regret_moves": { "type": "array", "items": { "type": "string" } },
           "contingent_moves": { "type": "array", "items": { "type": "string" } },
+          "story_text": { "type": "string" },
+          "visual_prompt": { "type": "string" },
+          "image_artifact_path": { "type": "string" },
           "evidence_touchpoints": {
             "type": "object",
             "required": ["cluster_ids", "force_ids"],

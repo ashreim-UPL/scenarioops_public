@@ -533,6 +533,11 @@ class MockLLMClient:
                     }
                 ],
             }
+        elif schema_title == "Scenario Story":
+            payload = {
+                "story_text": "Mock story text for a vivid scenario narrative.",
+                "visual_prompt": "A cinematic wide shot of a futuristic city under dramatic skies.",
+            }
         elif schema_title == "Skeleton" or schema_title == "Skeletons":
             payload = {
                 "id": "sk-1",

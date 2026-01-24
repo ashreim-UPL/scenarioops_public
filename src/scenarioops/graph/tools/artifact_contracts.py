@@ -30,6 +30,7 @@ _JSON_MAPPING: Final[dict[str, str]] = {
     "daily_brief": "daily_brief",
     "scenario_profiles": "scenario_profiles",
     "scenarios": "scenarios",
+    "scenarios_enriched": "scenarios",
     "trace_map": "trace_map",
     "audit_report": "audit_report",
     "index": "artifact_index",

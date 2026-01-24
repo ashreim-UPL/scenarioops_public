@@ -34,6 +34,7 @@ from scenarioops.graph.nodes.ebe_rank import run_ebe_rank_node
 from scenarioops.graph.nodes.cluster import run_cluster_node
 from scenarioops.graph.nodes.uncertainty_axes import run_uncertainty_axes_node
 from scenarioops.graph.nodes.scenario_synthesis import run_scenario_synthesis_node
+from scenarioops.graph.nodes.scenario_media import run_scenario_media_node
 from scenarioops.graph.nodes.strategies import run_strategies_node
 from scenarioops.graph.nodes.wind_tunnel import run_wind_tunnel_node
 from scenarioops.graph.nodes.auditor import run_auditor_node
@@ -471,12 +472,31 @@ def run_squad_orchestrator(
             ),
         )
 
+    if _should_run("scenario_media", resume_from):
+        state = record_node_event(
+            run_id=run_id,
+            node_name="scenario_media",
+            inputs=["scenarios.json"],
+            outputs=["scenarios_enriched.json"],
+            tools=[llm_label],
+            base_dir=base_dir,
+            action=lambda: run_scenario_media_node(
+                run_id=run_id,
+                state=state,
+                user_params=dict(inputs.user_params),
+                llm_client=squad_client,
+                base_dir=base_dir,
+                config=config,
+                settings=settings,
+            ),
+        )
+
     if generate_strategies:
         if _should_run("strategies", resume_from):
             state = record_node_event(
                 run_id=run_id,
                 node_name="strategies",
-                inputs=["scenarios.json"],
+                inputs=["scenarios_enriched.json"],
                 outputs=["strategies.json"],
                 tools=[llm_label],
                 base_dir=base_dir,
@@ -492,7 +512,7 @@ def run_squad_orchestrator(
             state = record_node_event(
                 run_id=run_id,
                 node_name="wind_tunnel",
-                inputs=["strategies.json", "scenarios.json"],
+                inputs=["strategies.json", "scenarios_enriched.json"],
                 outputs=["wind_tunnel.json"],
                 tools=[llm_label],
                 base_dir=base_dir,
@@ -538,6 +558,7 @@ _PRO_STEPS = [
     "clusters",
     "uncertainty_axes",
     "scenarios",
+    "scenario_media",
     "strategies",
     "wind_tunnel",
     "auditor",
@@ -554,8 +575,9 @@ _NODE_EVENT_META: dict[str, dict[str, list[str]]] = {
     "clusters": {"inputs": ["forces.json"], "outputs": ["clusters.json"]},
     "uncertainty_axes": {"inputs": ["clusters.json", "forces.json"], "outputs": ["uncertainty_axes.json"]},
     "scenarios": {"inputs": ["uncertainty_axes.json", "clusters.json"], "outputs": ["scenarios.json"]},
-    "strategies": {"inputs": ["scenarios.json"], "outputs": ["strategies.json"]},
-    "wind_tunnel": {"inputs": ["strategies.json", "scenarios.json"], "outputs": ["wind_tunnel.json"]},
+    "scenario_media": {"inputs": ["scenarios.json"], "outputs": ["scenarios_enriched.json"]},
+    "strategies": {"inputs": ["scenarios_enriched.json"], "outputs": ["strategies.json"]},
+    "wind_tunnel": {"inputs": ["strategies.json", "scenarios_enriched.json"], "outputs": ["wind_tunnel.json"]},
     "auditor": {"inputs": ["artifacts/*"], "outputs": ["audit_report.json"]},
 }
 
@@ -855,6 +877,15 @@ def _load_resume_state(
             state.scenarios = _load_and_validate_json(artifacts_dir / "scenarios.json")
             _record_hydrated_event(
                 run_id=run_id, node_name="scenarios", base_dir=base_dir
+            )
+        elif node_name == "scenario_media":
+            enriched_path = artifacts_dir / "scenarios_enriched.json"
+            if enriched_path.exists():
+                state.scenarios = _load_and_validate_json(enriched_path)
+            else:
+                state.scenarios = _load_and_validate_json(artifacts_dir / "scenarios.json")
+            _record_hydrated_event(
+                run_id=run_id, node_name="scenario_media", base_dir=base_dir
             )
         elif node_name == "strategies":
             payload = _load_and_validate_json(artifacts_dir / "strategies.json")

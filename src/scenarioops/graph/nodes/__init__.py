@@ -20,6 +20,7 @@ from .epistemic_summary import run_epistemic_summary_node
 from .logic import run_logic_node
 from .narratives import extract_numeric_claims_without_citations, run_narratives_node
 from .scenario_profiles import run_scenario_profiles_node
+from .scenario_media import run_scenario_media_node
 from .scenario_synthesis import run_scenario_synthesis_node
 from .trace_map import run_trace_map_node
 from .retrieval import run_retrieval_node
@@ -54,6 +55,7 @@ __all__ = [
     "extract_numeric_claims_without_citations",
     "run_narratives_node",
     "run_scenario_profiles_node",
+    "run_scenario_media_node",
     "run_scenario_synthesis_node",
     "run_trace_map_node",
     "run_retrieval_node",

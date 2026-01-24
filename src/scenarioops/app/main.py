@@ -745,6 +745,7 @@ def main(argv: Sequence[str] | None = None) -> None:
             "clusters",
             "uncertainty_axes",
             "scenarios",
+            "scenario_media",
             "strategies",
             "wind_tunnel",
             "auditor",

@@ -1,0 +1,7 @@
+You are crafting a vivid but plausible scenario story and a visual prompt for an image.
+Return JSON only that matches the schema and is grounded in the provided scenario context.
+
+Guidance:
+- story_text: 3-6 paragraphs, cinematic but realistic, show concrete consequences and decision tension.
+- visual_prompt: one sentence, describe a compelling scene; avoid text overlays or logos.
+- Do not invent facts outside the scenario context.

@@ -220,6 +220,7 @@ PRO_STEP_ORDER = [
     ("clusters", "Clusters"),
     ("uncertainty_axes", "Uncertainty Axes"),
     ("scenarios", "Scenarios"),
+    ("scenario_media", "Scenario Media"),
     ("strategies", "Strategies"),
     ("wind_tunnel", "Wind Tunnel"),
     ("auditor", "Auditor"),
@@ -244,6 +245,7 @@ NODE_FUNCTIONS = {
     "clusters": "run_cluster_node",
     "uncertainty_axes": "run_uncertainty_axes_node",
     "scenarios": "run_scenario_synthesis_node",
+    "scenario_media": "run_scenario_media_node",
     "strategies": "run_strategies_node",
     "wind_tunnel": "run_wind_tunnel_node",
     "auditor": "run_auditor_node",
@@ -1280,8 +1282,14 @@ if run_id and not st.session_state.get("running"):
                 with cols[i % 2]:
                     with st.container(border=True):
                         st.markdown(f"### {scen.get('name')}")
-                        narrative = scen.get("narrative", "")
-                        st.caption(narrative[:200] + "..." if narrative else "")
+                        story_text = scen.get("story_text") or scen.get("narrative", "")
+                        if story_text:
+                            st.write(story_text)
+                        image_path = scen.get("image_artifact_path")
+                        if image_path:
+                            full_path = RUNS_DIR / run_id / Path(image_path)
+                            if full_path.exists():
+                                st.image(str(full_path), use_column_width=True)
                         signposts = scen.get("signposts", [])
                         if signposts:
                             st.markdown("**Signposts:**")
@@ -1292,9 +1300,6 @@ if run_id and not st.session_state.get("running"):
                             st.markdown("**Implications:**")
                             for imp in implications[:3]:
                                 st.markdown(f"- {imp}")
-                        st.markdown("**Implications:**")
-                        st.markdown("* Impact on supply chain") # Placeholder logic
-                        st.markdown("* Regulatory pressure")
 
         with tab3:
             st.subheader("Wind Tunnel Results")
