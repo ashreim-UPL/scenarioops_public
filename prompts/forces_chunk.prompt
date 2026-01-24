@@ -1,0 +1,14 @@
+Generate a batch of hierarchical driving forces grounded in evidence.
+Return ONLY a JSON object that matches the Forces Payload schema. No prose, no markdown, no extra keys.
+
+Rules:
+- Produce up to {{chunk_target_total}} forces.
+- Domain maxima: {{domain_targets}} (maximum counts per domain). Do not exceed these caps.
+- Use layers: primary (macro), secondary (industry/ecosystem), tertiary (company/operational).
+- Each force must include a clear mechanism (causal explanation) and directionality.
+- Each force must include affected_dimensions (non-empty array of impacted dimensions such as cost, demand, regulation, tech_feasibility, capital, labor, risk, supply_chain, competition, pricing, adoption).
+- Each force must link to at least one evidence_unit_id from Context.evidence_units.
+- Provide confidence (0-1) with rationale.
+- Keep labels concise; avoid generic labels without mechanism.
+
+Context includes evidence units with ids and excerpts. Use only those ids.

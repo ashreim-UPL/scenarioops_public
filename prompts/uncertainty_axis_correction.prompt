@@ -1,0 +1,15 @@
+Fix a single uncertainty axis to match the required schema.
+Return ONLY one JSON object (not an array, not wrapped) with:
+- axis_name
+- pole_a
+- pole_b
+- impact_score (0-5)
+- uncertainty_score (0-5)
+- tension_basis { cluster_ids[], force_ids[] }
+- what_would_change_mind[]
+- independence_notes
+
+Rules:
+- Use the provided clusters and forces; do not invent IDs.
+- Keep axis_id if present.
+- No extra keys.

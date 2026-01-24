@@ -2,21 +2,59 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Evidence Units",
   "type": "object",
-  "required": ["evidence_units"],
+  "required": [
+    "run_id",
+    "timestamp",
+    "company_name",
+    "geography",
+    "horizon_months",
+    "simulated",
+    "evidence_units"
+  ],
   "properties": {
+    "run_id": { "type": "string", "minLength": 1 },
+    "timestamp": { "type": "string", "minLength": 1 },
+    "company_name": { "type": "string", "minLength": 1 },
+    "geography": { "type": "string", "minLength": 1 },
+    "horizon_months": { "type": "integer", "minimum": 0 },
+    "simulated": { "type": "boolean" },
     "evidence_units": {
       "type": "array",
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["id", "title", "url", "publisher", "retrieved_at", "excerpt"],
+        "required": [
+          "evidence_unit_id",
+          "source_type",
+          "title",
+          "publisher",
+          "date_published",
+          "url",
+          "excerpt",
+          "reliability_grade",
+          "reliability_reason",
+          "geography_tags",
+          "domain_tags",
+          "simulated"
+        ],
         "properties": {
-          "id": { "type": "string", "minLength": 1 },
+          "evidence_unit_id": { "type": "string", "minLength": 1 },
+          "source_type": {
+            "type": "string",
+            "enum": ["primary", "secondary", "tertiary"]
+          },
           "title": { "type": "string", "minLength": 1 },
-          "url": { "type": "string", "minLength": 1 },
           "publisher": { "type": "string", "minLength": 1 },
-          "retrieved_at": { "type": "string", "minLength": 1 },
-          "excerpt": { "type": "string", "minLength": 1 }
+          "date_published": { "type": "string", "minLength": 1 },
+          "url": { "type": "string", "minLength": 1 },
+          "excerpt": { "type": "string", "minLength": 1 },
+          "claims": { "type": "array", "items": { "type": "string" } },
+          "metrics": { "type": "array", "items": { "type": "string" } },
+          "reliability_grade": { "type": "string", "enum": ["A", "B", "C", "D"] },
+          "reliability_reason": { "type": "string", "minLength": 1 },
+          "geography_tags": { "type": "array", "items": { "type": "string" } },
+          "domain_tags": { "type": "array", "items": { "type": "string" } },
+          "simulated": { "type": "boolean" }
         },
         "additionalProperties": false
       }

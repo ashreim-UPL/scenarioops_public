@@ -1,0 +1,9 @@
+Correct the forces output for this batch.
+Return ONLY a JSON object that matches the Forces Payload schema. No prose, no markdown, no extra keys.
+
+Rules:
+- Produce up to {{chunk_target_total}} forces.
+- Domain maxima: {{domain_targets}} (maximum counts per domain). Do not exceed these caps.
+- Every force must have mechanism + directionality + evidence_unit_ids + affected_dimensions.
+- Use only evidence_unit_ids provided in Context.
+- Remove or fix forces that violate required fields.

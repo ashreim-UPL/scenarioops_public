@@ -10,6 +10,10 @@
       "type": "array",
       "items": { "$ref": "#/$defs/test" }
     },
+    "matrix": { "type": "array", "items": { "$ref": "#/$defs/matrixCell" } },
+    "robustness_score": { "type": "number", "minimum": 0, "maximum": 1 },
+    "break_conditions": { "type": "array", "items": { "type": "string" } },
+    "triggers": { "type": "array", "items": { "type": "string" } },
     "metadata": { "type": "object", "additionalProperties": true }
   },
   "additionalProperties": false,
@@ -42,6 +46,17 @@
         },
         "rating": { "type": "integer", "minimum": 1, "maximum": 5 },
         "notes": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "matrixCell": {
+      "type": "object",
+      "required": ["strategy_id", "scenario_id", "outcome", "robustness_score"],
+      "properties": {
+        "strategy_id": { "type": "string", "minLength": 1 },
+        "scenario_id": { "type": "string", "minLength": 1 },
+        "outcome": { "type": "string", "minLength": 1 },
+        "robustness_score": { "type": "number", "minimum": 0, "maximum": 1 }
       },
       "additionalProperties": false
     }

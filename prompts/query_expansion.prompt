@@ -1,0 +1,14 @@
+Generate search queries for evidence retrieval.
+Return ONLY a JSON object with keys: primary, secondary, tertiary, counter.
+Each value is a list of short search queries (3-8 words).
+
+Guidance:
+- Primary = macro structural (policy, macroeconomy, geopolitics, demographics).
+- Secondary = industry/ecosystem (supply chain, competitors, sector trends).
+- Tertiary = company/operations/regulation (firm-specific, product, compliance).
+- Counter = falsification checks that could disconfirm assumptions.
+
+Constraints:
+- Use the company, geography, and horizon from Context.
+- Avoid duplicate queries across buckets.
+- Max 8 queries per bucket.

@@ -1,0 +1,8 @@
+Label and explain clusters of forces.
+Return ONLY a JSON object with key "clusters" containing entries with:
+cluster_id, cluster_label, underlying_dynamic, why_these_forces_belong_together.
+
+Rules:
+- Use the provided cluster_id values exactly.
+- Labels must be short (3-6 words) and specific.
+- Base explanations on the forces provided in Context.

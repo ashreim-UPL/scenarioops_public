@@ -1,1 +1,30 @@
-Build a 2x2 logic with axes and four scenarios.
+Build a 2x2 scenario logic from the uncertainties in Context.
+Return ONLY a JSON object with keys: id, title, axes, scenarios.
+No prose, no markdown, no extra keys.
+
+Rules:
+- Choose exactly 2 uncertainties (impactful and relatively independent).
+- Use their exact `id` values in axes[].uncertainty_id.
+- Set each axis `low` and `high` to short labels based on that uncertainty's extremes.
+- Provide exactly 4 scenarios with ids S1, S2, S3, S4.
+- Align scenarios to axis extremes in this order:
+  S1 = axis1 low + axis2 low
+  S2 = axis1 high + axis2 low
+  S3 = axis1 low + axis2 high
+  S4 = axis1 high + axis2 high
+
+Output shape:
+{
+  "id": "logic-1",
+  "title": "Scenario Logic",
+  "axes": [
+    {"uncertainty_id": "u1", "low": "Low label", "high": "High label"},
+    {"uncertainty_id": "u2", "low": "Low label", "high": "High label"}
+  ],
+  "scenarios": [
+    {"id": "S1", "name": "Short name", "logic": "Axis1 low + Axis2 low"},
+    {"id": "S2", "name": "Short name", "logic": "Axis1 high + Axis2 low"},
+    {"id": "S3", "name": "Short name", "logic": "Axis1 low + Axis2 high"},
+    {"id": "S4", "name": "Short name", "logic": "Axis1 high + Axis2 high"}
+  ]
+}

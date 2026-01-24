@@ -1,0 +1,9 @@
+Derive critical uncertainty axes from clusters and forces.
+Return ONLY a JSON object with key "axes" containing 6-10 candidates.
+
+Rules:
+- Each axis must specify cluster_ids and force_ids backing the tension.
+- Provide pole_a and pole_b as clear opposites.
+- Provide impact_score and uncertainty_score (0-5).
+- Provide what_would_change_mind (evidence tests/signposts).
+- Provide independence_notes explaining distinctness vs other axes.

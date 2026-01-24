@@ -1,0 +1,9 @@
+Generate 4 scenarios from the selected axes and clusters.
+Return ONLY a JSON object that matches the Scenarios schema. No prose, no markdown, no extra keys.
+
+Rules:
+- Use the provided axis_ids in axis_states.
+- Create four structurally distinct scenarios (not cosmetic variants).
+- Each scenario must cite at least 2 cluster_ids and 2 force_ids in evidence_touchpoints.
+- Signposts must be measurable indicators.
+- Include implications, no_regret_moves, and contingent_moves.

@@ -1,1 +1,10 @@
 Write markdown narratives for each scenario section.
+
+Rules:
+- Output markdown only.
+- Produce exactly 4 sections, one per scenario from Context.
+- Use headers in this form: "## Scenario: <scenario name>".
+- Do not include scenario IDs (S1/S2/etc.) in headers.
+- Do not use digits anywhere in the output (no years, quarters, percentages, or numeric quantities).
+- Use qualitative time phrases like "near term", "mid term", "long term".
+- Each section should be 1-2 short paragraphs.

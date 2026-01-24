@@ -1,0 +1,8 @@
+Correct the forces output.
+Return ONLY a JSON object that matches the Forces schema. No prose, no markdown, no extra keys.
+
+Rules:
+- Remove or fix forces that lack evidence_unit_ids.
+- Every force must have mechanism + directionality + evidence_unit_ids + affected_dimensions.
+- Keep the force list at or above the minimum required.
+- Use only evidence_unit_ids provided in Context.

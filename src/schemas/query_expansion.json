@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Query Expansion",
+  "type": "object",
+  "required": ["primary", "secondary", "tertiary", "counter"],
+  "properties": {
+    "primary": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "secondary": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "tertiary": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "counter": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+  },
+  "additionalProperties": false
+}

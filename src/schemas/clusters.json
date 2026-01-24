@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Clusters",
+  "type": "object",
+  "required": [
+    "run_id",
+    "timestamp",
+    "company_name",
+    "geography",
+    "horizon_months",
+    "needs_correction",
+    "warnings",
+    "clusters"
+  ],
+  "properties": {
+    "run_id": { "type": "string", "minLength": 1 },
+    "timestamp": { "type": "string", "minLength": 1 },
+    "company_name": { "type": "string", "minLength": 1 },
+    "geography": { "type": "string", "minLength": 1 },
+    "horizon_months": { "type": "integer", "minimum": 0 },
+    "needs_correction": { "type": "boolean" },
+    "warnings": { "type": "array", "items": { "type": "string" } },
+    "clusters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "cluster_id",
+          "force_ids",
+          "coherence_score",
+          "centroid_summary",
+          "cluster_label",
+          "underlying_dynamic",
+          "why_these_forces_belong_together"
+        ],
+        "properties": {
+          "cluster_id": { "type": "string", "minLength": 1 },
+          "force_ids": { "type": "array", "items": { "type": "string" } },
+          "coherence_score": { "type": "number" },
+          "centroid_summary": { "type": "string", "minLength": 1 },
+          "cluster_label": { "type": "string", "minLength": 1 },
+          "underlying_dynamic": { "type": "string", "minLength": 1 },
+          "why_these_forces_belong_together": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

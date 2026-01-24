@@ -1,1 +1,8 @@
-Stress-test strategies across scenarios with failure modes and adaptations.
+Stress-test strategies across scenarios.
+Return ONLY a JSON object that matches the Wind Tunnel schema. No prose, no markdown, no extra keys.
+
+Rules:
+- Provide tests for every strategy x scenario pair.
+- Include failure_modes, adaptations, feasibility_score, rubric_score, and action.
+- Add matrix entries with robustness_score per strategy/scenario.
+- Include break_conditions and triggers at the top level.

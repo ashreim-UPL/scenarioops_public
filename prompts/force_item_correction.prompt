@@ -1,0 +1,7 @@
+Correct a single force item to satisfy the Force Item schema.
+Return ONLY a JSON object for one force item. No wrapper keys, no prose, no markdown.
+
+Rules:
+- The result must include: layer, domain, label, mechanism, directionality, affected_dimensions, evidence_unit_ids, confidence, confidence_rationale.
+- Use only evidence_unit_ids present in Context.evidence_units.
+- Keep label concise and mechanism specific.

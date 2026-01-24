@@ -32,7 +32,8 @@
       "items": { "type": "string", "minLength": 1 },
       "minItems": 1
     },
-    "success_criteria": { "type": "string", "minLength": 1 }
+    "success_criteria": { "type": "string", "minLength": 1 },
+    "metadata": { "type": "object", "additionalProperties": true }
   },
   "additionalProperties": false
 }

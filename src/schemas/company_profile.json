@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Company Profile",
+  "type": "object",
+  "required": [
+    "run_id",
+    "timestamp",
+    "company_name",
+    "geography",
+    "horizon_months",
+    "source_basis"
+  ],
+  "properties": {
+    "run_id": { "type": "string", "minLength": 1 },
+    "timestamp": { "type": "string", "minLength": 1 },
+    "company_name": { "type": "string", "minLength": 1 },
+    "geography": { "type": "string", "minLength": 1 },
+    "horizon_months": { "type": "integer", "minimum": 0 },
+    "source_basis": {
+      "type": "object",
+      "required": ["urls", "internal_docs", "manual_input"],
+      "properties": {
+        "urls": { "type": "array", "items": { "type": "string" } },
+        "internal_docs": { "type": "array", "items": { "type": "string" } },
+        "manual_input": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "simulated": { "type": "boolean" },
+    "metadata": { "type": "object", "additionalProperties": true }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Scenarios Payload",
+  "type": "object",
+  "required": ["scenarios"],
+  "properties": {
+    "scenarios": {
+      "type": "array",
+      "minItems": 4,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "axis_states",
+          "narrative",
+          "signposts",
+          "implications",
+          "no_regret_moves",
+          "contingent_moves",
+          "evidence_touchpoints"
+        ],
+        "properties": {
+          "scenario_id": { "type": "string", "minLength": 1 },
+          "name": { "type": "string", "minLength": 1 },
+          "axis_states": { "type": "object", "additionalProperties": { "type": "string" } },
+          "narrative": { "type": "string", "minLength": 1 },
+          "signposts": { "type": "array", "items": { "type": "string" } },
+          "implications": { "type": "array", "items": { "type": "string" } },
+          "no_regret_moves": { "type": "array", "items": { "type": "string" } },
+          "contingent_moves": { "type": "array", "items": { "type": "string" } },
+          "evidence_touchpoints": {
+            "type": "object",
+            "required": ["cluster_ids", "force_ids"],
+            "properties": {
+              "cluster_ids": { "type": "array", "items": { "type": "string" } },
+              "force_ids": { "type": "array", "items": { "type": "string" } }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

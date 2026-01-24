@@ -1,1 +1,30 @@
-Draft scenario skeletons with operating rules and key events.
+Draft scenario skeletons using the Context scenarios.
+Return ONLY a JSON object that matches the schema. No prose, no markdown, no extra keys.
+
+Rules:
+- Use the exact scenario ids and names from Context.scenarios.
+- Provide a short narrative for each scenario (2-4 sentences).
+- operating_rules must include policy, market, and operations with non-empty strings.
+- key_events is a list of objects with date and event (implications optional).
+- Provide exactly 4 scenarios.
+
+Output shape:
+{
+  "id": "skeletons-1",
+  "title": "Scenario Skeletons",
+  "scenarios": [
+    {
+      "id": "S1",
+      "name": "Scenario name",
+      "narrative": "Short narrative.",
+      "operating_rules": {
+        "policy": "Policy rule.",
+        "market": "Market rule.",
+        "operations": "Operations rule."
+      },
+      "key_events": [
+        {"date": "2028-Q2", "event": "Event description", "implications": "Optional implications"}
+      ]
+    }
+  ]
+}

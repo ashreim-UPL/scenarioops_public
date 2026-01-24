@@ -1,1 +1,7 @@
-Generate strategies with KPIs aligned to scenarios.
+Generate strategies aligned to the provided scenarios.
+Return ONLY a JSON object that matches the Strategies schema. No prose, no markdown, no extra keys.
+
+Rules:
+- Each strategy must include actions and KPIs.
+- Use scenario_ids from Context to ensure alignment.
+- Provide clear objectives and measurable KPIs.
