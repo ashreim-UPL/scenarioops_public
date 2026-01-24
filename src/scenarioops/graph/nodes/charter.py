@@ -6,10 +6,11 @@ from scenarioops.graph.state import Charter, ScenarioOpsState
 from scenarioops.graph.tools.normalization import stable_id
 from scenarioops.graph.tools.schema_validate import load_schema, validate_artifact
 from scenarioops.graph.tools.storage import log_normalization
-from scenarioops.graph.nodes.utils import get_client, load_prompt, render_prompt
+from scenarioops.graph.nodes.utils import build_prompt, get_client
 from scenarioops.graph.types import ArtifactData, NodeResult
 from scenarioops.llm.guards import ensure_dict
 from scenarioops.app.config import LLMConfig
+from scenarioops.graph.tools.traceability import build_run_metadata
 
 
 def run_charter_node(
@@ -21,8 +22,8 @@ def run_charter_node(
     config: LLMConfig | None = None,
     base_dir=None,
 ) -> NodeResult:
-    prompt_template = load_prompt("charter")
-    prompt = render_prompt(prompt_template, {"user_params": user_params})
+    prompt_bundle = build_prompt("charter", {"user_params": user_params})
+    prompt = prompt_bundle.text
     client = get_client(llm_client, config)
     schema = load_schema("charter")
     response = client.generate_json(prompt, schema)
@@ -74,6 +75,11 @@ def run_charter_node(
                 base_dir=base_dir,
             )
 
+    metadata = build_run_metadata(run_id=run_id, user_params=user_params)
+    metadata.setdefault("prompt_name", prompt_bundle.name)
+    metadata.setdefault("prompt_sha256", prompt_bundle.sha256)
+    parsed["metadata"] = {**parsed.get("metadata", {}), **metadata}
+
     artifacts = []
     artifacts.append(
         ArtifactData(
@@ -81,7 +87,10 @@ def run_charter_node(
             payload=parsed,
             ext="json",
             input_values={"user_params": dict(user_params)},
-            prompt_values={"prompt": prompt},
+            prompt_values={
+                "prompt_name": prompt_bundle.name,
+                "prompt_sha256": prompt_bundle.sha256,
+            },
             tool_versions={"charter_node": "0.1.0"},
         )
     )
@@ -94,7 +103,10 @@ def run_charter_node(
             payload=parsed,
             ext="json",
             input_values={"user_params": dict(user_params)},
-            prompt_values={"prompt": prompt},
+            prompt_values={
+                "prompt_name": prompt_bundle.name,
+                "prompt_sha256": prompt_bundle.sha256,
+            },
             tool_versions={"charter_node": "0.1.0"},
         )
     )

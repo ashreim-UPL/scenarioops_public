@@ -60,11 +60,22 @@ def build_view_model(run_dir: Path) -> dict[str, Any]:
 
     charter = _load_json(artifacts_dir / "scenario_charter.json")
     focal_issue = _load_json(artifacts_dir / "focal_issue.json")
+    company_profile = _load_json(artifacts_dir / "company_profile.json")
+    prompt_manifest = _load_json(artifacts_dir / "prompt_manifest.json")
 
     driving_forces_payload = _load_json(artifacts_dir / "driving_forces.json") or {}
     driving_forces = driving_forces_payload.get("forces", [])
     if not isinstance(driving_forces, list):
         driving_forces = []
+    forces_payload = _load_json(artifacts_dir / "forces.json") or {}
+    forces = forces_payload.get("forces", [])
+    if not isinstance(forces, list):
+        forces = []
+    forces_ranked = _load_json(artifacts_dir / "forces_ranked.json")
+    clusters_payload = _load_json(artifacts_dir / "clusters.json") or {}
+    clusters = clusters_payload.get("clusters", [])
+    if not isinstance(clusters, list):
+        clusters = []
     drivers = _load_jsonl(artifacts_dir / "drivers.jsonl")
     drivers_by_domain = _group_drivers_by_domain(drivers)
 
@@ -84,12 +95,20 @@ def build_view_model(run_dir: Path) -> dict[str, Any]:
 
     uncertainties_payload = _load_json(artifacts_dir / "uncertainties.json") or {}
     uncertainties = uncertainties_payload.get("uncertainties", [])
+    uncertainty_axes_payload = _load_json(artifacts_dir / "uncertainty_axes.json") or {}
+    uncertainty_axes = uncertainty_axes_payload.get("axes", [])
+    if not isinstance(uncertainty_axes, list):
+        uncertainty_axes = []
 
     scenario_logic = _load_json(artifacts_dir / "logic.json") or {}
     skeletons_payload = _load_json(artifacts_dir / "skeletons.json") or {}
     scenarios = skeletons_payload.get("scenarios", [])
     if not scenarios:
         scenarios = scenario_logic.get("scenarios", [])
+    scenarios_payload = _load_json(artifacts_dir / "scenarios.json") or {}
+    scenarios_v2 = scenarios_payload.get("scenarios", [])
+    if isinstance(scenarios_v2, list) and scenarios_v2:
+        scenarios = scenarios_v2
 
     narratives = _load_narratives(artifacts_dir)
 
@@ -97,6 +116,11 @@ def build_view_model(run_dir: Path) -> dict[str, Any]:
     ewis = ewi_payload.get("indicators", [])
 
     daily_brief_md = _load_text(artifacts_dir / "daily_brief.md")
+    strategies_payload = _load_json(artifacts_dir / "strategies.json") or {}
+    strategies = strategies_payload.get("strategies", [])
+    if not isinstance(strategies, list):
+        strategies = []
+    wind_tunnel_payload = _load_json(artifacts_dir / "wind_tunnel.json")
 
     latest_status = read_latest_status(run_dir.parent) or {}
     run_config = _load_json(run_dir / "run_config.json")
@@ -110,7 +134,12 @@ def build_view_model(run_dir: Path) -> dict[str, Any]:
     return {
         "charter": charter,
         "focal_issue": focal_issue,
+        "company_profile": company_profile,
+        "prompt_manifest": prompt_manifest,
         "driving_forces": driving_forces,
+        "forces": forces,
+        "forces_ranked": forces_ranked,
+        "clusters": clusters,
         "washout_report": washout_report,
         "evidence_units": evidence_units,
         "belief_sets": belief_sets,
@@ -118,10 +147,13 @@ def build_view_model(run_dir: Path) -> dict[str, Any]:
         "drivers": drivers,
         "drivers_by_domain": drivers_by_domain,
         "uncertainties": uncertainties,
+        "uncertainty_axes": uncertainty_axes,
         "scenario_logic": scenario_logic,
         "scenarios": scenarios,
         "narratives": narratives,
         "ewis": ewis,
+        "strategies": strategies,
+        "wind_tunnel": wind_tunnel_payload,
         "daily_brief_md": daily_brief_md,
         "run_meta": run_meta,
     }

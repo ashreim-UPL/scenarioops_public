@@ -6,7 +6,7 @@ from typing import Any
 
 from scenarioops.app.config import LLMConfig
 from scenarioops.app.config import ScenarioOpsSettings
-from scenarioops.graph.nodes.utils import get_client, load_prompt, render_prompt
+from scenarioops.graph.nodes.utils import build_prompt, get_client
 from scenarioops.graph.nodes.narratives import extract_numeric_claims_without_citations
 from scenarioops.graph.state import AuditFinding, AuditReport, ScenarioOpsState
 from scenarioops.graph.tools.artifact_contracts import schema_for_artifact
@@ -125,8 +125,14 @@ def run_auditor_node(
     findings: list[AuditFinding] = []
     citations: list[dict[str, Any]] = []
 
-    artifacts = [path for path in artifacts_dir.iterdir() if path.is_file()]
+    artifacts = sorted(
+        [path for path in artifacts_dir.iterdir() if path.is_file()],
+        key=lambda path: path.name,
+    )
+    skip_names = {"index.json", "view_model.json"}
     for path in artifacts:
+        if path.name in skip_names:
+            continue
         if path.name.endswith(".meta.json"):
             continue
         meta_path = path.with_suffix(".meta.json")
@@ -197,18 +203,22 @@ def run_auditor_node(
 
     findings.extend(_fixture_findings(citations))
     findings.extend(_publisher_findings(citations))
+    findings = sorted(findings, key=lambda item: item.id)
 
     resolved_mode = (settings.mode if settings else "demo").lower()
     fixture_only = all(finding.id.startswith("fixture-") for finding in findings)
-    hard_fail = bool(findings) and (resolved_mode == "live" or not fixture_only)
+    fixture_mode = settings is not None and settings.sources_policy == "fixtures"
+    hard_fail = bool(findings) and (
+        resolved_mode == "live" or (not fixture_mode and not fixture_only)
+    )
     summary = "audit passed" if not hard_fail else "audit failed"
     remediation_actions: list[str] = []
     if findings:
-        prompt_template = load_prompt("auditor")
-        prompt = render_prompt(
-            prompt_template,
+        prompt_bundle = build_prompt(
+            "auditor",
             {"findings": [_serialize_finding(finding) for finding in findings]},
         )
+        prompt = prompt_bundle.text
         client = get_client(llm_client, config)
         suggestions = client.generate_markdown(prompt)
         remediation_actions = [line.strip("- ").strip() for line in suggestions.splitlines() if line]
@@ -237,7 +247,10 @@ def run_auditor_node(
         },
         ext="json",
         input_values={"artifact_count": len(artifacts)},
-        prompt_values={"prompt": "audit"},
+        prompt_values={
+            "prompt_name": prompt_bundle.name if findings else "auditor",
+            "prompt_sha256": prompt_bundle.sha256 if findings else "",
+        },
         tool_versions={"auditor_node": "0.1.0"},
         base_dir=base_dir,
     )

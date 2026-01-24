@@ -44,7 +44,7 @@ def _evidence_maps(
         url = str(entry.get("url", ""))
         excerpt = str(entry.get("excerpt", ""))
         publisher = str(entry.get("publisher", "")) or url
-        evidence_id = str(entry.get("id", "")) or url
+        evidence_id = str(entry.get("evidence_unit_id") or entry.get("id") or "") or url
         normalized = _normalize_citation_url(url)
         hashes[normalized] = _hash_excerpt(excerpt)
         publishers[normalized] = publisher
@@ -90,6 +90,9 @@ def run_scan_node(
     evidence_hashes, evidence_publishers, evidence_ids = _evidence_maps(state)
     if not evidence_hashes:
         raise ValueError("Evidence units are required before scan.")
+    allow_fixture_citations = (
+        settings is not None and settings.sources_policy == "fixtures"
+    )
     
     raw_forces = parsed.get("forces", [])
     normalized_forces = []
@@ -154,9 +157,21 @@ def run_scan_node(
                 url = str(citation.get("url", ""))
                 normalized = _normalize_citation_url(url)
                 if normalized not in evidence_hashes:
-                    raise ValueError(
-                        f"Driving force citation url not in evidence units: {url}"
+                    if not allow_fixture_citations:
+                        raise ValueError(
+                            f"Driving force citation url not in evidence units: {url}"
+                        )
+                    log_normalization(
+                        run_id=run_id,
+                        node_name="scan_pestel",
+                        operation="fixture_citation_fallback",
+                        details={"url": url},
+                        base_dir=base_dir,
                     )
+                    citation["excerpt_hash"] = _hash_excerpt(url)
+                    citation["publisher"] = citation.get("publisher") or url
+                    citation["evidence_id"] = citation.get("evidence_id") or url
+                    continue
                 citation["excerpt_hash"] = evidence_hashes[normalized]
                 citation["publisher"] = evidence_publishers.get(
                     normalized, citation.get("publisher", "")

@@ -89,6 +89,10 @@ def _created_at_for_run(run_id: str) -> str | None:
     return _RUN_CREATED_AT.get(run_id)
 
 
+def get_run_timestamp(run_id: str) -> str | None:
+    return _created_at_for_run(run_id)
+
+
 def write_run_config(
     *,
     run_id: str,

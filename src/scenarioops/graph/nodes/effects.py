@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from scenarioops.app.config import LLMConfig
+from scenarioops.app.config import LLMConfig, ScenarioOpsSettings
 from scenarioops.graph.nodes.utils import get_client, load_prompt, render_prompt
 from scenarioops.graph.state import ScenarioOpsState
 from scenarioops.graph.tools.schema_validate import load_schema, validate_artifact
@@ -25,6 +25,21 @@ def _beliefs_payload(state: ScenarioOpsState) -> dict[str, Any]:
     return {"belief_sets": []}
 
 
+def _use_mock_payload(
+    settings: ScenarioOpsSettings | None, config: LLMConfig | None
+) -> bool:
+    if settings is not None:
+        if settings.sources_policy == "fixtures":
+            return True
+        if settings.mode == "demo":
+            return True
+        if settings.llm_provider == "mock":
+            return True
+    if config is not None and getattr(config, "mode", None) == "mock":
+        return True
+    return False
+
+
 def run_effects_node(
     *,
     run_id: str,
@@ -32,17 +47,21 @@ def run_effects_node(
     llm_client=None,
     base_dir: Path | None = None,
     config: LLMConfig | None = None,
+    settings: ScenarioOpsSettings | None = None,
 ) -> ScenarioOpsState:
-    prompt_template = load_prompt("effects")
+    schema = load_schema("effects.schema")
     context = {
         "scope_json": _scope_payload(state),
         "belief_sets_json": _beliefs_payload(state),
     }
-    prompt = render_prompt(prompt_template, context)
-    client = get_client(llm_client, config)
-    schema = load_schema("effects.schema")
-    response = client.generate_json(prompt, schema)
-    parsed = ensure_dict(response, node_name="effects")
+    if _use_mock_payload(settings, config):
+        parsed = {"effects": []}
+    else:
+        prompt_template = load_prompt("effects")
+        prompt = render_prompt(prompt_template, context)
+        client = get_client(llm_client, config)
+        response = client.generate_json(prompt, schema)
+        parsed = ensure_dict(response, node_name="effects")
     validate_artifact("effects.schema", parsed)
 
     write_artifact(
@@ -51,7 +70,7 @@ def run_effects_node(
         payload=parsed,
         ext="json",
         input_values={"belief_set_count": len(context["belief_sets_json"].get("belief_sets", []))},
-        prompt_values={"prompt": prompt},
+        prompt_values={"prompt": "effects"},
         tool_versions={"effects_node": "0.1.0"},
         base_dir=base_dir,
     )

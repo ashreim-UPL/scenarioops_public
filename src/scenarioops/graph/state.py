@@ -17,6 +17,7 @@ class Charter:
     assumptions: list[str] = field(default_factory=list)
     success_criteria: list[str] = field(default_factory=list)
     notes: str | None = None
+    metadata: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -206,7 +207,13 @@ class AuditReport:
 class ScenarioOpsState:
     charter: Charter | None = None
     focal_issue: dict[str, Any] | None = None
+    company_profile: dict[str, Any] | None = None
     driving_forces: dict[str, Any] | None = None
+    forces: dict[str, Any] | None = None
+    forces_ranked: dict[str, Any] | None = None
+    clusters: dict[str, Any] | None = None
+    uncertainty_axes: dict[str, Any] | None = None
+    scenarios: dict[str, Any] | None = None
     washout_report: dict[str, Any] | None = None
     evidence_units: dict[str, Any] | None = None
     certainty_uncertainty: dict[str, Any] | None = None

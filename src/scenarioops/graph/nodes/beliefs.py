@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from scenarioops.app.config import LLMConfig
+from scenarioops.app.config import LLMConfig, ScenarioOpsSettings
 from scenarioops.graph.nodes.utils import get_client, load_prompt, render_prompt
 from scenarioops.graph.state import ScenarioOpsState
 from scenarioops.graph.tools.schema_validate import load_schema, validate_artifact
@@ -33,6 +33,21 @@ def _uncertainties_payload(state: ScenarioOpsState) -> list[dict[str, Any]]:
     return []
 
 
+def _use_mock_payload(
+    settings: ScenarioOpsSettings | None, config: LLMConfig | None
+) -> bool:
+    if settings is not None:
+        if settings.sources_policy == "fixtures":
+            return True
+        if settings.mode == "demo":
+            return True
+        if settings.llm_provider == "mock":
+            return True
+    if config is not None and getattr(config, "mode", None) == "mock":
+        return True
+    return False
+
+
 def run_beliefs_node(
     *,
     run_id: str,
@@ -40,18 +55,22 @@ def run_beliefs_node(
     llm_client=None,
     base_dir: Path | None = None,
     config: LLMConfig | None = None,
+    settings: ScenarioOpsSettings | None = None,
 ) -> ScenarioOpsState:
-    prompt_template = load_prompt("beliefs")
+    schema = load_schema("belief_sets.schema")
     context = {
         "scope_json": _scope_payload(state),
         "uncertainties_json": _uncertainties_payload(state),
         "evidence_units_json": _evidence_payload(state),
     }
-    prompt = render_prompt(prompt_template, context)
-    client = get_client(llm_client, config)
-    schema = load_schema("belief_sets.schema")
-    response = client.generate_json(prompt, schema)
-    parsed = ensure_dict(response, node_name="beliefs")
+    if _use_mock_payload(settings, config):
+        parsed = {"belief_sets": []}
+    else:
+        prompt_template = load_prompt("beliefs")
+        prompt = render_prompt(prompt_template, context)
+        client = get_client(llm_client, config)
+        response = client.generate_json(prompt, schema)
+        parsed = ensure_dict(response, node_name="beliefs")
     validate_artifact("belief_sets.schema", parsed)
 
     write_artifact(
@@ -60,7 +79,7 @@ def run_beliefs_node(
         payload=parsed,
         ext="json",
         input_values={"uncertainty_count": len(context["uncertainties_json"])},
-        prompt_values={"prompt": prompt},
+        prompt_values={"prompt": "beliefs"},
         tool_versions={"beliefs_node": "0.1.0"},
         base_dir=base_dir,
     )

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from scenarioops.app.config import LLMConfig
+from scenarioops.app.config import LLMConfig, ScenarioOpsSettings
 from scenarioops.graph.nodes.utils import get_client, load_prompt, render_prompt
 from scenarioops.graph.state import Ewi, EwiIndicator, ScenarioOpsState
 from scenarioops.graph.tools.normalization import stable_id
@@ -23,6 +23,21 @@ def _validate_ewi_counts(payload: dict, scenario_ids: list[str]) -> None:
             raise ValueError(f"Scenario {scenario_id} has {count} measurable EWIs.")
 
 
+def _use_mock_payload(
+    settings: ScenarioOpsSettings | None, config: LLMConfig | None
+) -> bool:
+    if settings is not None:
+        if settings.sources_policy == "fixtures":
+            return True
+        if settings.mode == "demo":
+            return True
+        if settings.llm_provider == "mock":
+            return True
+    if config is not None and getattr(config, "mode", None) == "mock":
+        return True
+    return False
+
+
 def run_ewis_node(
     *,
     run_id: str,
@@ -30,21 +45,42 @@ def run_ewis_node(
     llm_client=None,
     base_dir: Path | None = None,
     config: LLMConfig | None = None,
+    settings: ScenarioOpsSettings | None = None,
 ) -> ScenarioOpsState:
     if state.logic is None:
         raise ValueError("Logic is required to generate EWIs.")
 
     scenario_ids = [scenario.id for scenario in state.logic.scenarios]
-    prompt_template = load_prompt("ewis")
-    prompt = render_prompt(prompt_template, {"scenario_ids": scenario_ids})
-
-    client = get_client(llm_client, config)
     schema = load_schema("ewi")
-    response = client.generate_json(prompt, schema)
-    parsed = ensure_dict(response, node_name="ewis")
+    if _use_mock_payload(settings, config):
+        indicators = []
+        for scenario_id in scenario_ids:
+            indicators.append(
+                {
+                    "id": f"ewi-{scenario_id}-1",
+                    "name": f"Signal for {scenario_id}",
+                    "description": "Mock indicator",
+                    "signal": "watch",
+                    "metric": "index",
+                    "linked_scenarios": [scenario_id],
+                }
+            )
+        parsed = {
+            "id": stable_id("ewi", scenario_ids),
+            "title": "Early Warning Indicators",
+            "indicators": indicators,
+            "metadata": {"mocked": True},
+        }
+    else:
+        prompt_template = load_prompt("ewis")
+        prompt = render_prompt(prompt_template, {"scenario_ids": scenario_ids})
+        client = get_client(llm_client, config)
+        response = client.generate_json(prompt, schema)
+        parsed = ensure_dict(response, node_name="ewis")
 
     validate_artifact("ewi", parsed)
-    _validate_ewi_counts(parsed, scenario_ids)
+    if not _use_mock_payload(settings, config):
+        _validate_ewi_counts(parsed, scenario_ids)
 
     write_artifact(
         run_id=run_id,
@@ -52,7 +88,7 @@ def run_ewis_node(
         payload=parsed,
         ext="json",
         input_values={"scenario_ids": scenario_ids},
-        prompt_values={"prompt": prompt},
+        prompt_values={"prompt": "ewis"},
         tool_versions={"ewis_node": "0.1.0"},
         base_dir=base_dir,
     )

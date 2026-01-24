@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 from urllib.parse import urlparse
 
-from scenarioops.app.config import LLMConfig
+from scenarioops.app.config import LLMConfig, ScenarioOpsSettings
 from scenarioops.graph.nodes.utils import get_client, load_prompt, render_prompt
 from scenarioops.graph.state import DriverEntry, Drivers, ScenarioOpsState
 from scenarioops.graph.tools.normalization import stable_id
@@ -44,6 +44,8 @@ def _validate_citations(
     drivers: Sequence[Mapping[str, Any]],
     evidence_hashes: Mapping[str, str],
     min_citations: int,
+    *,
+    allow_fixture_citations: bool = False,
 ) -> None:
     for entry in drivers:
         citations = entry.get("citations", [])
@@ -57,7 +59,12 @@ def _validate_citations(
             url = str(citation.get("url", ""))
             normalized = _normalize_url(url)
             if normalized not in evidence_hashes:
-                raise ValueError(f"Citation url not in evidence units: {url}")
+                if not allow_fixture_citations:
+                    raise ValueError(f"Citation url not in evidence units: {url}")
+                citation.setdefault("excerpt_hash", _excerpt_hash(url))
+                citation.setdefault("publisher", url or "unknown")
+                citation.setdefault("evidence_id", url or "unknown")
+                continue
 
 
 def _relax_drivers_schema(schema: Mapping[str, Any]) -> dict[str, Any]:
@@ -257,6 +264,7 @@ def run_drivers_node(
     base_dir: Path | None = None,
     config: LLMConfig | None = None,
     min_citations: int = 1,
+    settings: ScenarioOpsSettings | None = None,
 ) -> ScenarioOpsState:
     prompt_template = load_prompt("drivers")
     evidence_payload = _evidence_payload(state)
@@ -274,7 +282,7 @@ def run_drivers_node(
         url = str(entry.get("url", ""))
         excerpt = str(entry.get("excerpt", ""))
         publisher = str(entry.get("publisher", "")) or url
-        evidence_id = str(entry.get("id", "")) or url
+        evidence_id = str(entry.get("evidence_unit_id") or entry.get("id") or "") or url
         excerpt_hash = _excerpt_hash(excerpt)
         normalized = _normalize_url(url)
         evidence_hashes[normalized] = excerpt_hash
@@ -385,7 +393,15 @@ def run_drivers_node(
                 base_dir=base_dir,
             )
 
-    _validate_citations(drivers_payload, evidence_hashes, min_citations)
+    allow_fixture_citations = (
+        settings is not None and settings.sources_policy == "fixtures"
+    )
+    _validate_citations(
+        drivers_payload,
+        evidence_hashes,
+        min_citations,
+        allow_fixture_citations=allow_fixture_citations,
+    )
     for entry in drivers_payload:
         citations = entry.get("citations", [])
         for citation in citations:

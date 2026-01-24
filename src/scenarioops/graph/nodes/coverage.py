@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from scenarioops.app.config import ScenarioOpsSettings
 from scenarioops.graph.state import ScenarioOpsState
 from scenarioops.graph.tools.schema_validate import validate_artifact
 from scenarioops.graph.tools.storage import write_artifact
@@ -43,11 +44,24 @@ def _lens_counts(items: list[dict[str, Any]]) -> dict[str, int]:
     return counts
 
 
+def _allow_missing(settings: ScenarioOpsSettings | None) -> bool:
+    if settings is None:
+        return False
+    if settings.sources_policy == "fixtures":
+        return True
+    if settings.mode == "demo":
+        return True
+    if settings.llm_provider == "mock":
+        return True
+    return False
+
+
 def run_coverage_node(
     *,
     run_id: str,
     state: ScenarioOpsState,
     base_dir: Path | None = None,
+    settings: ScenarioOpsSettings | None = None,
 ) -> ScenarioOpsState:
     if not isinstance(state.driving_forces, dict):
         raise ValueError("Driving forces are required for coverage checks.")
@@ -76,9 +90,10 @@ def run_coverage_node(
             missing_lenses.append(lens)
         lenses.append({"lens": lens, "count": count, "status": status})
 
-    if missing_domains:
+    allow_missing = _allow_missing(settings)
+    if missing_domains and not allow_missing:
         raise ValueError(f"Coverage missing STEEP dimensions: {missing_domains}")
-    if missing_lenses:
+    if missing_lenses and not allow_missing:
         raise ValueError(f"Coverage missing study lenses: {missing_lenses}")
 
     report = {"steep": steep, "lenses": lenses}
