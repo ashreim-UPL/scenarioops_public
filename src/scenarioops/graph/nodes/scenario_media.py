@@ -12,7 +12,11 @@ from scenarioops.graph.tools.image_generation import (
     placeholder_image_bytes,
 )
 from scenarioops.graph.tools.schema_validate import load_schema, validate_artifact
-from scenarioops.graph.tools.storage import ensure_run_dirs, write_artifact
+from scenarioops.graph.tools.storage import (
+    ensure_run_dirs,
+    log_normalization,
+    write_artifact,
+)
 from scenarioops.graph.tools.traceability import build_run_metadata
 from scenarioops.llm.guards import ensure_dict
 
@@ -20,6 +24,44 @@ from scenarioops.llm.guards import ensure_dict
 def _safe_id(value: str) -> str:
     cleaned = re.sub(r"[^A-Za-z0-9_-]+", "_", value or "")
     return cleaned.strip("_") or "scenario"
+
+
+def _truncate(value: str, limit: int) -> str:
+    if not value:
+        return ""
+    return value if len(value) <= limit else value[: limit - 3].rstrip() + "..."
+
+
+def _summary_prompt_for_image(scenario: Mapping[str, Any]) -> str:
+    name = str(scenario.get("name", "")).strip()
+    axis_states = scenario.get("axis_states") if isinstance(scenario, Mapping) else None
+    axis_text = ""
+    if isinstance(axis_states, Mapping):
+        parts = [f"{key}: {value}" for key, value in axis_states.items() if value]
+        axis_text = "; ".join(parts)
+    narrative = str(scenario.get("narrative", "")).strip()
+    signposts = scenario.get("signposts") if isinstance(scenario, Mapping) else None
+    signpost_text = ""
+    if isinstance(signposts, list):
+        signpost_text = "; ".join(str(item) for item in signposts[:3] if item)
+    implications = scenario.get("implications") if isinstance(scenario, Mapping) else None
+    implication_text = ""
+    if isinstance(implications, list):
+        implication_text = "; ".join(str(item) for item in implications[:2] if item)
+
+    parts = []
+    if name:
+        parts.append(f"Scenario: {name}.")
+    if axis_text:
+        parts.append(f"Axis states: {axis_text}.")
+    if narrative:
+        parts.append(f"Narrative: {_truncate(narrative, 420)}")
+    if signpost_text:
+        parts.append(f"Signals: {signpost_text}.")
+    if implication_text:
+        parts.append(f"Implications: {implication_text}.")
+    prompt = " ".join(parts).strip()
+    return _truncate(prompt, 800)
 
 
 def run_scenario_media_node(
@@ -74,15 +116,65 @@ def run_scenario_media_node(
         visual_prompt = str(parsed.get("visual_prompt", "")).strip()
 
         image_bytes = None
-        if visual_prompt:
+        image_prompt = _summary_prompt_for_image(scenario)
+        if image_prompt:
+            log_normalization(
+                run_id=run_id,
+                node_name="scenario_media",
+                operation="image_prompt_built",
+                details={
+                    "scenario_id": scenario_id,
+                    "prompt_len": len(image_prompt),
+                    "prompt_excerpt": _truncate(image_prompt, 160),
+                },
+                base_dir=base_dir,
+            )
+        else:
+            log_normalization(
+                run_id=run_id,
+                node_name="scenario_media",
+                operation="image_prompt_missing",
+                details={"scenario_id": scenario_id},
+                base_dir=base_dir,
+            )
+        if image_prompt or visual_prompt:
             try:
                 image_bytes = image_client.generate_image(
-                    visual_prompt, model=resolved_settings.image_model
+                    image_prompt or visual_prompt, model=resolved_settings.image_model
                 )
-            except Exception:
+                log_normalization(
+                    run_id=run_id,
+                    node_name="scenario_media",
+                    operation="image_generation_ok",
+                    details={
+                        "scenario_id": scenario_id,
+                        "model": resolved_settings.image_model,
+                        "bytes": len(image_bytes) if image_bytes else 0,
+                    },
+                    base_dir=base_dir,
+                )
+            except Exception as exc:
+                log_normalization(
+                    run_id=run_id,
+                    node_name="scenario_media",
+                    operation="image_generation_error",
+                    details={
+                        "scenario_id": scenario_id,
+                        "model": resolved_settings.image_model,
+                        "error": str(exc),
+                    },
+                    base_dir=base_dir,
+                )
                 image_bytes = None
         if not image_bytes:
             image_bytes = placeholder_image_bytes()
+            log_normalization(
+                run_id=run_id,
+                node_name="scenario_media",
+                operation="image_generation_placeholder",
+                details={"scenario_id": scenario_id},
+                base_dir=base_dir,
+            )
 
         safe_id = _safe_id(scenario_id)
         image_name = f"scenario_{safe_id}.png"

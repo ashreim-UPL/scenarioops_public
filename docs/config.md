@@ -14,8 +14,19 @@ You can select models for each task using the following settings or CLI flags:
 - `embed_model` (`--embed-model`): embedding generation for the vector store.
 - `image_model` (`--image-model`): scenario image generation.
 
-Defaults point to the latest stable Gemini models in the config file. Unknown
-model values are rejected at startup.
+Defaults point to the latest Gemini preview/stable mix documented below.
+Unknown model values are rejected at startup.
+
+| Model tier | Model name (API ID) | Status |
+|------------|--------------------|--------|
+| Frontline reasoning | `gemini-3-pro-preview` | Preview (Advanced) |
+| Production speed | `gemini-3-flash-preview` | Preview (Latest) |
+| Stable workhorse | `gemini-2.5-flash` | Stable (Recommended) |
+
+If `allow_web` is enabled and `llm_provider` is `gemini`, ScenarioOps will
+refresh the available text model list at runtime using the Google GenAI SDK.
+Set `SCENARIOOPS_REFRESH_MODELS=1` to force a refresh even when `allow_web`
+is disabled.
 
 ## Retrieval thresholds
 

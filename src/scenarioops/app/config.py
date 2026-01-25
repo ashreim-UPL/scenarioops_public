@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
+import os
 from pathlib import Path
 from typing import Any, Literal, Mapping
 
@@ -12,13 +13,18 @@ class LLMTimeouts:
     request_seconds: float = 60.0
 
 
-DEFAULT_LLM_MODEL = "gemini-1.5-pro-latest"
-DEFAULT_SEARCH_MODEL = "gemini-1.5-flash-latest"
-DEFAULT_SUMMARIZER_MODEL = "gemini-1.5-flash-latest"
-DEFAULT_IMAGE_MODEL = "imagen-3.0-generate-002"
+DEFAULT_LLM_MODEL = "gemini-3-flash-preview"
+DEFAULT_SEARCH_MODEL = "gemini-3-flash-preview"
+DEFAULT_SUMMARIZER_MODEL = "gemini-3-flash-preview"
+DEFAULT_IMAGE_MODEL = "gemini-2.5-flash-image"
 DEFAULT_EMBED_MODEL = "local-hash-256"
 
 ALLOWED_TEXT_MODELS = {
+    "gemini-3-pro-preview",
+    "gemini-3-flash-preview",
+    "gemini-2.5-flash",
+    "gemini-2.5-pro",
+    "gemini-2.5-flash-lite",
     "gemini-1.5-pro-latest",
     "gemini-1.5-flash-latest",
     "gemini-2.0-flash",
@@ -29,6 +35,8 @@ ALLOWED_TEXT_MODELS = {
 ALLOWED_IMAGE_MODELS = {
     "imagen-3.0-generate-002",
     "imagen-3.0-fast-generate-001",
+    "gemini-2.5-flash-image",
+    "gemini-3-pro-image-preview",
 }
 ALLOWED_EMBED_MODELS = {
     "local-hash-256",
@@ -67,6 +75,12 @@ _MODEL_FIELDS = {
     "embed_model",
     "image_model",
 }
+_TEXT_MODEL_FIELDS = {
+    "gemini_model",
+    "llm_model",
+    "search_model",
+    "summarizer_model",
+}
 _MODEL_ALLOWED = {
     "gemini_model": ALLOWED_TEXT_MODELS,
     "llm_model": ALLOWED_TEXT_MODELS,
@@ -75,11 +89,61 @@ _MODEL_ALLOWED = {
     "embed_model": ALLOWED_EMBED_MODELS,
     "image_model": ALLOWED_IMAGE_MODELS,
 }
+_DYNAMIC_TEXT_MODELS: set[str] | None = None
+
+
+def refresh_gemini_text_models(api_key: str | None = None) -> set[str]:
+    global _DYNAMIC_TEXT_MODELS
+    if _DYNAMIC_TEXT_MODELS is not None:
+        return set(_DYNAMIC_TEXT_MODELS)
+    try:
+        from google import genai
+    except Exception:
+        _DYNAMIC_TEXT_MODELS = set()
+        return set()
+    if api_key is None:
+        try:
+            from scenarioops.llm.client import get_gemini_api_key
+
+            api_key = get_gemini_api_key()
+        except RuntimeError:
+            _DYNAMIC_TEXT_MODELS = set()
+            return set()
+    try:
+        client = genai.Client(api_key=api_key)
+        models: set[str] = set()
+        for model in client.models.list():
+            methods = getattr(model, "supported_generation_methods", None) or []
+            if "generateContent" not in methods:
+                continue
+            name = getattr(model, "name", None)
+            if isinstance(name, str) and name.strip():
+                models.add(name.strip())
+        if models:
+            ALLOWED_TEXT_MODELS.update(models)
+        _DYNAMIC_TEXT_MODELS = models
+        return set(models)
+    except Exception:
+        _DYNAMIC_TEXT_MODELS = set()
+        return set()
+
+
+def get_allowed_text_models(*, refresh: bool = False) -> set[str]:
+    models = set(ALLOWED_TEXT_MODELS)
+    if refresh:
+        models.update(refresh_gemini_text_models())
+    return models
+
+
+def maybe_refresh_model_catalog(settings: "ScenarioOpsSettings") -> None:
+    refresh = settings.llm_provider == "gemini" and bool(settings.allow_web)
+    if refresh or os.environ.get("SCENARIOOPS_REFRESH_MODELS") == "1":
+        refresh_gemini_text_models()
 
 
 @dataclass(frozen=True)
 class ScenarioOpsSettings:
-    mode: ModeLiteral = "demo"
+    mode: ModeLiteral = "live"
     llm_provider: ProviderLiteral = "gemini"
     gemini_model: str = DEFAULT_LLM_MODEL
     llm_model: str = DEFAULT_LLM_MODEL
@@ -87,7 +151,7 @@ class ScenarioOpsSettings:
     summarizer_model: str = DEFAULT_SUMMARIZER_MODEL
     embed_model: str = DEFAULT_EMBED_MODEL
     image_model: str = DEFAULT_IMAGE_MODEL
-    sources_policy: SourcesPolicyLiteral = "academic_only"
+    sources_policy: SourcesPolicyLiteral = "mixed_reputable"
     allow_web: bool = False
     min_sources_per_domain: int = 8
     min_citations_per_driver: int = 2
@@ -220,9 +284,13 @@ def _apply_overrides(
                 raise ValueError(f"Invalid model for {key}: empty value")
             allowed = _MODEL_ALLOWED.get(key)
             if allowed and model not in allowed:
-                raise ValueError(
-                    f"Unsupported {key}: {model}. Allowed: {', '.join(sorted(allowed))}"
-                )
+                if key in _TEXT_MODEL_FIELDS:
+                    refresh_gemini_text_models()
+                    allowed = _MODEL_ALLOWED.get(key)
+                if allowed and model not in allowed:
+                    raise ValueError(
+                        f"Unsupported {key}: {model}. Allowed: {', '.join(sorted(allowed))}"
+                    )
             updated[key] = model
             continue
         updated[key] = str(value)
@@ -240,7 +308,9 @@ def settings_from_dict(values: Mapping[str, Any]) -> ScenarioOpsSettings:
     payload = dict(values)
     if "settings" in payload and isinstance(payload["settings"], Mapping):
         payload = dict(payload["settings"])
-    return _apply_overrides(settings, payload)
+    settings = _apply_overrides(settings, payload)
+    maybe_refresh_model_catalog(settings)
+    return settings
 
 
 def load_settings(
@@ -252,6 +322,7 @@ def load_settings(
     settings = _apply_overrides(settings, file_values)
     if overrides:
         settings = _apply_overrides(settings, overrides)
+    maybe_refresh_model_catalog(settings)
     return settings
 
 

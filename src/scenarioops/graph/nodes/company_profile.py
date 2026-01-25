@@ -5,6 +5,7 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, Sequence
+import re
 from urllib.request import Request, urlopen
 
 from scenarioops.app.config import LLMConfig, ScenarioOpsSettings, llm_config_from_settings
@@ -24,6 +25,7 @@ from scenarioops.llm.guards import ensure_dict
 _ANNUAL_CHUNK_CHARS = int(os.environ.get("ANNUAL_REPORT_CHUNK_CHARS", "2000"))
 _ANNUAL_CHUNK_OVERLAP = int(os.environ.get("ANNUAL_REPORT_CHUNK_OVERLAP", "250"))
 _ANNUAL_MAX_CHUNKS = int(os.environ.get("ANNUAL_REPORT_MAX_CHUNKS", "10"))
+_URL_RE = re.compile(r"https?://[^\s)\]>\"]+")
 
 
 def _manual_input(user_params: Mapping[str, Any]) -> str:
@@ -72,6 +74,30 @@ def _dedupe_urls(urls: Sequence[str]) -> list[str]:
         seen.add(url)
         deduped.append(url)
     return deduped
+
+
+def _clean_candidate_url(value: str) -> str | None:
+    raw = str(value or "").strip()
+    if not raw:
+        return None
+    if "](" in raw:
+        raw = raw.split("](", 1)[-1]
+    match = _URL_RE.search(raw)
+    if match:
+        raw = match.group(0)
+    raw = raw.rstrip(")]")
+    if not raw.startswith("http"):
+        return None
+    return raw
+
+
+def _clean_candidate_urls(urls: Sequence[str]) -> list[str]:
+    cleaned: list[str] = []
+    for url in urls:
+        fixed = _clean_candidate_url(url)
+        if fixed:
+            cleaned.append(fixed)
+    return cleaned
 
 
 def _chunk_text(text: str) -> list[str]:
@@ -243,7 +269,8 @@ def run_company_profile_node(
                 candidates.extend(results)
             except Exception:
                 continue
-        ranked = sorted(_dedupe_urls(candidates), key=_score_report_url, reverse=True)
+        cleaned_candidates = _clean_candidate_urls(candidates)
+        ranked = sorted(_dedupe_urls(cleaned_candidates), key=_score_report_url, reverse=True)
         last_error = None
         for url in ranked:
             text, content_type, error = _fetch_report_text(
@@ -351,7 +378,11 @@ def run_company_profile_node(
                 doc = vector_store.build_document(
                     doc_id=doc_id,
                     text=summary,
-                    metadata={"evidence_unit": unit},
+                    metadata={
+                        "evidence_unit": unit,
+                        "company_name": company_name,
+                        "run_id": run_id,
+                    },
                 )
                 vector_store.add_documents([doc])
             evidence_units.append(unit)

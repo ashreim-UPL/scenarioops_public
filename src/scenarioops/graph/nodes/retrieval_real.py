@@ -133,6 +133,38 @@ def _cache_ttl_days() -> int:
         return 7
 
 
+def _vectordb_min_score() -> float:
+    raw = os.environ.get("SCENARIOOPS_VECTORDB_MIN_SCORE")
+    if raw is None:
+        return 0.2
+    try:
+        return max(0.0, float(raw))
+    except ValueError:
+        return 0.2
+
+
+def _matches_vectordb_scope(
+    metadata: Mapping[str, Any],
+    *,
+    company: str,
+    run_id: str,
+) -> bool:
+    meta_company = metadata.get("company_name")
+    meta_run = metadata.get("run_id")
+    if not meta_company or not meta_run:
+        unit = metadata.get("evidence_unit")
+        if isinstance(unit, Mapping):
+            if not meta_company:
+                meta_company = unit.get("company_name")
+            if not meta_run:
+                meta_run = unit.get("run_id")
+    if isinstance(meta_run, str) and meta_run and meta_run == run_id:
+        return True
+    if isinstance(meta_company, str) and meta_company:
+        return meta_company.strip().lower() == company.strip().lower()
+    return False
+
+
 def _cache_key(payload: Mapping[str, Any]) -> str:
     encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
@@ -307,6 +339,7 @@ def run_retrieval_real_node(
 
     prefetched_units: list[dict[str, Any]] = []
     vectordb_hits = 0
+    min_score = _vectordb_min_score()
     if vector_store:
         queries = []
         focal_text = str(focal_issue.get("focal_issue", "")) if focal_issue else ""
@@ -320,6 +353,14 @@ def run_retrieval_real_node(
             seen_queries.add(query)
             matches = vector_store.query(query, top_k=max(min_total, 5))
             for match in matches:
+                if match.score < min_score:
+                    continue
+                if not _matches_vectordb_scope(
+                    match.metadata,
+                    company=company,
+                    run_id=run_id,
+                ):
+                    continue
                 meta_unit = match.metadata.get("evidence_unit")
                 if isinstance(meta_unit, Mapping):
                     prefetched_units.append(dict(meta_unit))
@@ -536,7 +577,11 @@ def run_retrieval_real_node(
             doc = vector_store.build_document(
                 doc_id=doc_id,
                 text=summary,
-                metadata={"evidence_unit": unit},
+                metadata={
+                    "evidence_unit": unit,
+                    "company_name": company,
+                    "run_id": run_id,
+                },
             )
             vector_store.add_documents([doc])
         return unit
@@ -618,7 +663,11 @@ def run_retrieval_real_node(
             doc = vector_store.build_document(
                 doc_id=doc_id,
                 text=str(unit.get("summary", "")),
-                metadata={"evidence_unit": unit},
+                metadata={
+                    "evidence_unit": unit,
+                    "company_name": company,
+                    "run_id": run_id,
+                },
             )
             vector_store.add_documents([doc])
         return unit
@@ -642,7 +691,11 @@ def run_retrieval_real_node(
             doc = vector_store.build_document(
                 doc_id=doc_id,
                 text=summary_text,
-                metadata={"evidence_unit": unit},
+                metadata={
+                    "evidence_unit": unit,
+                    "company_name": company,
+                    "run_id": run_id,
+                },
             )
             vector_store.add_documents([doc])
 

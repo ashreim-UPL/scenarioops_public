@@ -431,7 +431,11 @@ def run_ingest_docs_node(
                 doc = vector_store.build_document(
                     doc_id=doc_id,
                     text=summary,
-                    metadata={"evidence_unit": unit},
+                    metadata={
+                        "evidence_unit": unit,
+                        "company_name": metadata.get("company_name", ""),
+                        "run_id": run_id,
+                    },
                 )
                 vector_store.add_documents([doc])
             evidence_units.append(unit)

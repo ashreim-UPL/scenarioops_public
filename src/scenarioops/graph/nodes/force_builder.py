@@ -435,6 +435,62 @@ def _normalize_force_fields(forces: list[dict[str, Any]]) -> list[dict[str, Any]
     return normalized
 
 
+def _impute_force_fields(
+    force: Mapping[str, Any], evidence_units: list[dict[str, Any]]
+) -> dict[str, Any]:
+    filled = dict(force)
+    if not filled.get("label"):
+        filled["label"] = (
+            filled.get("force") or filled.get("name") or filled.get("mechanism") or "Unlabeled force"
+        )
+    if not filled.get("mechanism"):
+        filled["mechanism"] = f"{filled.get('label')} shifts market dynamics."
+    if not filled.get("directionality"):
+        filled["directionality"] = "Mixed impact with uneven effects across segments."
+    if not filled.get("layer"):
+        filled["layer"] = "secondary"
+    if not filled.get("domain"):
+        domain_tags = []
+        if isinstance(filled.get("domain_tags"), list):
+            domain_tags = [str(item).lower() for item in filled.get("domain_tags") if str(item)]
+        tag_to_domain = {
+            "political": "political",
+            "economic": "economic",
+            "social": "social",
+            "technological": "technological",
+            "environmental": "environmental",
+            "legal": "legal",
+        }
+        inferred = next((tag_to_domain[tag] for tag in domain_tags if tag in tag_to_domain), None)
+        filled["domain"] = inferred or "economic"
+    if not filled.get("affected_dimensions"):
+        domain_to_dimensions = {
+            "political": ["regulatory", "geopolitical"],
+            "economic": ["demand", "cost"],
+            "social": ["workforce", "customer"],
+            "technological": ["capability", "productivity"],
+            "environmental": ["sustainability", "resilience"],
+            "legal": ["compliance", "risk"],
+        }
+        filled["affected_dimensions"] = domain_to_dimensions.get(
+            str(filled.get("domain", "")).lower(), ["demand"]
+        )
+    evidence_ids = filled.get("evidence_unit_ids")
+    if not evidence_ids:
+        for unit in evidence_units:
+            unit_id = unit.get("evidence_unit_id") or unit.get("id")
+            if isinstance(unit_id, str) and unit_id:
+                evidence_ids = [unit_id]
+                break
+        if evidence_ids:
+            filled["evidence_unit_ids"] = evidence_ids
+    if filled.get("confidence") is None:
+        filled["confidence"] = 0.55
+    if not filled.get("confidence_rationale"):
+        filled["confidence_rationale"] = "Imputed from partial evidence; confidence is provisional."
+    return filled
+
+
 def _relax_forces_schema(schema: Mapping[str, Any]) -> dict[str, Any]:
     relaxed = deepcopy(schema)
     if isinstance(relaxed, dict):
@@ -488,6 +544,7 @@ def _generate_forces_chunk(
             forces = []
         forces = [dict(force) for force in forces if isinstance(force, Mapping)]
         forces = _normalize_force_fields(forces)
+        forces = [_impute_force_fields(force, evidence_units) for force in forces]
         forces = _filter_by_domain_targets(
             forces,
             domain_targets,
@@ -517,6 +574,7 @@ def _generate_forces_chunk(
             continue
         corrected = [dict(force) for force in corrected if isinstance(force, Mapping)]
         corrected = _normalize_force_fields(corrected)
+        corrected = [_impute_force_fields(force, evidence_units) for force in corrected]
         corrected = _filter_by_domain_targets(
             corrected,
             domain_targets,
@@ -646,6 +704,7 @@ def _repair_invalid_forces(
     corrected: list[dict[str, Any]] = []
     correction_retries = 0
     for force in forces:
+        force = _impute_force_fields(force, evidence_units)
         ok, errors = _validate_force_item(force, evidence_ids)
         if ok:
             corrected.append(force)

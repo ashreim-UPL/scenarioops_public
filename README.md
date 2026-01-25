@@ -35,7 +35,7 @@ pip install -e ".[ui]"
 Run the UI:
 
 ```sh
-streamlit run ui/streamlit_app.py
+streamlit run src/scenarioops/ui/streamlit_app.py
 ```
 
 ## Configuration
@@ -51,6 +51,8 @@ Key settings:
 - `allow_web`: allow network retrieval when using live sources
 - `min_sources_per_domain`: minimum evidence sources required in live runs
 - `min_citations_per_driver`: minimum citations per driver in live runs
+- `llm_model`, `search_model`, `summarizer_model`, `embed_model`, `image_model`: model selection
+- Model defaults currently point to the Gemini preview/stable mix (`gemini-3-flash-preview`, etc.); see `docs/config.md`.
 - `llm_model`, `search_model`, `summarizer_model`, `embed_model`, `image_model`: model selection
 - `min_evidence_ok`, `min_evidence_total`, `max_failed_ratio`: retrieval grading thresholds
 

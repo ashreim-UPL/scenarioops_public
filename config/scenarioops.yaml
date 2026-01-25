@@ -1,13 +1,18 @@
-mode: demo
+# Model tiers (latest)
+# - Frontier / Reasoning: gemini-3-pro (preview/thinking)
+# - Production / Speed: gemini-3-flash (latest default)
+# - Stable Workhorse: gemini-2.5-pro, gemini-2.5-flash (stable)
+# - Cost-Efficient: gemini-2.5-flash-lite (generally available)
+mode: live
 llm_provider: gemini
-llm_model: gemini-1.5-pro-latest
-search_model: gemini-1.5-flash-latest
-summarizer_model: gemini-1.5-flash-latest
+llm_model: gemini-3-flash-preview
+search_model: gemini-3-flash-preview
+summarizer_model: gemini-3-flash-preview
 embed_model: local-hash-256
-image_model: imagen-3.0-generate-002
-gemini_model: gemini-1.5-pro-latest
-sources_policy: academic_only
-allow_web: false
+image_model: gemini-2.5-flash-image
+gemini_model: gemini-3-flash-preview
+sources_policy: mixed_reputable
+allow_web: true
 min_sources_per_domain: 8
 min_citations_per_driver: 2
 min_evidence_ok: 10

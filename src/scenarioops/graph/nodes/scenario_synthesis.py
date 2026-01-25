@@ -71,12 +71,46 @@ def run_scenario_synthesis_node(
         raise TypeError("Scenarios payload must include scenarios list.")
 
     warnings: list[str] = []
+    normalized_scenarios: list[dict[str, Any]] = []
     for idx, scenario in enumerate(scenarios, start=1):
+        if scenario.get("scenario_name") and not scenario.get("name"):
+            scenario["name"] = scenario.get("scenario_name")
+        if "scenario_name" in scenario:
+            scenario.pop("scenario_name", None)
         if not scenario.get("scenario_id"):
             scenario["scenario_id"] = f"S{idx}"
+        if not scenario.get("name"):
+            scenario["name"] = f"Scenario {scenario.get('scenario_id') or idx}"
+        allowed_keys = {
+            "scenario_id",
+            "name",
+            "axis_states",
+            "narrative",
+            "signposts",
+            "implications",
+            "no_regret_moves",
+            "contingent_moves",
+            "evidence_touchpoints",
+            "story_text",
+            "visual_prompt",
+            "image_artifact_path",
+        }
+        scenario = {key: value for key, value in scenario.items() if key in allowed_keys}
         axis_states = scenario.get("axis_states", {})
+        if isinstance(axis_states, list):
+            normalized_axis_states: dict[str, str] = {}
+            for entry in axis_states:
+                if not isinstance(entry, Mapping):
+                    continue
+                axis_id = entry.get("axis_id")
+                pole_state = entry.get("pole_state")
+                if isinstance(axis_id, str) and axis_id and isinstance(pole_state, str) and pole_state:
+                    normalized_axis_states[axis_id] = pole_state
+            axis_states = normalized_axis_states
+            scenario["axis_states"] = axis_states
         if not isinstance(axis_states, Mapping):
             warnings.append(f"scenario_axis_states_invalid:{scenario.get('scenario_id')}")
+            normalized_scenarios.append(scenario)
             continue
         missing = [axis_id for axis_id in axis_ids if axis_id not in axis_states]
         if missing:
@@ -86,6 +120,9 @@ def run_scenario_synthesis_node(
         force_ids = touchpoints.get("force_ids", []) if isinstance(touchpoints, Mapping) else []
         if len(cluster_ids) < 2 or len(force_ids) < 2:
             warnings.append(f"scenario_insufficient_touchpoints:{scenario.get('scenario_id')}")
+        normalized_scenarios.append(scenario)
+
+    scenarios = normalized_scenarios
 
     metadata = build_run_metadata(run_id=run_id, user_params=user_params)
     payload = {

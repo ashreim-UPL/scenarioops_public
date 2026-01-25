@@ -11,8 +11,10 @@ from scenarioops.graph.types import ArtifactData, NodeResult
 from scenarioops.llm.guards import ensure_dict
 from scenarioops.app.config import LLMConfig
 from scenarioops.graph.tools.traceability import build_run_metadata
+from scenarioops.observability import observe
 
 
+@observe(operation_id=True)
 def run_charter_node(
     user_params: Mapping[str, Any],
     *,

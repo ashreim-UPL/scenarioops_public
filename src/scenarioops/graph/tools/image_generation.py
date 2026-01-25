@@ -78,6 +78,41 @@ class GeminiImageClient:
 
 
 @dataclass(frozen=True)
+class GeminiGenAIImageClient:
+    api_key: str
+
+    def generate_image(self, prompt: str, *, model: str) -> bytes:
+        try:
+            from google import genai
+            from google.genai import types
+        except Exception as exc:
+            raise RuntimeError(
+                "google-genai package is required for Gemini image models."
+            ) from exc
+
+        client = genai.Client(api_key=self.api_key)
+        response = client.models.generate_content(
+            model=model,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_modalities=["IMAGE"],
+            ),
+        )
+        candidates = getattr(response, "candidates", None)
+        if not candidates:
+            raise ValueError("Gemini image response missing candidates.")
+        content = candidates[0].content if candidates else None
+        parts = getattr(content, "parts", None) if content else None
+        if not parts:
+            raise ValueError("Gemini image response missing content parts.")
+        for part in parts:
+            inline_data = getattr(part, "inline_data", None)
+            if inline_data and getattr(inline_data, "data", None):
+                return bytes(inline_data.data)
+        raise ValueError("Gemini image response did not include inline image data.")
+
+
+@dataclass(frozen=True)
 class MockImageClient:
     def generate_image(self, prompt: str, *, model: str) -> bytes:
         return _PLACEHOLDER_PNG
@@ -90,5 +125,8 @@ def get_image_client(settings: ScenarioOpsSettings) -> ImageClient:
         api_key = get_gemini_api_key()
     except RuntimeError:
         return MockImageClient()
+    image_model = getattr(settings, "image_model", "") or ""
+    if image_model.startswith("gemini-"):
+        return GeminiGenAIImageClient(api_key=api_key)
     transport = RequestsTransport(timeout_seconds=30, user_agent="ScenarioOps")
     return GeminiImageClient(api_key=api_key, transport=transport)

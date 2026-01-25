@@ -108,7 +108,13 @@ def load_wind_tunnel(run_id: str, base_dir: Path | None = None) -> WindTunnel:
 
 
 def state_for_strategies(run_id: str, base_dir: Path | None = None) -> ScenarioOpsState:
-    return ScenarioOpsState(logic=load_logic(run_id, base_dir))
+    artifacts_dir = _artifacts_dir(run_id, base_dir)
+    try:
+        return ScenarioOpsState(logic=load_logic(run_id, base_dir))
+    except FileNotFoundError:
+        scenarios_path = artifacts_dir / "scenarios.json"
+        scenarios = _load_required_json(scenarios_path)
+        return ScenarioOpsState(scenarios=scenarios)
 
 
 def state_for_daily(

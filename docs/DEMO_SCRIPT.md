@@ -14,7 +14,7 @@ Say: "We generate the base scenario artifacts and set a fixed run ID for repeata
 Command:
 
 ```sh
-streamlit run ui/streamlit_app.py
+streamlit run src/scenarioops/ui/streamlit_app.py
 ```
 
 Click:

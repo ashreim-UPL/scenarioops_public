@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import json
 import math
 import sqlite3
+import os
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Protocol
 
@@ -206,6 +207,15 @@ def run_vectordb_dir(run_id: str, base_dir: Path | None = None) -> Path:
     return runs_dir / run_id / "vectordb"
 
 
+def global_vectordb_dir(base_dir: Path | None = None) -> Path:
+    runs_dir = base_dir if base_dir is not None else default_runs_dir()
+    if runs_dir.name == "runs":
+        root = runs_dir.parent
+    else:
+        root = runs_dir
+    return root / "vectordb"
+
+
 def open_run_vector_store(
     run_id: str,
     *,
@@ -213,7 +223,11 @@ def open_run_vector_store(
     embed_model: str,
     seed: int = 0,
 ) -> LocalVectorStore:
-    db_dir = run_vectordb_dir(run_id, base_dir=base_dir)
+    scope = os.environ.get("SCENARIOOPS_VECTORDB_SCOPE", "global").strip().lower()
+    if scope == "run":
+        db_dir = run_vectordb_dir(run_id, base_dir=base_dir)
+    else:
+        db_dir = global_vectordb_dir(base_dir=base_dir)
     cache_root = db_dir / "embed_cache"
     db_path = db_dir / "embeddings.sqlite"
     return LocalVectorStore(

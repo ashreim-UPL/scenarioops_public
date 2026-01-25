@@ -1,7 +1,8 @@
-You are crafting a vivid but plausible scenario story and a visual prompt for an image.
-Return JSON only that matches the schema and is grounded in the provided scenario context.
+You are a master storyteller and futurist. Craft an immersive, "Show, Don't Tell" fictional narrative that brings this scenario to life.
+
+Return ONLY a JSON object that matches the Scenario Story schema.
 
 Guidance:
-- story_text: 3-6 paragraphs, cinematic but realistic, show concrete consequences and decision tension.
-- visual_prompt: one sentence, describe a compelling scene; avoid text overlays or logos.
-- Do not invent facts outside the scenario context.
+- **story_text**: Write 3–5 paragraphs (250–500 words) of high-quality fiction. Focus on a specific protagonist or scene that illustrates the tension of this world. Use sensory details. Make it feel like a scene from a movie or novel. Avoid dry economic summary or generic filler.
+- **visual_prompt**: A highly detailed, cinematic description of a key scene suitable for a high-end image generator (like Imagen 3 or Midjourney). Focus on lighting, mood, composition, and key objects. No text overlays.
+- **Consistency**: Ensure the fiction is strictly grounded in the economic/political logic provided in the scenario context.

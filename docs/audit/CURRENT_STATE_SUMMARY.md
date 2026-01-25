@@ -18,7 +18,7 @@ The core execution engine uses a graph-based approach (`run_graph`) where state 
 ### Entry Points
 *   **CLI:** `scenarioops` (console script) dispatches to `scenarioops.app.main`. Handles commands like `build-scenarios`, `run-daily`, `verify`.
 *   **API:** `scenarioops/app/api.py` (FastAPI). Exposes endpoints `/build`, `/strategies`, `/daily`.
-*   **UI:** `ui/streamlit_app.py` (Streamlit). Provides an interactive dashboard to trigger runs and visualize artifacts.
+*   **UI:** `src/scenarioops/ui/streamlit_app.py` (Streamlit). Provides an interactive dashboard to trigger runs and visualize artifacts.
 
 ### Orchestration
 *   **Core Engine:** `scenarioops/graph/build_graph.py`. The `run_graph` function is the primary orchestrator. It explicitly calls node functions (e.g., `run_charter_node`, `run_scan_node`) in a defined sequence.
@@ -46,9 +46,8 @@ The core execution engine uses a graph-based approach (`run_graph`) where state 
 ### C1: Structural Integrity
 *   **Status:** 🔴 **FAIL**
 *   **Findings:**
-    *   **Layout:** The source code resides in `scenarioops/` at the root, violating the C1 requirement for a `/src/` directory.
+*   **Layout:** The source code resides in `src/scenarioops/`, matching the `/src/` directory requirement.
     *   **Layering:** The `domain` logic (conceptually in `graph/nodes`) is not pure. Nodes import `llm_client` and perform I/O (invoking LLMs), mixing infrastructure with domain logic.
-    *   **Ghost Files:** `ui/streamlit_app.py` exists outside the package structure but is a key entry point.
 
 ### C2: Logic & Safety
 *   **Status:** 🟡 **PARTIAL**

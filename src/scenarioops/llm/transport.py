@@ -4,6 +4,10 @@ from dataclasses import dataclass, field
 import time
 from typing import Any, Protocol
 
+from scenarioops.observability import get_logger
+
+logger = get_logger(__name__)
+
 
 class Transport(Protocol):
     def post_json(
@@ -36,6 +40,11 @@ class RequestsTransport:
                 delay = float(retry_after.strip())
             if delay is None:
                 delay = self.backoff_seconds * (2 ** attempt)
+            
+            logger.warning(
+                f"Retrying request (attempt {attempt}/{self.max_retries}) after {delay}s",
+                extra={"extra_data": {"status_code": response.status_code if response else "N/A", "delay": delay}}
+            )
             time.sleep(min(delay, 30.0))
 
         last_exc: Exception | None = None
@@ -50,7 +59,12 @@ class RequestsTransport:
             except requests.RequestException as exc:
                 last_exc = exc
                 if attempt < self.max_retries:
-                    time.sleep(self.backoff_seconds * (2 ** attempt))
+                    delay = self.backoff_seconds * (2 ** attempt)
+                    logger.warning(
+                        f"Request failed: {exc}. Retrying in {delay}s...",
+                        extra={"extra_data": {"error": str(exc), "attempt": attempt}}
+                    )
+                    time.sleep(delay)
                     continue
                 raise
 

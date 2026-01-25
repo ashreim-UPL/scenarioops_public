@@ -33,17 +33,42 @@ if str(SRC_DIR) not in sys.path:
 from scenarioops.app.config import (
     ALLOWED_EMBED_MODELS,
     ALLOWED_IMAGE_MODELS,
-    ALLOWED_TEXT_MODELS,
     DEFAULT_EMBED_MODEL,
     DEFAULT_IMAGE_MODEL,
     DEFAULT_LLM_MODEL,
     DEFAULT_SEARCH_MODEL,
     DEFAULT_SUMMARIZER_MODEL,
+    get_allowed_text_models,
+    load_settings,
 )
 from scenarioops.graph.tools.view_model import build_view_model
 
 RUNS_DIR = ROOT / "storage" / "runs"
 LATEST_POINTER = RUNS_DIR / "latest.json"
+
+def _get_query_run_id() -> str | None:
+    try:
+        params = st.query_params
+        value = params.get("run_id")
+        if isinstance(value, list):
+            value = value[0] if value else None
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    except Exception:
+        pass
+    return None
+
+
+def _set_query_run_id(run_id: str) -> None:
+    try:
+        st.query_params["run_id"] = run_id
+    except Exception:
+        try:
+            st.experimental_set_query_params(run_id=run_id)
+        except Exception:
+            pass
+
+
 
 st.set_page_config(
     page_title="ScenarioOps",
@@ -155,6 +180,11 @@ def _drain_log_queue() -> None:
             st.session_state["logs"] += line
 
 def load_latest_run_id() -> str | None:
+    query_run_id = _get_query_run_id()
+    if query_run_id:
+        run_path = RUNS_DIR / query_run_id
+        if run_path.exists():
+            return query_run_id
     if LATEST_POINTER.exists():
         try:
             return json.loads(LATEST_POINTER.read_text()).get("run_id")
@@ -165,6 +195,19 @@ def load_latest_run_id() -> str | None:
         if runs:
             return runs[0].name
     return None
+
+
+def _resolve_run_id() -> str | None:
+    query_run_id = _get_query_run_id()
+    if query_run_id:
+        run_path = RUNS_DIR / query_run_id
+        return query_run_id if run_path.exists() else None
+    session_run_id = st.session_state.get("last_run_id")
+    if session_run_id:
+        run_path = RUNS_DIR / session_run_id
+        if run_path.exists():
+            return session_run_id
+    return load_latest_run_id()
 
 def get_run_status(run_id: str) -> dict[str, Any]:
     """Reads latest status and node events."""
@@ -193,6 +236,8 @@ def get_run_status(run_id: str) -> dict[str, Any]:
         except:
             pass
     return status
+
+
 
 LEGACY_STEP_ORDER = [
     ("charter", "Charter"),
@@ -805,26 +850,72 @@ def render_step_panel(
 
 # --- Sidebar Controls ---
 with st.sidebar:
+    st.markdown("### Run Selector")
+    current_run = _resolve_run_id() or ""
+    run_options = []
+    if RUNS_DIR.exists():
+        run_options = sorted(
+            [path.name for path in RUNS_DIR.iterdir() if path.is_dir()],
+            reverse=True,
+        )
+    if not run_options:
+        st.caption("No runs found yet. Start a run to see results.")
+    options = [""] + run_options
+    default_index = options.index(current_run) if current_run in options else 0
+    run_input = st.selectbox(
+        "Run ID",
+        options=options,
+        index=default_index,
+        help="Select a run directory to load.",
+        disabled=not run_options,
+    )
+    if st.button("Load Run"):
+        if run_input:
+            run_path = RUNS_DIR / run_input
+            if not run_path.exists():
+                st.error(f"Run id not found: {run_input}")
+                st.stop()
+            st.session_state["run_id"] = run_input
+            st.session_state["last_run_id"] = run_input
+            _set_query_run_id(run_input)
+            st.rerun()
+    st.markdown("---")
     st.title("🔮 ScenarioOps")
     st.markdown("Dynamic Strategy Squad")
     
     with st.expander("Configuration", expanded=True):
-        mode = st.selectbox("Mode", ["live", "demo"], index=1)
+        run_mode = st.selectbox(
+            "Run Mode",
+            ["Live (Gemini)", "Mock (offline fixtures)"],
+            index=0,
+        )
+        mode = "live" if run_mode.startswith("Live") else "demo"
+        llm_provider = "gemini" if mode == "live" else "mock"
+        settings_defaults = load_settings()
         
         # Defaults based on mode
         default_web = True if mode == "live" else False
-        allow_web_choice = st.checkbox("Allow web retrieval", value=default_web)
+        if mode == "live":
+            allow_web_choice = True
+            st.caption("Live mode forces web retrieval on.")
+        else:
+            allow_web_choice = st.checkbox("Allow web retrieval", value=default_web)
+        allow_web = allow_web_choice
 
-        simulate_evidence = st.checkbox(
-            "Simulate evidence (demo only)",
-            value=False,
-            help="Only use when running offline demos. Real evidence is required otherwise.",
-        )
-        legacy_mode = st.checkbox(
-            "Legacy mode",
-            value=False,
-            help="Use pre-upgrade pipeline for comparison or fallback.",
-        )
+        simulate_evidence = False
+        legacy_mode = False
+        with st.expander("Advanced (demo/legacy)", expanded=False):
+            if mode == "demo":
+                simulate_evidence = st.checkbox(
+                    "Simulate evidence (demo only)",
+                    value=False,
+                    help="Offline demo helper. Not allowed for live runs.",
+                )
+            legacy_mode = st.checkbox(
+                "Legacy mode",
+                value=False,
+                help="Use pre-upgrade pipeline for comparison or fallback.",
+            )
         generate_strategies = st.checkbox(
             "Generate strategies + wind tunnel",
             value=True,
@@ -851,7 +942,7 @@ with st.sidebar:
             format="%.2f",
         )
 
-        text_models = sorted(ALLOWED_TEXT_MODELS)
+        text_models = sorted(get_allowed_text_models(refresh=allow_web))
         embed_models = sorted(ALLOWED_EMBED_MODELS)
         image_models = sorted(ALLOWED_IMAGE_MODELS)
 
@@ -861,27 +952,27 @@ with st.sidebar:
         llm_model = st.selectbox(
             "LLM model",
             text_models,
-            index=_model_index(text_models, DEFAULT_LLM_MODEL),
+            index=_model_index(text_models, settings_defaults.llm_model or DEFAULT_LLM_MODEL),
         )
         search_model = st.selectbox(
             "Search model",
             text_models,
-            index=_model_index(text_models, DEFAULT_SEARCH_MODEL),
+            index=_model_index(text_models, settings_defaults.search_model or DEFAULT_SEARCH_MODEL),
         )
         summarizer_model = st.selectbox(
             "Summarizer model",
             text_models,
-            index=_model_index(text_models, DEFAULT_SUMMARIZER_MODEL),
+            index=_model_index(text_models, settings_defaults.summarizer_model or DEFAULT_SUMMARIZER_MODEL),
         )
         embed_model = st.selectbox(
             "Embedding model",
             embed_models,
-            index=_model_index(embed_models, DEFAULT_EMBED_MODEL),
+            index=_model_index(embed_models, settings_defaults.embed_model or DEFAULT_EMBED_MODEL),
         )
         image_model = st.selectbox(
             "Image model",
             image_models,
-            index=_model_index(image_models, DEFAULT_IMAGE_MODEL),
+            index=_model_index(image_models, settings_defaults.image_model or DEFAULT_IMAGE_MODEL),
         )
 
         upload_files = st.file_uploader(
@@ -977,6 +1068,7 @@ with st.sidebar:
         )
         st.session_state["run_id"] = run_id
         st.session_state["last_run_id"] = run_id
+        _set_query_run_id(run_id)
         st.session_state["logs"] = ""
         st.session_state["stderr"] = ""
         st.session_state["log_queue"] = queue.Queue()
@@ -1014,7 +1106,7 @@ with st.sidebar:
 
         if legacy_mode:
             args.append("--legacy-mode")
-        if simulate_evidence:
+        if simulate_evidence and mode == "demo":
             args.append("--simulate-evidence")
         if not generate_strategies:
             args.append("--no-strategies")
@@ -1036,6 +1128,8 @@ with st.sidebar:
         if upload_paths:
             args.append("--input-docs")
             args.extend(upload_paths)
+        if llm_provider:
+            args.extend(["--llm-provider", llm_provider])
         
         # Logic: If live, force allow-web. If demo, allow toggle.
         # Also ensure fixtures policy for demo if needed, or academic/mixed for live.
@@ -1059,7 +1153,7 @@ with st.sidebar:
 # --- Main Area ---
 
 if st.session_state.get("running"):
-    st.subheader("?? Operation in Progress")
+    st.subheader("Operation in Progress")
 
     main_col, side_col = st.columns([3, 1], gap="large")
     process = st.session_state.get("process")
@@ -1185,12 +1279,14 @@ if st.session_state.get("running"):
         st.rerun()
 
 # --- Dashboard View (Post-Run) ---
-run_id = st.session_state.get("last_run_id") or load_latest_run_id()
+run_id = _resolve_run_id()
 if run_id and not st.session_state.get("running"):
     main_col, side_col = st.columns([3, 1], gap="large")
     status_data = get_run_status(run_id)
 
     with main_col:
+        source_label = "query param" if _get_query_run_id() else "latest/session"
+        st.caption(f"Run source: {source_label}")
         st.header(f"Strategy Dashboard: {run_id}")
         if LATEST_POINTER.exists():
             try:
@@ -1289,7 +1385,7 @@ if run_id and not st.session_state.get("running"):
                         if image_path:
                             full_path = RUNS_DIR / run_id / Path(image_path)
                             if full_path.exists():
-                                st.image(str(full_path), use_column_width=True)
+                                st.image(str(full_path), width=720)
                         signposts = scen.get("signposts", [])
                         if signposts:
                             st.markdown("**Signposts:**")
@@ -1330,3 +1426,5 @@ if run_id and not st.session_state.get("running"):
             st.json(view_model)
 
     render_step_panel(side_col, status_data.get("nodes", []), process_running=False)
+elif not st.session_state.get("running"):
+    st.info("No runs available yet. Start a run from the sidebar to populate the dashboard.")

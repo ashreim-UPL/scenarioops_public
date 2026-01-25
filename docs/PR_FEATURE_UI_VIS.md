@@ -11,7 +11,7 @@
 scenarioops build-scenarios --scope country --value UAE --horizon 24
 scenarioops export-view
 scenarioops run-daily
-streamlit run ui/streamlit_app.py
+streamlit run src/scenarioops/ui/streamlit_app.py
 ```
 
 ## Screenshots

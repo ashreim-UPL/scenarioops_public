@@ -1,9 +1,18 @@
-Generate 4 scenarios from the selected axes and clusters.
-Return ONLY a JSON object that matches the Scenarios schema. No prose, no markdown, no extra keys.
+Generate 4 distinct, vivid, and highly differentiated scenarios based on the selected axes. 
+These scenarios should be creative, employing elements of fiction and storytelling to bring the future to life.
 
-Rules:
+Return ONLY a JSON object that strictly matches the Scenarios Payload schema.
+
+Creative Requirements:
+- **Names**: Use evocative, metaphorical, or "sci-fi" style names (e.g., "Digital Feudalism", "Green Gaia", "Neon Stagnation"). Do NOT use boring names like "High Growth / Low Regulation".
+- **Narrative**: Write 2–4 vivid paragraphs (120–220 words) for each scenario. Describe the "feel" of the world, not just the economics. No placeholders.
+- **Logic**: Ensure logical consistency with the defined axis states.
+
+Structural Rules:
 - Use the provided axis_ids in axis_states.
+- axis_states must be a JSON object mapping axis_id -> pole label string.
+- Example axis_states: {"axis-1": "Strategic R&D Hegemony", "axis-2": "Immigration-Led Workforce Renewal"}
 - Create four structurally distinct scenarios (not cosmetic variants).
-- Each scenario must cite at least 2 cluster_ids and 2 force_ids in evidence_touchpoints.
-- Signposts must be measurable indicators.
-- Include implications, no_regret_moves, and contingent_moves.
+- Each scenario must cite at least 2 cluster_ids and 2 force_ids in `evidence_touchpoints` to ground the fiction in reality.
+- `signposts` must be concrete, measurable indicators (minimum 3 per scenario).
+- Include actionable `implications`, `no_regret_moves`, and `contingent_moves` (minimum 3 each per scenario).

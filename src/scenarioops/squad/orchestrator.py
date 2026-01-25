@@ -491,6 +491,25 @@ def run_squad_orchestrator(
             ),
         )
 
+    if generate_strategies and _needs_scenario_media(state):
+        state = record_node_event(
+            run_id=run_id,
+            node_name="scenario_media",
+            inputs=["scenarios.json"],
+            outputs=["scenarios_enriched.json"],
+            tools=[llm_label],
+            base_dir=base_dir,
+            action=lambda: run_scenario_media_node(
+                run_id=run_id,
+                state=state,
+                user_params=dict(inputs.user_params),
+                llm_client=squad_client,
+                base_dir=base_dir,
+                config=config,
+                settings=settings,
+            ),
+        )
+
     if generate_strategies:
         if _should_run("strategies", resume_from):
             state = record_node_event(
@@ -927,3 +946,18 @@ def _load_resume_state(
                 run_id=run_id, node_name="auditor", base_dir=base_dir
             )
     return state
+
+
+def _needs_scenario_media(state: ScenarioOpsState) -> bool:
+    scenarios_payload = getattr(state, "scenarios", None)
+    if not isinstance(scenarios_payload, Mapping):
+        return False
+    scenarios = scenarios_payload.get("scenarios")
+    if not isinstance(scenarios, list) or not scenarios:
+        return False
+    for scenario in scenarios:
+        if not isinstance(scenario, Mapping):
+            continue
+        if not scenario.get("story_text") or not scenario.get("image_artifact_path"):
+            return True
+    return False

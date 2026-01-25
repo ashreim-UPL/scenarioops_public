@@ -1,0 +1,16 @@
+Fix a single strategy to match the required schema.
+Return ONLY one JSON object (not an array, not wrapped) with:
+- id (keep if present)
+- name
+- objective
+- actions[]
+- owners[]
+- dependencies[]
+- risks[]
+- fit[]
+- kpis[]
+
+Rules:
+- Use the provided scenarios for alignment.
+- Provide at least one KPI.
+- No extra keys.

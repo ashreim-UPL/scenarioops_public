@@ -30,8 +30,8 @@ def _format_path(path: Iterable[object]) -> str:
 def load_schema(schema_name: str, schemas_dir: Path | None = None) -> dict[str, Any]:
     if schemas_dir is None:
         # __file__ is src/scenarioops/graph/tools/schema_validate.py
-        # parents[3] is src
-        schemas_dir = Path(__file__).resolve().parents[3] / "schemas"
+        # parents[2] is scenarioops
+        schemas_dir = Path(__file__).resolve().parents[2] / "schemas"
     schema_path = schemas_dir / f"{schema_name}.json"
     if not schema_path.exists():
         raise FileNotFoundError(f"Schema not found: {schema_path}")

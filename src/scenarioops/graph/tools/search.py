@@ -4,6 +4,7 @@ import json
 import os
 import re
 import time
+from urllib.parse import urlparse
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping
@@ -16,6 +17,7 @@ from scenarioops.llm.transport import RequestsTransport, Transport
 
 _LAST_SEARCH_AT: float | None = None
 _URL_RE = re.compile(r"https?://[^\s)>\"]+")
+_GROUNDING_REDIRECT_HOST = "vertexaisearch.cloud.google.com"
 
 
 def _log_search(
@@ -111,7 +113,15 @@ def _extract_grounding_urls(response: Mapping[str, Any]) -> list[str]:
             continue
         seen.add(url)
         deduped.append(url)
-    return deduped
+    filtered: list[str] = []
+    for url in deduped:
+        parsed = urlparse(url)
+        if parsed.netloc == _GROUNDING_REDIRECT_HOST and parsed.path.startswith(
+            "/grounding-api-redirect/"
+        ):
+            continue
+        filtered.append(url)
+    return filtered
 
 
 def _search_prompt(query: str, max_results: int) -> str:
@@ -126,7 +136,7 @@ def search_web(
     *,
     max_results: int = 5,
     rate_limit_per_sec: float | None = 1.0,
-    timeout_seconds: float = 15.0,
+    timeout_seconds: float = 45.0,
     model_name: str | None = None,
     api_key: str | None = None,
     transport: Transport | None = None,

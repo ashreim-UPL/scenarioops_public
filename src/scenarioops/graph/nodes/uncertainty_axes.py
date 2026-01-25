@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 from copy import deepcopy
 from pathlib import Path
@@ -9,7 +10,7 @@ from scenarioops.app.config import LLMConfig, ScenarioOpsSettings
 from scenarioops.graph.nodes.utils import build_prompt, get_client
 from scenarioops.graph.state import ScenarioOpsState
 from scenarioops.graph.tools.schema_validate import load_schema, validate_artifact
-from scenarioops.graph.tools.storage import write_artifact
+from scenarioops.graph.tools.storage import ensure_run_dirs, write_artifact
 from scenarioops.graph.tools.traceability import build_run_metadata
 from scenarioops.llm.guards import ensure_dict
 
@@ -98,6 +99,11 @@ def _relax_uncertainty_axes_schema(schema: Mapping[str, Any]) -> dict[str, Any]:
             if isinstance(items, dict):
                 items["additionalProperties"] = True
                 items["required"] = []
+                what_change = items.get("properties", {}).get("what_would_change_mind")
+                if isinstance(what_change, dict):
+                    items["properties"]["what_would_change_mind"] = {
+                        "anyOf": [what_change, {"type": "string"}]
+                    }
     return relaxed
 
 
@@ -106,6 +112,11 @@ def _relax_axis_item_schema(schema: Mapping[str, Any]) -> dict[str, Any]:
     if isinstance(relaxed, dict):
         relaxed["additionalProperties"] = True
         relaxed["required"] = []
+        what_change = relaxed.get("properties", {}).get("what_would_change_mind")
+        if isinstance(what_change, dict):
+            relaxed["properties"]["what_would_change_mind"] = {
+                "anyOf": [what_change, {"type": "string"}]
+            }
     return relaxed
 
 
@@ -291,6 +302,25 @@ def run_uncertainty_axes_node(
         raise TypeError("Uncertainty axes payload must include axes list.")
     axes = [dict(axis) for axis in axes if isinstance(axis, Mapping)]
     axes = [_normalize_axis_fields(axis) for axis in axes]
+    if os.environ.get("DEBUG_UNCERTAINTY_AXES") == "1":
+        debug_axes = []
+        for axis in axes:
+            debug_axes.append(
+                {
+                    "axis_id": axis.get("axis_id"),
+                    "axis_name": axis.get("axis_name"),
+                    "what_would_change_mind": axis.get("what_would_change_mind"),
+                    "what_would_change_mind_type": type(
+                        axis.get("what_would_change_mind")
+                    ).__name__,
+                }
+            )
+        dirs = ensure_run_dirs(run_id, base_dir=base_dir)
+        debug_path = dirs["logs_dir"] / "uncertainty_axes.debug.json"
+        debug_path.write_text(
+            json.dumps(debug_axes, indent=2, sort_keys=True),
+            encoding="utf-8",
+        )
 
     warnings: list[str] = []
     if len(axes) < 6 or len(axes) > 10:

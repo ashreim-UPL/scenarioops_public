@@ -21,8 +21,28 @@
         ],
         "properties": {
           "scenario_id": { "type": "string", "minLength": 1 },
+          "scenario_name": { "type": "string", "minLength": 1 },
           "name": { "type": "string", "minLength": 1 },
-          "axis_states": { "type": "object", "additionalProperties": { "type": "string" } },
+          "axis_states": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": { "type": "string" }
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["axis_id", "pole_state"],
+                  "properties": {
+                    "axis_id": { "type": "string", "minLength": 1 },
+                    "pole_state": { "type": "string", "minLength": 1 }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            ]
+          },
           "narrative": { "type": "string", "minLength": 1 },
           "signposts": { "type": "array", "items": { "type": "string" } },
           "implications": { "type": "array", "items": { "type": "string" } },

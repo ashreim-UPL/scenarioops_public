@@ -11,7 +11,7 @@ from typing import Any, Mapping, Protocol, TYPE_CHECKING
 if TYPE_CHECKING:
     from scenarioops.app.config import LLMConfig
 
-from scenarioops.graph.tools.schema_validate import validate_schema
+
 from scenarioops.llm.transport import MockTransport, RequestsTransport, Transport
 
 
@@ -79,6 +79,11 @@ class GeminiClient:
         schema_name = "unknown"
         if isinstance(schema, Mapping):
             schema_name = str(schema.get("title") or "unknown")
+        if schema_name in {"Scenarios", "Scenarios Payload"}:
+            _normalize_scenarios_axis_states(parsed)
+        if schema_name == "Strategies":
+            _normalize_strategies_ids(parsed, raw)
+        from scenarioops.graph.tools.schema_validate import validate_schema
         validate_schema(parsed, schema, schema_name)
         return _wrap_payload(parsed, raw)
 
@@ -201,6 +206,43 @@ def _gemini_url(model: str, api_key: str) -> str:
         "https://generativelanguage.googleapis.com/v1beta/models/"
         f"{model}:generateContent?key={api_key}"
     )
+
+
+def _normalize_scenarios_axis_states(payload: Mapping[str, Any]) -> None:
+    scenarios = payload.get("scenarios")
+    if not isinstance(scenarios, list):
+        return
+    for scenario in scenarios:
+        if not isinstance(scenario, Mapping):
+            continue
+        axis_states = scenario.get("axis_states")
+        if not isinstance(axis_states, list):
+            continue
+        normalized: dict[str, str] = {}
+        for entry in axis_states:
+            if not isinstance(entry, Mapping):
+                continue
+            axis_id = entry.get("axis_id")
+            pole_state = entry.get("pole_state")
+            if isinstance(axis_id, str) and axis_id and isinstance(pole_state, str) and pole_state:
+                normalized[axis_id] = pole_state
+        scenario["axis_states"] = normalized
+
+
+def _normalize_strategies_ids(payload: Mapping[str, Any], raw: str) -> None:
+    if not isinstance(payload.get("id"), str) or not payload.get("id"):
+        payload["id"] = f"strategies-{_hash_text(raw)[:10]}"
+    if not isinstance(payload.get("title"), str) or not payload.get("title"):
+        payload["title"] = "Strategies"
+    strategies = payload.get("strategies")
+    if not isinstance(strategies, list):
+        return
+    for idx, strategy in enumerate(strategies, start=1):
+        if not isinstance(strategy, Mapping):
+            continue
+        if not isinstance(strategy.get("id"), str) or not strategy.get("id"):
+            seed = json.dumps(strategy, sort_keys=True)
+            strategy["id"] = f"strategy-{_hash_text(seed)[:10]}" if seed else f"strategy-{idx}"
 
 
 def _extract_candidate_text(response: Mapping[str, Any]) -> str:

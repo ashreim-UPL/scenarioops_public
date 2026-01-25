@@ -19,5 +19,9 @@
 - Scenario image generation with artifacts under `artifacts/images/`.
 - Retrieval recovery logic with replacement sources.
 
+### Fixed
+- Scenario synthesis now normalizes `scenario_name` into `name` and drops unexpected keys before schema validation.
+- Search URL extraction skips Google grounding redirect links that frequently return 403s.
+
 ### Migration Notes
 - See `docs/migrations/2026-01-retrieval-v2.md` for evidence schema upgrades.
