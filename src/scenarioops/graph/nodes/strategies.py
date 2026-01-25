@@ -121,6 +121,19 @@ def _normalize_strategy_fields(
     return normalized, changed
 
 
+def _strip_strategy_fields(
+    strategy: Mapping[str, Any],
+    allowed_fields: set[str],
+) -> tuple[dict[str, Any], list[str]]:
+    cleaned = dict(strategy)
+    removed: list[str] = []
+    for key in list(cleaned.keys()):
+        if key not in allowed_fields:
+            cleaned.pop(key, None)
+            removed.append(key)
+    return cleaned, removed
+
+
 def _impute_strategy_fields(
     strategy: Mapping[str, Any], index: int
 ) -> tuple[dict[str, Any], list[str]]:
@@ -252,6 +265,7 @@ def run_strategies_node(
     strict_schema = load_schema("strategies")
     schema = _relax_strategies_schema(strict_schema)
     strategy_item_schema = _relax_strategy_item_schema(_strategies_item_schema(strict_schema))
+    allowed_fields = set(_strategies_item_schema(strict_schema).get("properties", {}).keys())
     response = client.generate_json(prompt, schema)
     try:
         parsed = ensure_dict(response, node_name="strategies")
@@ -290,6 +304,17 @@ def run_strategies_node(
                 details={"fields": imputed, "index": idx},
                 base_dir=base_dir,
             )
+        if allowed_fields:
+            stripped, removed = _strip_strategy_fields(normalized, allowed_fields)
+            if removed:
+                log_normalization(
+                    run_id=run_id,
+                    node_name="strategies",
+                    operation="stripped_strategy_fields",
+                    details={"fields": removed, "index": idx},
+                    base_dir=base_dir,
+                )
+            normalized = stripped
         normalized_strategies.append(normalized)
     strategies = normalized_strategies
 

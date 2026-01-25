@@ -27,6 +27,7 @@ _JSON_MAPPING: Final[dict[str, str]] = {
     "ewi": "ewi",
     "strategies": "strategies",
     "wind_tunnel": "wind_tunnel",
+    "wind_tunnel_debug": "wind_tunnel_debug",
     "daily_brief": "daily_brief",
     "scenario_profiles": "scenario_profiles",
     "scenarios": "scenarios",

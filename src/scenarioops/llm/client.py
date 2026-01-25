@@ -64,13 +64,17 @@ class GeminiClient:
 
         if not isinstance(parsed, dict):
             if isinstance(parsed, list) and isinstance(schema, Mapping):
-                wrapped = _wrap_single_array_payload(parsed, schema)
-                if wrapped is not None:
-                    parsed = wrapped
+                schema_name = str(schema.get("title") or "unknown")
+                if schema_name == "Strategies":
+                    parsed = {"strategies": parsed}
                 else:
-                    raise TypeError(
-                        f"Expected JSON object, got {type(parsed)}. Raw: {raw[:500]!r}"
-                    )
+                    wrapped = _wrap_single_array_payload(parsed, schema)
+                    if wrapped is not None:
+                        parsed = wrapped
+                    else:
+                        raise TypeError(
+                            f"Expected JSON object, got {type(parsed)}. Raw: {raw[:500]!r}"
+                        )
             else:
                 raise TypeError(
                     f"Expected JSON object, got {type(parsed)}. Raw: {raw[:500]!r}"
@@ -83,8 +87,13 @@ class GeminiClient:
             _normalize_scenarios_axis_states(parsed)
         if schema_name == "Strategies":
             _normalize_strategies_ids(parsed, raw)
-        from scenarioops.graph.tools.schema_validate import validate_schema
-        validate_schema(parsed, schema, schema_name)
+        from scenarioops.graph.tools.schema_validate import SchemaValidationError, validate_schema
+        try:
+            validate_schema(parsed, schema, schema_name)
+        except SchemaValidationError:
+            if schema_name == "Wind Tunnel":
+                return _wrap_payload(parsed, raw)
+            raise
         return _wrap_payload(parsed, raw)
 
     def generate_markdown(self, prompt: str) -> str:

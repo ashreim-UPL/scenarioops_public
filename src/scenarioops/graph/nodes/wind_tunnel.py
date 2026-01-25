@@ -9,12 +9,38 @@ from scenarioops.graph.state import ScenarioOpsState, WindTunnel, WindTunnelTest
 from scenarioops.graph.tools.normalization import stable_id
 from scenarioops.graph.tools.schema_validate import load_schema, validate_artifact
 from scenarioops.graph.tools.scoring import score_with_rubric
-from scenarioops.graph.tools.storage import log_normalization, write_artifact
+from scenarioops.graph.tools.storage import (
+    log_normalization,
+    write_artifact,
+    write_trace_artifact,
+)
 from scenarioops.llm.guards import ensure_dict
 
 
 FEASIBILITY_THRESHOLD = 0.6
 
+
+def _relax_wind_tunnel_schema(schema: dict[str, Any]) -> dict[str, Any]:
+    relaxed = dict(schema)
+    relaxed["additionalProperties"] = True
+    relaxed["required"] = []
+    properties = relaxed.get("properties")
+    if isinstance(properties, dict):
+        tests_prop = properties.get("tests")
+        if isinstance(tests_prop, dict):
+            tests_prop["minItems"] = 0
+            items = tests_prop.get("items")
+            if isinstance(items, dict):
+                items["additionalProperties"] = True
+                items["required"] = []
+        matrix_prop = properties.get("matrix")
+        if isinstance(matrix_prop, dict):
+            matrix_prop["type"] = ["array", "object"]
+            items = matrix_prop.get("items")
+            if isinstance(items, dict):
+                items["additionalProperties"] = True
+                items["required"] = []
+    return relaxed
 
 def _normalize_tests(raw_tests: list[dict[str, Any]]) -> list[dict[str, Any]]:
     normalized: list[dict[str, Any]] = []
@@ -45,6 +71,12 @@ def _normalize_tests(raw_tests: list[dict[str, Any]]) -> list[dict[str, Any]]:
             payload["notes"] = entry.get("notes")
         normalized.append(payload)
     return normalized
+
+
+def _truncate(value: str, limit: int) -> str:
+    if not value:
+        return ""
+    return value if len(value) <= limit else value[: limit - 3].rstrip() + "..."
 
 
 def _missing_scenarios(
@@ -85,12 +117,49 @@ def run_wind_tunnel_node(
     prompt = prompt_bundle.text
 
     client = get_client(llm_client, config)
-    schema = load_schema("wind_tunnel")
+    strict_schema = load_schema("wind_tunnel")
+    schema = _relax_wind_tunnel_schema(strict_schema)
     response = client.generate_json(prompt, schema)
+    response_raw = getattr(response, "raw", None)
     parsed = ensure_dict(response, node_name="wind_tunnel")
 
     raw_tests = parsed.get("tests", [])
     normalized_tests = _normalize_tests(raw_tests)
+    missing_test_ids = [idx for idx, test in enumerate(normalized_tests, start=1) if not test.get("id")]
+    if missing_test_ids:
+        for idx, test in enumerate(normalized_tests, start=1):
+            if test.get("id"):
+                continue
+            test["id"] = stable_id(
+                "wind_tunnel_test",
+                test.get("strategy_id"),
+                test.get("scenario_id"),
+                test.get("outcome"),
+                idx,
+            )
+        log_normalization(
+            run_id=run_id,
+            node_name="wind_tunnel",
+            operation="imputed_test_ids",
+            details={"count": len(missing_test_ids), "tests": missing_test_ids[:5]},
+            base_dir=base_dir,
+        )
+    missing_outcomes = [
+        test.get("id") or f"test-{idx}"
+        for idx, test in enumerate(normalized_tests, start=1)
+        if not test.get("outcome")
+    ]
+    if missing_outcomes:
+        for test in normalized_tests:
+            if not test.get("outcome"):
+                test["outcome"] = "INCONCLUSIVE"
+        log_normalization(
+            run_id=run_id,
+            node_name="wind_tunnel",
+            operation="imputed_test_outcomes",
+            details={"count": len(missing_outcomes), "tests": missing_outcomes[:5]},
+            base_dir=base_dir,
+        )
     scenario_ids = (
         [scenario.id for scenario in state.logic.scenarios]
         if state.logic is not None
@@ -130,8 +199,8 @@ def run_wind_tunnel_node(
         )
 
     matrix = parsed.get("matrix")
-    if not isinstance(matrix, list):
-        matrix = [
+    def _matrix_from_tests() -> list[dict[str, Any]]:
+        return [
             {
                 "strategy_id": test.get("strategy_id"),
                 "scenario_id": test.get("scenario_id"),
@@ -140,6 +209,45 @@ def run_wind_tunnel_node(
             }
             for test in normalized_tests
         ]
+
+    if isinstance(matrix, dict):
+        rebuilt: list[dict[str, Any]] = []
+        for strategy_id, scenarios in matrix.items():
+            if not isinstance(scenarios, dict):
+                continue
+            for scenario_id, score in scenarios.items():
+                rebuilt.append(
+                    {
+                        "strategy_id": str(strategy_id),
+                        "scenario_id": str(scenario_id),
+                        "outcome": "MIXED",
+                        "robustness_score": float(score) if score is not None else 0.0,
+                    }
+                )
+        matrix = rebuilt or _matrix_from_tests()
+        log_normalization(
+            run_id=run_id,
+            node_name="wind_tunnel",
+            operation="matrix_rebuilt_from_mapping",
+            details={"entries": len(matrix)},
+            base_dir=base_dir,
+        )
+    elif not isinstance(matrix, list):
+        matrix = _matrix_from_tests()
+    else:
+        required_keys = {"strategy_id", "scenario_id", "outcome", "robustness_score"}
+        if any(
+            not isinstance(entry, dict) or not required_keys.issubset(entry.keys())
+            for entry in matrix
+        ):
+            matrix = _matrix_from_tests()
+            log_normalization(
+                run_id=run_id,
+                node_name="wind_tunnel",
+                operation="matrix_rebuilt_from_tests",
+                details={"reason": "missing_required_fields"},
+                base_dir=base_dir,
+            )
     robustness_scores = [float(test.get("rubric_score", 0.0)) for test in normalized_tests]
     robustness = sum(robustness_scores) / max(1, len(robustness_scores))
     payload = {
@@ -153,6 +261,26 @@ def run_wind_tunnel_node(
     }
 
     validate_artifact("wind_tunnel", payload)
+
+    if missing_outcomes or (response_raw and matrix is None):
+        trace_payload = {
+            "node": "wind_tunnel",
+            "missing_outcomes": missing_outcomes,
+            "response_raw_excerpt": _truncate(str(response_raw), 2000),
+            "parsed_keys": sorted(parsed.keys()),
+        }
+        write_trace_artifact(
+            run_id=run_id,
+            artifact_name="wind_tunnel_debug",
+            payload=trace_payload,
+            input_values={"missing_outcomes": len(missing_outcomes)},
+            prompt_values={
+                "prompt_name": prompt_bundle.name,
+                "prompt_sha256": prompt_bundle.sha256,
+            },
+            tool_versions={"wind_tunnel_node": "0.1.0"},
+            base_dir=base_dir,
+        )
 
     write_artifact(
         run_id=run_id,

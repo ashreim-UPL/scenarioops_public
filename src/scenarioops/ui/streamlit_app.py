@@ -69,6 +69,89 @@ def _set_query_run_id(run_id: str) -> None:
             pass
 
 
+def _load_run_defaults(run_id: str | None) -> dict[str, Any]:
+    defaults: dict[str, Any] = {}
+    if not run_id:
+        return defaults
+    config_path = RUNS_DIR / run_id / "run_config.json"
+    if config_path.exists():
+        try:
+            run_config = json.loads(config_path.read_text(encoding="utf-8"))
+        except Exception:
+            run_config = None
+        if isinstance(run_config, dict):
+            settings = run_config.get("settings", {})
+            if isinstance(settings, dict):
+                defaults.update(settings)
+            models = run_config.get("models", {})
+            if isinstance(models, dict):
+                defaults.update({k: v for k, v in models.items() if v})
+    charter_path = RUNS_DIR / run_id / "artifacts" / "scenario_charter_raw_prevalidate.json"
+    if charter_path.exists():
+        try:
+            charter = json.loads(charter_path.read_text(encoding="utf-8"))
+        except Exception:
+            charter = None
+        if isinstance(charter, dict):
+            meta = charter.get("metadata", {})
+            if isinstance(meta, dict):
+                defaults.setdefault("company_name", meta.get("company_name"))
+                defaults.setdefault("geography", meta.get("geography"))
+                defaults.setdefault("horizon_months", meta.get("horizon_months"))
+    return defaults
+
+
+def _apply_run_defaults(run_id: str | None) -> dict[str, Any]:
+    defaults = _load_run_defaults(run_id)
+    if not run_id:
+        return defaults
+    if st.session_state.get("run_defaults_loaded_for") == run_id:
+        return defaults
+
+    def _set_default(key: str, value: Any) -> None:
+        if value is None or value == "":
+            return
+        if key not in st.session_state:
+            st.session_state[key] = value
+
+    for key in (
+        "mode",
+        "llm_provider",
+        "llm_model",
+        "search_model",
+        "summarizer_model",
+        "embed_model",
+        "image_model",
+        "allow_web",
+        "simulate_evidence",
+        "min_evidence_ok",
+        "min_evidence_total",
+        "max_failed_ratio",
+        "seed",
+    ):
+        _set_default(key, defaults.get(key))
+    _set_default("company_name", defaults.get("company_name"))
+    geo = defaults.get("geography")
+    if geo:
+        normalized_geo = _normalize_label(str(geo))
+        if normalized_geo in {_normalize_label(item) for item in COUNTRY_OPTIONS}:
+            _set_default("scope_choice", "country")
+            _set_default("geo_country_select", geo)
+        elif normalized_geo in {_normalize_label(item) for item in REGION_OPTIONS}:
+            _set_default("scope_choice", "region")
+            _set_default("geo_region_select", geo)
+        elif normalized_geo in {"global", "world"}:
+            _set_default("scope_choice", "world")
+        else:
+            _set_default("scope_choice", "auto")
+    horizon_months = defaults.get("horizon_months")
+    if isinstance(horizon_months, int) and horizon_months > 0:
+        _set_default("horizon_months", horizon_months)
+
+    st.session_state["run_defaults_loaded_for"] = run_id
+    return defaults
+
+
 
 st.set_page_config(
     page_title="ScenarioOps",
@@ -852,6 +935,7 @@ def render_step_panel(
 with st.sidebar:
     st.markdown("### Run Selector")
     current_run = _resolve_run_id() or ""
+    _apply_run_defaults(current_run)
     run_options = []
     if RUNS_DIR.exists():
         run_options = sorted(
@@ -887,9 +971,11 @@ with st.sidebar:
         run_mode = st.selectbox(
             "Run Mode",
             ["Live (Gemini)", "Mock (offline fixtures)"],
-            index=0,
+            index=0 if st.session_state.get("mode", "live") == "live" else 1,
+            key="run_mode",
         )
         mode = "live" if run_mode.startswith("Live") else "demo"
+        st.session_state["mode"] = mode
         llm_provider = "gemini" if mode == "live" else "mock"
         settings_defaults = load_settings()
         
@@ -899,7 +985,11 @@ with st.sidebar:
             allow_web_choice = True
             st.caption("Live mode forces web retrieval on.")
         else:
-            allow_web_choice = st.checkbox("Allow web retrieval", value=default_web)
+            allow_web_choice = st.checkbox(
+                "Allow web retrieval",
+                value=bool(st.session_state.get("allow_web", default_web)),
+                key="allow_web_choice",
+            )
         allow_web = allow_web_choice
 
         simulate_evidence = False
@@ -908,38 +998,50 @@ with st.sidebar:
             if mode == "demo":
                 simulate_evidence = st.checkbox(
                     "Simulate evidence (demo only)",
-                    value=False,
+                    value=bool(st.session_state.get("simulate_evidence", False)),
+                    key="simulate_evidence",
                     help="Offline demo helper. Not allowed for live runs.",
                 )
             legacy_mode = st.checkbox(
                 "Legacy mode",
-                value=False,
+                value=bool(st.session_state.get("legacy_mode", False)),
+                key="legacy_mode",
                 help="Use pre-upgrade pipeline for comparison or fallback.",
             )
         generate_strategies = st.checkbox(
             "Generate strategies + wind tunnel",
-            value=True,
+            value=bool(st.session_state.get("generate_strategies", True)),
+            key="generate_strategies",
         )
-        seed = st.number_input("Seed (optional)", min_value=0, value=0, step=1)
+        seed = st.number_input(
+            "Seed (optional)",
+            min_value=0,
+            value=int(st.session_state.get("seed", 0) or 0),
+            step=1,
+            key="seed",
+        )
         min_evidence_ok = st.number_input(
             "Min evidence (ok)",
             min_value=0,
-            value=10,
+            value=int(st.session_state.get("min_evidence_ok", 10) or 10),
             step=1,
+            key="min_evidence_ok",
         )
         min_evidence_total = st.number_input(
             "Min evidence (total)",
             min_value=0,
-            value=15,
+            value=int(st.session_state.get("min_evidence_total", 15) or 15),
             step=1,
+            key="min_evidence_total",
         )
         max_failed_ratio = st.number_input(
             "Max failed ratio",
             min_value=0.0,
             max_value=1.0,
-            value=0.4,
+            value=float(st.session_state.get("max_failed_ratio", 0.4) or 0.4),
             step=0.05,
             format="%.2f",
+            key="max_failed_ratio",
         )
 
         text_models = sorted(get_allowed_text_models(refresh=allow_web))
@@ -952,27 +1054,47 @@ with st.sidebar:
         llm_model = st.selectbox(
             "LLM model",
             text_models,
-            index=_model_index(text_models, settings_defaults.llm_model or DEFAULT_LLM_MODEL),
+            index=_model_index(
+                text_models,
+                st.session_state.get("llm_model", settings_defaults.llm_model or DEFAULT_LLM_MODEL),
+            ),
+            key="llm_model",
         )
         search_model = st.selectbox(
             "Search model",
             text_models,
-            index=_model_index(text_models, settings_defaults.search_model or DEFAULT_SEARCH_MODEL),
+            index=_model_index(
+                text_models,
+                st.session_state.get("search_model", settings_defaults.search_model or DEFAULT_SEARCH_MODEL),
+            ),
+            key="search_model",
         )
         summarizer_model = st.selectbox(
             "Summarizer model",
             text_models,
-            index=_model_index(text_models, settings_defaults.summarizer_model or DEFAULT_SUMMARIZER_MODEL),
+            index=_model_index(
+                text_models,
+                st.session_state.get("summarizer_model", settings_defaults.summarizer_model or DEFAULT_SUMMARIZER_MODEL),
+            ),
+            key="summarizer_model",
         )
         embed_model = st.selectbox(
             "Embedding model",
             embed_models,
-            index=_model_index(embed_models, settings_defaults.embed_model or DEFAULT_EMBED_MODEL),
+            index=_model_index(
+                embed_models,
+                st.session_state.get("embed_model", settings_defaults.embed_model or DEFAULT_EMBED_MODEL),
+            ),
+            key="embed_model",
         )
         image_model = st.selectbox(
             "Image model",
             image_models,
-            index=_model_index(image_models, settings_defaults.image_model or DEFAULT_IMAGE_MODEL),
+            index=_model_index(
+                image_models,
+                st.session_state.get("image_model", settings_defaults.image_model or DEFAULT_IMAGE_MODEL),
+            ),
+            key="image_model",
         )
 
         upload_files = st.file_uploader(
@@ -987,15 +1109,25 @@ with st.sidebar:
             ["Company", "Geography"],
             index=0,
             help="Choose Company to keep organization inputs separate from geography.",
+            key="planning_target",
         )
         company_label = "Company" if planning_target == "Company" else "Company (optional)"
         default_company = "Microsoft" if mode == "live" else "Acme Corp"
-        company_name = st.text_input(company_label, default_company).strip()
+        company_name = st.text_input(
+            company_label,
+            st.session_state.get("company_name", default_company),
+            key="company_name",
+        ).strip()
 
         scope_choice = st.selectbox(
             "Geographic Scope",
             ["auto", "country", "region", "world"],
-            index=0,
+            index=["auto", "country", "region", "world"].index(
+                st.session_state.get("scope_choice", "auto")
+            )
+            if st.session_state.get("scope_choice", "auto") in {"auto", "country", "region", "world"}
+            else 0,
+            key="scope_choice",
         )
         geography = ""
         effective_scope = scope_choice
@@ -1016,7 +1148,13 @@ with st.sidebar:
                 geography = "Global"
                 st.caption("Auto scope defaulted to world. Select a scope to limit geography.")
 
-        horizon = st.slider("Horizon (Months)", 6, 60, 12)
+        horizon = st.slider(
+            "Horizon (Months)",
+            6,
+            60,
+            int(st.session_state.get("horizon_months", 12) or 12),
+            key="horizon_months",
+        )
         value = company_name or geography or "Unknown"
         can_launch = True
         if planning_target == "Company" and not company_name:

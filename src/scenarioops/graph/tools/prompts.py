@@ -26,26 +26,46 @@ def _sha256(text: str) -> str:
 
 def load_prompt_spec(name: str) -> PromptSpec:
     prompt_root = prompts_dir()
-    candidate = prompt_root / name
+    requested = name.strip()
+    if not requested:
+        raise FileNotFoundError("Prompt not found: empty name")
+    candidate = prompt_root / requested
     if candidate.suffix:
-        text = candidate.read_text(encoding="utf-8")
-        return PromptSpec(
-            name=candidate.stem,
-            path=candidate,
-            sha256=_sha256(text),
-            text=text,
-        )
+        if candidate.exists():
+            text = candidate.read_text(encoding="utf-8")
+            return PromptSpec(
+                name=candidate.stem,
+                path=candidate,
+                sha256=_sha256(text),
+                text=text,
+            )
+        requested = candidate.stem
     for ext in (".prompt", ".txt"):
-        path = prompt_root / f"{name}{ext}"
+        path = prompt_root / f"{requested}{ext}"
         if path.exists():
             text = path.read_text(encoding="utf-8")
             return PromptSpec(
-                name=name,
+                name=requested,
                 path=path,
                 sha256=_sha256(text),
                 text=text,
             )
-    raise FileNotFoundError(f"Prompt not found: {prompt_root / name}")
+    lowered = requested.lower()
+    for path in prompt_root.glob("*"):
+        if not path.is_file() or path.suffix not in {".prompt", ".txt"}:
+            continue
+        if path.stem.lower() == lowered:
+            text = path.read_text(encoding="utf-8")
+            return PromptSpec(
+                name=path.stem,
+                path=path,
+                sha256=_sha256(text),
+                text=text,
+            )
+    available = ", ".join(sorted(p.stem for p in prompt_root.glob("*.prompt")))
+    raise FileNotFoundError(
+        f"Prompt not found: {prompt_root / requested}. Available: {available}"
+    )
 
 
 def iter_prompt_specs() -> Iterable[PromptSpec]:

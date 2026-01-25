@@ -8,6 +8,7 @@ from scenarioops.app.config import LLMConfig, ScenarioOpsSettings
 from scenarioops.graph.nodes.utils import build_prompt, get_client
 from scenarioops.graph.state import ScenarioOpsState
 from scenarioops.graph.tools.image_generation import (
+    ImageGenerationError,
     get_image_client,
     placeholder_image_bytes,
 )
@@ -138,34 +139,55 @@ def run_scenario_media_node(
                 base_dir=base_dir,
             )
         if image_prompt or visual_prompt:
-            try:
-                image_bytes = image_client.generate_image(
-                    image_prompt or visual_prompt, model=resolved_settings.image_model
-                )
-                log_normalization(
-                    run_id=run_id,
-                    node_name="scenario_media",
-                    operation="image_generation_ok",
-                    details={
-                        "scenario_id": scenario_id,
-                        "model": resolved_settings.image_model,
-                        "bytes": len(image_bytes) if image_bytes else 0,
-                    },
-                    base_dir=base_dir,
-                )
-            except Exception as exc:
-                log_normalization(
-                    run_id=run_id,
-                    node_name="scenario_media",
-                    operation="image_generation_error",
-                    details={
-                        "scenario_id": scenario_id,
-                        "model": resolved_settings.image_model,
-                        "error": str(exc),
-                    },
-                    base_dir=base_dir,
-                )
-                image_bytes = None
+            for attempt in range(1, 3):
+                try:
+                    image_bytes = image_client.generate_image(
+                        image_prompt or visual_prompt, model=resolved_settings.image_model
+                    )
+                    log_normalization(
+                        run_id=run_id,
+                        node_name="scenario_media",
+                        operation="image_generation_ok",
+                        details={
+                            "scenario_id": scenario_id,
+                            "model": resolved_settings.image_model,
+                            "attempt": attempt,
+                            "bytes": len(image_bytes) if image_bytes else 0,
+                        },
+                        base_dir=base_dir,
+                    )
+                    break
+                except ImageGenerationError as exc:
+                    log_normalization(
+                        run_id=run_id,
+                        node_name="scenario_media",
+                        operation="image_generation_error",
+                        details={
+                            "scenario_id": scenario_id,
+                            "model": resolved_settings.image_model,
+                            "attempt": attempt,
+                            "error": str(exc),
+                            "response_summary": getattr(exc, "response_summary", None),
+                        },
+                        base_dir=base_dir,
+                    )
+                    image_bytes = None
+                except Exception as exc:
+                    log_normalization(
+                        run_id=run_id,
+                        node_name="scenario_media",
+                        operation="image_generation_error",
+                        details={
+                            "scenario_id": scenario_id,
+                            "model": resolved_settings.image_model,
+                            "attempt": attempt,
+                            "error": str(exc),
+                        },
+                        base_dir=base_dir,
+                    )
+                    image_bytes = None
+                if image_bytes:
+                    break
         if not image_bytes:
             image_bytes = placeholder_image_bytes()
             log_normalization(

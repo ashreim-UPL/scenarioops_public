@@ -378,7 +378,7 @@ def run_uncertainty_axes_node(
         **metadata,
         "needs_correction": bool(warnings),
         "warnings": warnings,
-        "axes": axes,
+        "axes": selected,
         "selected_axis_ids": [str(axis.get("axis_id")) for axis in selected],
     }
     validate_artifact("uncertainty_axes", payload)
@@ -388,7 +388,7 @@ def run_uncertainty_axes_node(
         artifact_name="uncertainty_axes",
         payload=payload,
         ext="json",
-        input_values={"axis_count": len(axes), "selected_count": len(selected)},
+        input_values={"axis_count": len(selected), "selected_count": len(selected)},
         prompt_values={
             "prompt_name": prompt_bundle.name,
             "prompt_sha256": prompt_bundle.sha256,
