@@ -61,6 +61,11 @@ def _summary_prompt_for_image(scenario: Mapping[str, Any]) -> str:
         parts.append(f"Signals: {signpost_text}.")
     if implication_text:
         parts.append(f"Implications: {implication_text}.")
+    style = (
+        "Style: professional corporate photography, consultancy report aesthetic, "
+        "clean lighting, realistic scene, neutral palette, no text overlays."
+    )
+    parts.append(style)
     prompt = " ".join(parts).strip()
     return _truncate(prompt, 800)
 

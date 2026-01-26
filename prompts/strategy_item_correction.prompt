@@ -1,16 +1,6 @@
-Fix a single strategy to match the required schema.
-Return ONLY one JSON object (not an array, not wrapped) with:
-- id (keep if present)
-- name
-- objective
-- actions[]
-- owners[]
-- dependencies[]
-- risks[]
-- fit[]
-- kpis[]
+Fix the strategy to satisfy missing fields and align to the scenarios and company profile.
+Return ONLY a JSON object that matches the Strategy Item schema. No prose.
 
 Rules:
-- Use the provided scenarios for alignment.
-- Provide at least one KPI.
-- No extra keys.
+- Use only company information provided in Context (company_profile, annual report summary, focal issue). Do not introduce outside facts.
+- Ensure name, objective, actions, and KPIs are present.

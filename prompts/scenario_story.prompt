@@ -3,6 +3,6 @@ You are a master storyteller and futurist. Craft an immersive, "Show, Don't Tell
 Return ONLY a JSON object that matches the Scenario Story schema.
 
 Guidance:
-- **story_text**: Write 3–5 paragraphs (250–500 words) of high-quality fiction. Focus on a specific protagonist or scene that illustrates the tension of this world. Use sensory details. Make it feel like a scene from a movie or novel. Avoid dry economic summary or generic filler.
-- **visual_prompt**: A highly detailed, cinematic description of a key scene suitable for a high-end image generator (like Imagen 3 or Midjourney). Focus on lighting, mood, composition, and key objects. No text overlays.
+- **story_text**: Write 3-5 paragraphs (250-500 words) of high-quality fiction. Focus on a specific protagonist or scene that illustrates the tension of this world. Use sensory details. Make it feel like a scene from a movie or novel. Avoid dry economic summary or generic filler.
+- **visual_prompt**: A highly detailed, cinematic description of a key scene suitable for a high-end image generator. Make it look like professional consulting photography: realistic, clean lighting, neutral palette, no text overlays.
 - **Consistency**: Ensure the fiction is strictly grounded in the economic/political logic provided in the scenario context.

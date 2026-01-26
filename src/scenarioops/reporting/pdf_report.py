@@ -9,7 +9,9 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import LETTER
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle, PageBreak
+from reportlab.graphics.shapes import Drawing, String
+from reportlab.graphics.charts.barcharts import VerticalBarChart
 
 from scenarioops.graph.tools.storage import ensure_run_dirs, default_runs_dir
 
@@ -31,6 +33,45 @@ def _paragraph(text: str, style: ParagraphStyle) -> Paragraph:
 
 def _bullet_lines(items: list[str]) -> str:
     return "<br/>".join(f"- {item}" for item in items if item)
+
+
+def _section_heading(text: str, styles: dict[str, ParagraphStyle]) -> Paragraph:
+    return _paragraph(text, styles["Section"])
+
+
+def _simple_table(rows: list[list[Any]]) -> Table:
+    table = Table(rows, hAlign="LEFT")
+    table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0e7c86")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                ("BACKGROUND", (0, 1), (-1, -1), colors.HexColor("#fbf7f0")),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ]
+        )
+    )
+    return table
+
+
+def _bar_chart(title: str, labels: list[str], values: list[float]) -> Drawing:
+    drawing = Drawing(400, 180)
+    drawing.add(String(0, 165, title, fontSize=10))
+    chart = VerticalBarChart()
+    chart.x = 40
+    chart.y = 25
+    chart.height = 120
+    chart.width = 340
+    chart.data = [values]
+    chart.strokeColor = colors.black
+    chart.valueAxis.valueMin = 0
+    chart.valueAxis.valueMax = max(values) if values else 1
+    chart.valueAxis.valueStep = max(1, int(chart.valueAxis.valueMax / 4))
+    chart.categoryAxis.categoryNames = labels
+    chart.bars[0].fillColor = colors.HexColor("#0e7c86")
+    drawing.add(chart)
+    return drawing
 
 
 def build_management_report(run_id: str, base_dir: Path | None = None) -> Path:
@@ -80,66 +121,95 @@ def build_management_report(run_id: str, base_dir: Path | None = None) -> Path:
     if focal:
         summary_lines.append(focal.get("focal_issue", ""))
     summary_text = " ".join([line for line in summary_lines if line]) or "Executive summary pending."
-    story.append(_paragraph("Executive Summary", styles["Section"]))
+    story.append(_section_heading("Executive Summary", styles))
     story.append(_paragraph(summary_text, styles["Body"]))
 
     # Charter
-    story.append(_paragraph("Charter", styles["Section"]))
+    story.append(_section_heading("Charter", styles))
     if charter:
-        body = [
-            f"Decision context: {charter.get('decision_context', 'Pending')}.",
-            f"Scope: {charter.get('scope', 'Pending')}.",
-            f"Time horizon: {charter.get('time_horizon', 'Pending')}.",
+        table_rows = [
+            ["Field", "Detail"],
+            ["Decision context", charter.get("decision_context", "Pending")],
+            ["Scope", charter.get("scope", "Pending")],
+            ["Time horizon", charter.get("time_horizon", "Pending")],
         ]
-        story.append(_paragraph(" ".join(body), styles["Body"]))
+        story.append(_simple_table(table_rows))
     else:
         story.append(_paragraph("Charter not available.", styles["Body"]))
 
     # Focal issue
-    story.append(_paragraph("Focal Issue", styles["Section"]))
+    story.append(_section_heading("Focal Issue", styles))
     if focal:
         scope = focal.get("scope", {}) if isinstance(focal.get("scope"), dict) else {}
-        body = [
-            focal.get("focal_issue", "Pending"),
-            f"Geography: {scope.get('geography', 'Pending')}.",
-            f"Time horizon (months): {scope.get('time_horizon_months', 'Pending')}.",
+        story.append(_paragraph(focal.get("focal_issue", "Pending"), styles["Body"]))
+        table_rows = [
+            ["Field", "Detail"],
+            ["Geography", scope.get("geography", "Pending")],
+            ["Sectors", ", ".join(scope.get("sectors", []))],
+            ["Time horizon (months)", scope.get("time_horizon_months", "Pending")],
+            ["Decision type", focal.get("decision_type", "Pending")],
         ]
-        story.append(_paragraph(" ".join(body), styles["Body"]))
+        story.append(_simple_table(table_rows))
     else:
         story.append(_paragraph("Focal issue not available.", styles["Body"]))
 
     # Retrieval summary
-    story.append(_paragraph("Evidence & Retrieval", styles["Section"]))
+    story.append(_section_heading("Evidence & Retrieval", styles))
     if retrieval:
         counts = retrieval.get("counts", {}) if isinstance(retrieval.get("counts"), dict) else {}
-        body = [
-            f"Evidence OK: {counts.get('ok', 0)}.",
-            f"Evidence total: {counts.get('total', 0)}.",
-            f"Evidence failed: {counts.get('failed', 0)}.",
+        table_rows = [
+            ["Metric", "Count"],
+            ["Evidence OK", counts.get("ok", 0)],
+            ["Evidence total", counts.get("total", 0)],
+            ["Evidence failed", counts.get("failed", 0)],
         ]
-        story.append(_paragraph(" ".join(body), styles["Body"]))
+        story.append(_simple_table(table_rows))
+        story.append(Spacer(1, 0.1 * inch))
+        story.append(
+            _bar_chart(
+                "Evidence health",
+                ["OK", "Total", "Failed"],
+                [counts.get("ok", 0), counts.get("total", 0), counts.get("failed", 0)],
+            )
+        )
     else:
         story.append(_paragraph("Retrieval summary not available.", styles["Body"]))
 
     # Forces
-    story.append(_paragraph("Forces", styles["Section"]))
+    story.append(_section_heading("Forces", styles))
     if forces and isinstance(forces.get("forces"), list):
         top_forces = [f.get("label", "") for f in forces.get("forces", [])[:8]]
-        story.append(_paragraph(_bullet_lines(top_forces) or "Forces pending.", styles["Body"]))
+        table_rows = [["Top forces"]] + [[name] for name in top_forces if name]
+        story.append(_simple_table(table_rows))
     else:
         story.append(_paragraph("Forces not available.", styles["Body"]))
 
     # EBE ranking
-    story.append(_paragraph("EBE Ranking Highlights", styles["Section"]))
+    story.append(_section_heading("EBE Ranking Highlights", styles))
     if forces_ranked and isinstance(forces_ranked.get("forces"), list):
         ranked = sorted(forces_ranked.get("forces", []), key=lambda f: f.get("ebe_score", 0), reverse=True)
-        top = [f.get("rationale", "") for f in ranked[:5]]
-        story.append(_paragraph(_bullet_lines(top) or "EBE ranking pending.", styles["Body"]))
+        top = ranked[:5]
+        table_rows = [["Force ID", "EBE Score", "Rationale"]]
+        for item in top:
+            table_rows.append([
+                item.get("force_id", ""),
+                item.get("ebe_score", ""),
+                item.get("rationale", ""),
+            ])
+        story.append(_simple_table(table_rows))
+        story.append(Spacer(1, 0.1 * inch))
+        story.append(
+            _bar_chart(
+                "Top EBE scores",
+                [item.get("force_id", "") for item in top],
+                [float(item.get("ebe_score", 0)) for item in top],
+            )
+        )
     else:
         story.append(_paragraph("EBE ranking not available.", styles["Body"]))
 
     # Clusters and uncertainty axes
-    story.append(_paragraph("Clusters & Uncertainty Axes", styles["Section"]))
+    story.append(_section_heading("Clusters & Uncertainty Axes", styles))
     cluster_lines = []
     if clusters and isinstance(clusters.get("clusters"), list):
         cluster_lines = [c.get("cluster_label", "") for c in clusters.get("clusters", [])[:5]]
@@ -150,33 +220,33 @@ def build_management_report(run_id: str, base_dir: Path | None = None) -> Path:
     story.append(_paragraph(combined or "Cluster and axis outputs pending.", styles["Body"]))
 
     # Scenarios
-    story.append(_paragraph("Scenario Narratives", styles["Section"]))
+    story.append(PageBreak())
+    story.append(_section_heading("Scenario Narratives", styles))
     if scenarios and isinstance(scenarios.get("scenarios"), list):
-        scenario_blocks = []
+        table_rows = [["Scenario", "Axis states", "Key implications"]]
         for scenario in scenarios.get("scenarios", []):
-            name = scenario.get("name", "Scenario")
-            summary = scenario.get("summary") or scenario.get("narrative", "")
-            if summary:
-                summary = summary[:420] + ("..." if len(summary) > 420 else "")
-            scenario_blocks.append(f"{name}: {summary}")
-        story.append(_paragraph(_bullet_lines(scenario_blocks), styles["Body"]))
+            axis_states = scenario.get("axis_states", {})
+            axis_text = ", ".join(f"{k}: {v}" for k, v in axis_states.items()) if isinstance(axis_states, dict) else ""
+            implications = scenario.get("implications", [])
+            imp_text = "; ".join(implications[:3]) if isinstance(implications, list) else ""
+            table_rows.append([scenario.get("name", "Scenario"), axis_text, imp_text])
+        story.append(_simple_table(table_rows))
     else:
         story.append(_paragraph("Scenario narratives not available.", styles["Body"]))
 
     # Strategies
-    story.append(_paragraph("Strategy Options", styles["Section"]))
+    story.append(_section_heading("Strategy Options", styles))
     if strategies and isinstance(strategies.get("strategies"), list):
-        strategy_blocks = []
+        table_rows = [["Strategy", "Objective", "KPIs"]]
         for strategy in strategies.get("strategies", []):
-            name = strategy.get("name", "Strategy")
-            objective = strategy.get("objective", "")
-            strategy_blocks.append(f"{name}: {objective}")
-        story.append(_paragraph(_bullet_lines(strategy_blocks), styles["Body"]))
+            kpis = "; ".join(strategy.get("kpis", [])) if isinstance(strategy.get("kpis"), list) else ""
+            table_rows.append([strategy.get("name", "Strategy"), strategy.get("objective", ""), kpis])
+        story.append(_simple_table(table_rows))
     else:
         story.append(_paragraph("Strategies not available.", styles["Body"]))
 
     # Wind tunnel
-    story.append(_paragraph("Wind Tunnel Outcomes", styles["Section"]))
+    story.append(_section_heading("Wind Tunnel Outcomes", styles))
     if wind and isinstance(wind.get("matrix"), list):
         outcomes = {}
         for row in wind.get("matrix", []):

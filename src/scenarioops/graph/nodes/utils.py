@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict, dataclass, is_dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -34,8 +35,13 @@ def build_prompt(name: str, context: Mapping[str, Any]) -> PromptBundle:
 
 
 def render_prompt(template: str, context: Mapping[str, Any]) -> str:
+    now = datetime.now(timezone.utc)
+    enriched = dict(context)
+    enriched.setdefault("current_date", now.date().isoformat())
+    enriched.setdefault("current_datetime", now.isoformat())
+    enriched.setdefault("current_timezone", "UTC")
     payload = json.dumps(
-        context,
+        enriched,
         indent=2,
         sort_keys=True,
         default=_json_default,

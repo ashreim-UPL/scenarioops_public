@@ -256,6 +256,10 @@ def run_strategies_node(
         else (scenario_payload or [])
     )
     prompt_context = {"scenarios": scenarios}
+    if state.company_profile:
+        prompt_context["company_profile"] = state.company_profile
+    if state.focal_issue:
+        prompt_context["focal_issue"] = state.focal_issue
     if strategy_notes:
         prompt_context["strategy_notes"] = strategy_notes
     prompt_bundle = build_prompt("strategies", prompt_context)
