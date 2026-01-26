@@ -273,7 +273,7 @@ def pill_row(items: Iterable[str]) -> None:
 
 def card_grid(cards: Iterable[tuple[str, str]]) -> None:
     chunks = "".join(
-        f"<div class='so-card'><h4>{html.escape(title)}</h4><p>{html.escape(body)}</p></div>"
+        f"<div class='so-card'><h4>{html.escape(str(title))}</h4><p>{html.escape(str(body))}</p></div>"
         for title, body in cards
     )
     st.markdown(f"<div class='so-grid'>{chunks}</div>", unsafe_allow_html=True)

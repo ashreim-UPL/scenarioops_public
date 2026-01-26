@@ -15,6 +15,7 @@ from scenarioops.ui.page_utils import (
     load_artifact,
     page_header,
     placeholder_section,
+    resolve_image_path,
     resolve_run_id,
     section,
 )
@@ -23,7 +24,9 @@ st.set_page_config(page_title="Scenarios", page_icon="S", layout="wide")
 run_id = resolve_run_id()
 page_header("Scenarios", run_id, subtitle="Narrative worlds anchored on uncertainty axes")
 
-payload = load_artifact(run_id, "scenarios")
+payload = load_artifact(run_id, "scenarios_enriched")
+if not payload:
+    payload = load_artifact(run_id, "scenarios")
 if not payload:
     placeholder_section("Scenario Set", ["Scenario names", "Narratives", "Implications"])
     st.stop()
@@ -42,6 +45,9 @@ if not scenarios:
 
 for scenario in scenarios:
     section(scenario.get("name", "Scenario"), scenario.get("narrative", ""))
+    image_path = resolve_image_path(run_id, scenario.get("image_artifact_path"))
+    if image_path:
+        st.image(str(image_path), use_container_width=True)
     implications = scenario.get("implications", [])
     if implications:
         st.markdown("**Implications**")
