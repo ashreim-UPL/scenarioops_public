@@ -12,11 +12,18 @@ if str(SRC_DIR) not in sys.path:
 import pandas as pd
 import streamlit as st
 
-from scenarioops.ui.page_utils import load_artifact, page_header, placeholder_section, resolve_run_id
+from scenarioops.ui.page_utils import (
+    card_grid,
+    load_artifact,
+    page_header,
+    placeholder_section,
+    resolve_run_id,
+    section,
+)
 
 st.set_page_config(page_title="Forces", page_icon="S", layout="wide")
 run_id = resolve_run_id()
-page_header("Forces", run_id)
+page_header("Forces", run_id, subtitle="Signals shaping the strategic landscape")
 
 payload = load_artifact(run_id, "forces")
 if not payload:
@@ -28,14 +35,15 @@ if not forces:
     st.info("No forces found.")
     st.stop()
 
-st.subheader("Force Overview")
+card_grid(
+    [
+        ("Total Forces", str(len(forces))),
+        ("Domains", str(len({f.get("domain") for f in forces if f.get("domain")}))),
+        ("Layers", str(len({f.get("layer") for f in forces if f.get("layer")}))),
+    ]
+)
 
-cols = st.columns(3)
-cols[0].metric("Total Forces", len(forces))
-cols[1].metric("Domains", len({f.get("domain") for f in forces if f.get("domain")}))
-cols[2].metric("Layers", len({f.get("layer") for f in forces if f.get("layer")}))
-
-st.subheader("Forces Table")
+section("Force Inventory", "Core drivers organized by domain and layer.")
 
 df = pd.DataFrame(forces)
 columns = [c for c in ["label", "domain", "layer", "mechanism", "directionality", "confidence"] if c in df.columns]

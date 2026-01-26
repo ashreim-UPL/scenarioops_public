@@ -12,11 +12,18 @@ if str(SRC_DIR) not in sys.path:
 from collections import Counter
 import streamlit as st
 
-from scenarioops.ui.page_utils import load_artifact, metric_row, page_header, placeholder_section, resolve_run_id
+from scenarioops.ui.page_utils import (
+    card_grid,
+    load_artifact,
+    page_header,
+    placeholder_section,
+    resolve_run_id,
+    section,
+)
 
 st.set_page_config(page_title="Retrieval Summary", page_icon="R", layout="wide")
 run_id = resolve_run_id()
-page_header("Retrieval Summary", run_id)
+page_header("Retrieval Summary", run_id, subtitle="Source intake and evidence health")
 
 report = load_artifact(run_id, "retrieval_report")
 units = load_artifact(run_id, "evidence_units")
@@ -26,20 +33,21 @@ if not report:
     st.stop()
 
 counts = report.get("counts", {}) if isinstance(report.get("counts"), dict) else {}
-metric_row({
-    "Evidence OK": counts.get("ok", 0),
-    "Evidence Total": counts.get("total", 0),
-    "Evidence Failed": counts.get("failed", 0),
-})
+card_grid(
+    [
+        ("Evidence OK", str(counts.get("ok", 0))),
+        ("Evidence Total", str(counts.get("total", 0))),
+        ("Evidence Failed", str(counts.get("failed", 0))),
+    ]
+)
 
 notes = report.get("notes", [])
 if notes:
-    st.subheader("Notes")
-    st.write(notes)
+    section("Notes", " | ".join(notes))
 
 if units and isinstance(units.get("evidence_units"), list):
     publishers = [u.get("publisher") for u in units.get("evidence_units", []) if u.get("publisher")]
     if publishers:
-        st.subheader("Top Publishers")
+        st.markdown("### Top Publishers")
         counts = Counter(publishers).most_common(10)
         st.table({"publisher": [c[0] for c in counts], "count": [c[1] for c in counts]})

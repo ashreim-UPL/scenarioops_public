@@ -11,11 +11,19 @@ if str(SRC_DIR) not in sys.path:
 
 import streamlit as st
 
-from scenarioops.ui.page_utils import load_artifact, page_header, placeholder_section, resolve_run_id
+from scenarioops.ui.page_utils import (
+    card_grid,
+    load_artifact,
+    page_header,
+    placeholder_section,
+    pill_row,
+    resolve_run_id,
+    section,
+)
 
 st.set_page_config(page_title="Charter", page_icon="C", layout="wide")
 run_id = resolve_run_id()
-page_header("Charter", run_id)
+page_header("Charter", run_id, subtitle="Decision frame and operating intent")
 
 charter = load_artifact(run_id, "scenario_charter")
 if not charter:
@@ -27,21 +35,27 @@ if not charter:
     placeholder_section("Success Criteria", ["Success criteria"])
     st.stop()
 
-st.subheader(charter.get("title") or "Strategic Charter")
-st.markdown(f"**Purpose**: {charter.get('purpose','')}")
-st.markdown(f"**Decision Context**: {charter.get('decision_context','')}")
-st.markdown(f"**Scope**: {charter.get('scope','')}")
-st.markdown(f"**Time Horizon**: {charter.get('time_horizon','')}")
+section(charter.get("title") or "Strategic Charter", charter.get("purpose") or "")
+card_grid(
+    [
+        ("Decision Context", charter.get("decision_context") or "Pending"),
+        ("Scope", charter.get("scope") or "Pending"),
+        ("Time Horizon", charter.get("time_horizon") or "Pending"),
+    ]
+)
 
-with st.expander("Stakeholders", expanded=True):
-    st.write(charter.get("stakeholders", []))
-with st.expander("Constraints", expanded=True):
-    st.write(charter.get("constraints", []))
-with st.expander("Assumptions", expanded=True):
-    st.write(charter.get("assumptions", []))
-with st.expander("Success Criteria", expanded=True):
-    st.write(charter.get("success_criteria", []))
+st.markdown("### Stakeholders")
+pill_row(charter.get("stakeholders", []))
+
+st.markdown("### Constraints")
+pill_row(charter.get("constraints", []))
+
+st.markdown("### Assumptions")
+pill_row(charter.get("assumptions", []))
+
+st.markdown("### Success Criteria")
+pill_row(charter.get("success_criteria", []))
+
 notes = charter.get("notes")
 if notes:
-    st.markdown("**Notes**")
-    st.write(notes)
+    section("Notes", str(notes))
