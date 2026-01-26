@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 import hashlib
 import json
 import os
@@ -31,6 +32,9 @@ class GeminiClient:
     temperature: float = 0.2
 
     def generate_json(self, prompt: str, schema: Mapping[str, Any]) -> dict[str, Any]:
+        schema_name = "unknown"
+        if isinstance(schema, Mapping):
+            schema_name = str(schema.get("title") or "unknown")
         raw = self._generate_text(
             prompt,
             response_mime_type="application/json",
@@ -54,17 +58,25 @@ class GeminiClient:
             if parsed is None:
                 extracted = _extract_first_json_object(stripped or raw)
                 if extracted is None:
+                    _log_parse_failure(schema_name, prompt, raw, str(exc))
                     raise ValueError(
                         "Unable to locate JSON object in output. "
                         "The model response may be truncated. "
                         "Set GEMINI_MAX_OUTPUT_TOKENS higher or reduce output size. "
                         f"Output sample: {raw[:500]!r}"
                     ) from exc
-                parsed = json.loads(extracted)
+                try:
+                    parsed = json.loads(extracted)
+                except json.JSONDecodeError as inner_exc:
+                    _log_parse_failure(schema_name, prompt, raw, str(inner_exc))
+                    raise ValueError(
+                        "Unable to parse JSON object in output. "
+                        "The model response may be malformed or truncated. "
+                        f"Output sample: {raw[:500]!r}"
+                    ) from inner_exc
 
         if not isinstance(parsed, dict):
             if isinstance(parsed, list) and isinstance(schema, Mapping):
-                schema_name = str(schema.get("title") or "unknown")
                 if schema_name == "Strategies":
                     parsed = {"strategies": parsed}
                 else:
@@ -80,9 +92,9 @@ class GeminiClient:
                     f"Expected JSON object, got {type(parsed)}. Raw: {raw[:500]!r}"
                 )
 
-        schema_name = "unknown"
-        if isinstance(schema, Mapping):
-            schema_name = str(schema.get("title") or "unknown")
+        if schema_name in {"Scenarios", "Scenarios Payload"}:
+            parsed = _coerce_scenarios_payload(parsed)
+        parsed = _sanitize_payload(parsed, schema)
         if schema_name in {"Scenarios", "Scenarios Payload"}:
             _normalize_scenarios_axis_states(parsed)
         if schema_name == "Strategies":
@@ -96,6 +108,7 @@ class GeminiClient:
         try:
             validate_schema(parsed, schema, schema_name)
         except SchemaValidationError:
+            _log_schema_failure(schema_name, prompt, raw, parsed)
             if schema_name == "Wind Tunnel":
                 return _wrap_payload(parsed, raw)
             raise
@@ -149,6 +162,159 @@ def _wrap_payload(payload: Mapping[str, Any], raw: str) -> dict[str, Any]:
 
 
 _CODE_FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)```", re.IGNORECASE | re.DOTALL)
+
+
+def _find_repo_root(start: Path) -> Path:
+    current = start.resolve()
+    while current != current.parent:
+        if (current / "pyproject.toml").exists():
+            return current
+        current = current.parent
+    return start.resolve()
+
+
+def _schema_failure_log_path() -> Path:
+    root = _find_repo_root(Path(__file__).resolve())
+    return root / "storage" / "logs" / "llm_schema_failures.jsonl"
+
+
+def _parse_failure_log_path() -> Path:
+    root = _find_repo_root(Path(__file__).resolve())
+    return root / "storage" / "logs" / "llm_parse_failures.jsonl"
+
+
+def _log_schema_failure(
+    schema_name: str, prompt: str, raw: str, parsed: Mapping[str, Any] | Any
+) -> None:
+    try:
+        path = _schema_failure_log_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        preview = raw[:4000] if isinstance(raw, str) else ""
+        parsed_preview: Any = None
+        if isinstance(parsed, Mapping):
+            parsed_preview = {
+                "keys": sorted(str(k) for k in parsed.keys())[:40],
+                "size": len(parsed),
+            }
+        elif isinstance(parsed, list):
+            parsed_preview = {"list_items": len(parsed)}
+        entry = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "schema_name": schema_name,
+            "prompt_sha256": _hash_text(prompt),
+            "raw_length": len(raw) if isinstance(raw, str) else None,
+            "raw_preview": preview,
+            "parsed_preview": parsed_preview,
+        }
+        with path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(entry, sort_keys=True) + "\n")
+    except Exception:
+        return
+
+
+def _log_parse_failure(schema_name: str, prompt: str, raw: str, error: str) -> None:
+    try:
+        path = _parse_failure_log_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        preview = raw[:4000] if isinstance(raw, str) else ""
+        entry = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "schema_name": schema_name,
+            "prompt_sha256": _hash_text(prompt),
+            "raw_length": len(raw) if isinstance(raw, str) else None,
+            "raw_preview": preview,
+            "error": error,
+        }
+        with path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(entry, sort_keys=True) + "\n")
+    except Exception:
+        return
+
+
+def _value_matches_type(value: Any, schema: Mapping[str, Any]) -> bool:
+    expected = schema.get("type")
+    if isinstance(expected, list):
+        return any(_value_matches_type(value, {"type": item}) for item in expected)
+    if expected == "object":
+        return isinstance(value, Mapping)
+    if expected == "array":
+        return isinstance(value, list)
+    if expected == "string":
+        return isinstance(value, str)
+    if expected == "integer":
+        return isinstance(value, int) and not isinstance(value, bool)
+    if expected == "number":
+        return isinstance(value, (int, float)) and not isinstance(value, bool)
+    if expected == "boolean":
+        return isinstance(value, bool)
+    return True
+
+
+def _sanitize_payload(value: Any, schema: Mapping[str, Any] | None) -> Any:
+    if not isinstance(schema, Mapping):
+        return value
+    for option_key in ("oneOf", "anyOf"):
+        options = schema.get(option_key)
+        if isinstance(options, list):
+            for option in options:
+                if isinstance(option, Mapping) and _value_matches_type(value, option):
+                    return _sanitize_payload(value, option)
+    expected = schema.get("type")
+    if expected == "object" and isinstance(value, Mapping):
+        props = schema.get("properties", {})
+        additional = schema.get("additionalProperties", True)
+        sanitized: dict[str, Any] = {}
+        for key, item in value.items():
+            if isinstance(props, Mapping) and key in props:
+                sanitized[key] = _sanitize_payload(item, props[key])
+            elif additional is True:
+                sanitized[key] = item
+            elif isinstance(additional, Mapping):
+                sanitized[key] = _sanitize_payload(item, additional)
+            else:
+                continue
+        return sanitized
+    if expected == "array" and isinstance(value, list):
+        items_schema = schema.get("items")
+        return [_sanitize_payload(item, items_schema) for item in value]
+    return value
+
+
+def _looks_like_scenarios_list(candidate: Any) -> bool:
+    if not isinstance(candidate, list) or len(candidate) < 1:
+        return False
+    for item in candidate[:3]:
+        if not isinstance(item, Mapping):
+            return False
+        if not any(
+            key in item
+            for key in (
+                "narrative",
+                "axis_states",
+                "scenario_id",
+                "scenario_name",
+                "name",
+            )
+        ):
+            return False
+    return True
+
+
+def _coerce_scenarios_payload(parsed: Mapping[str, Any]) -> Mapping[str, Any]:
+    if not isinstance(parsed, Mapping):
+        return parsed
+    if "scenarios" in parsed:
+        return parsed
+    for key in ("scenario_set", "scenario_list", "items", "data"):
+        candidate = parsed.get(key)
+        if _looks_like_scenarios_list(candidate):
+            return {"scenarios": candidate}
+    list_candidates = [
+        value for value in parsed.values() if _looks_like_scenarios_list(value)
+    ]
+    if len(list_candidates) == 1:
+        return {"scenarios": list_candidates[0]}
+    return parsed
 
 
 def _wrap_single_array_payload(

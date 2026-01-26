@@ -41,9 +41,10 @@ from scenarioops.app.config import (
     get_allowed_text_models,
     load_settings,
 )
+from scenarioops.graph.tools.storage import default_runs_dir
 from scenarioops.graph.tools.view_model import build_view_model
 
-RUNS_DIR = ROOT / "storage" / "runs"
+RUNS_DIR = default_runs_dir()
 LATEST_POINTER = RUNS_DIR / "latest.json"
 
 def _get_query_run_id() -> str | None:
@@ -280,16 +281,36 @@ def load_latest_run_id() -> str | None:
 
 
 def _resolve_run_id() -> str | None:
+    def _persist(run_id: str) -> None:
+        st.session_state["run_id"] = run_id
+        st.session_state["last_run_id"] = run_id
+        try:
+            params = st.query_params
+            value = params.get("run_id")
+            if isinstance(value, list):
+                value = value[0] if value else None
+            if value != run_id:
+                st.query_params["run_id"] = run_id
+        except Exception:
+            pass
+
     query_run_id = _get_query_run_id()
     if query_run_id:
         run_path = RUNS_DIR / query_run_id
-        return query_run_id if run_path.exists() else None
+        if run_path.exists():
+            _persist(query_run_id)
+            return query_run_id
+        return None
     session_run_id = st.session_state.get("last_run_id")
     if session_run_id:
         run_path = RUNS_DIR / session_run_id
         if run_path.exists():
+            _persist(session_run_id)
             return session_run_id
-    return load_latest_run_id()
+    latest = load_latest_run_id()
+    if latest:
+        _persist(latest)
+    return latest
 
 def get_run_status(run_id: str) -> dict[str, Any]:
     """Reads latest status and node events."""
@@ -1571,4 +1592,29 @@ if run_id and not st.session_state.get("running"):
 
     render_step_panel(side_col, status_data.get("nodes", []), process_running=False)
 elif not st.session_state.get("running"):
-    st.info("No runs available yet. Start a run from the sidebar to populate the dashboard.")
+    main_col, side_col = st.columns([3, 1], gap="large")
+    with main_col:
+        st.caption("Template view (no run data yet). Start a run from the sidebar to populate the dashboard.")
+        st.header("Strategy Dashboard: Template")
+
+        render_pipeline_boxes(nodes=[], run_id=None, process_running=False)
+
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric("Forces Identified", 0)
+        m2.metric("Uncertainty Axes", 0)
+        m3.metric("Scenarios", 0)
+        m4.metric("Strategies", 0)
+
+        tab1, tab2, tab3, tab4 = st.tabs(["Strategy Map", "Scenarios", "Wind Tunnel", "Raw Data"])
+        with tab1:
+            st.subheader("Strategic Radar")
+            st.info("No forces, clusters, or axes yet.")
+        with tab2:
+            st.info("No scenarios yet.")
+        with tab3:
+            st.subheader("Wind Tunnel Results")
+            st.info("No wind tunnel tests yet.")
+        with tab4:
+            st.json({})
+
+    render_step_panel(side_col, [], process_running=False)

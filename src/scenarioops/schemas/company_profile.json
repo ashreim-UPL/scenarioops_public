@@ -15,6 +15,7 @@
     "timestamp": { "type": "string", "minLength": 1 },
     "company_name": { "type": "string", "minLength": 1 },
     "geography": { "type": "string", "minLength": 1 },
+    "industry": { "type": ["string", "null"] },
     "horizon_months": { "type": "integer", "minimum": 36, "maximum": 120 },
     "source_basis": {
       "type": "object",

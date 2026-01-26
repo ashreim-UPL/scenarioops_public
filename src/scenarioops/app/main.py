@@ -38,7 +38,6 @@ from scenarioops.graph.nodes import (
 from scenarioops.graph.nodes.charter import run_charter_node
 from scenarioops.graph.state import ScenarioOpsState
 from scenarioops.graph.tools.scoring import hash_scoring_result, score_with_rubric
-from scenarioops.reporting import build_management_report
 from scenarioops.graph.tools.storage import (
     default_runs_dir,
     read_latest_status,
@@ -570,6 +569,8 @@ def _run_add_strategies(args: argparse.Namespace) -> None:
 
 
 def _run_build_report(args: argparse.Namespace) -> None:
+    from scenarioops.reporting import build_management_report
+
     base_dir = Path(args.base_dir) if args.base_dir else None
     run_id = args.run_id or latest_run_id(base_dir)
     if not run_id:

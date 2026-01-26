@@ -10,10 +10,18 @@ from .provenance import ArtifactProvenance, build_provenance
 _RUN_CREATED_AT: dict[str, str] = {}
 
 
+def _find_repo_root(start: Path) -> Path:
+    current = start.resolve()
+    while current != current.parent:
+        if (current / "pyproject.toml").exists():
+            return current
+        current = current.parent
+    return start.resolve()
+
+
 def default_runs_dir() -> Path:
-    # __file__ is src/scenarioops/graph/tools/storage.py
-    # parents[4] is project root
-    return Path(__file__).resolve().parents[4] / "storage" / "runs"
+    root = _find_repo_root(Path(__file__).resolve())
+    return root / "storage" / "runs"
 
 
 def latest_pointer_path(base_dir: Path | None = None) -> Path:

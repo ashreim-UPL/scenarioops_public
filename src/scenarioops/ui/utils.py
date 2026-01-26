@@ -3,6 +3,8 @@ import re
 from datetime import datetime
 from pathlib import Path
 
+from scenarioops.graph.tools.storage import default_runs_dir
+
 def _find_repo_root(start: Path) -> Path:
     current = start.resolve()
     for parent in [current, *current.parents]:
@@ -12,7 +14,7 @@ def _find_repo_root(start: Path) -> Path:
 
 ROOT = _find_repo_root(Path(__file__).resolve())
 SRC_DIR = ROOT / "src"
-RUNS_DIR = ROOT / "storage" / "runs"
+RUNS_DIR = default_runs_dir()
 LATEST_POINTER = RUNS_DIR / "latest.json"
 
 def _normalize_label(value: str) -> str:

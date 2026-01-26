@@ -26,6 +26,58 @@ _ANNUAL_CHUNK_CHARS = int(os.environ.get("ANNUAL_REPORT_CHUNK_CHARS", "2000"))
 _ANNUAL_CHUNK_OVERLAP = int(os.environ.get("ANNUAL_REPORT_CHUNK_OVERLAP", "250"))
 _ANNUAL_MAX_CHUNKS = int(os.environ.get("ANNUAL_REPORT_MAX_CHUNKS", "10"))
 _URL_RE = re.compile(r"https?://[^\s)\]>\"]+")
+_INDUSTRY_BY_COMPANY = {
+    "microsoft": "Technology",
+    "google": "Technology",
+    "alphabet": "Technology",
+    "apple": "Technology",
+    "amazon": "Technology",
+    "meta": "Technology",
+    "samsung": "Technology",
+    "sap": "Technology",
+    "tencent": "Technology",
+    "alibaba": "Technology",
+    "accor": "Hospitality",
+    "marriott": "Hospitality",
+    "hilton": "Hospitality",
+    "hyatt": "Hospitality",
+    "shell": "Energy",
+    "bp": "Energy",
+    "aramco": "Energy",
+    "toyota": "Automotive",
+    "tesla": "Automotive",
+    "siemens": "Industrial",
+}
+_INDUSTRY_KEYWORDS = {
+    "Technology": [
+        "technology",
+        "software",
+        "cloud",
+        "saas",
+        "ai",
+        "hardware",
+        "platform",
+        "operating system",
+        "semiconductor",
+        "computing",
+    ],
+    "Hospitality": ["hospitality", "hotel", "hotels", "resort", "lodging", "tourism", "travel"],
+    "Financial Services": [
+        "bank",
+        "banking",
+        "insurance",
+        "investment",
+        "asset management",
+        "lending",
+        "financial services",
+    ],
+    "Energy": ["oil", "gas", "petroleum", "renewable", "electricity", "utility", "utilities", "power"],
+    "Healthcare": ["healthcare", "pharmaceutical", "biotech", "medical", "hospital", "drug", "clinic"],
+    "Retail": ["retail", "e-commerce", "store", "consumer goods", "merchandise"],
+    "Manufacturing": ["manufacturing", "industrial", "factory", "production"],
+    "Transportation": ["logistics", "shipping", "airline", "rail", "transportation", "freight"],
+    "Telecom": ["telecom", "telecommunications", "wireless", "5g", "broadband", "carrier"],
+}
 
 
 def _manual_input(user_params: Mapping[str, Any]) -> str:
@@ -36,6 +88,28 @@ def _manual_input(user_params: Mapping[str, Any]) -> str:
         or ""
     )
     return str(value)
+
+
+def _industry_from_params(user_params: Mapping[str, Any]) -> str | None:
+    for key in ("industry", "sector", "vertical"):
+        raw = user_params.get(key)
+        if isinstance(raw, str) and raw.strip():
+            return raw.strip()
+    return None
+
+
+def _infer_industry(
+    company_name: str, summary: str, manual_input: str
+) -> str | None:
+    normalized_company = company_name.strip().lower()
+    if normalized_company in _INDUSTRY_BY_COMPANY:
+        return _INDUSTRY_BY_COMPANY[normalized_company]
+
+    text = " ".join([company_name, summary, manual_input]).lower()
+    for label, keywords in _INDUSTRY_KEYWORDS.items():
+        if any(keyword in text for keyword in keywords):
+            return label
+    return None
 
 
 def _annual_report_queries(company: str) -> list[str]:
@@ -244,6 +318,8 @@ def run_company_profile_node(
     strategic_priorities: list[str] = []
     annual_report_text = ""
     annual_report_content_type = None
+    manual_input = _manual_input(user_params)
+    industry = _industry_from_params(user_params)
 
     evidence_units: list[dict[str, Any]] = []
     summarizer_client = None
@@ -403,13 +479,17 @@ def run_company_profile_node(
         }
         validate_artifact("evidence_units.schema", evidence_payload)
 
+    if not industry:
+        industry = _infer_industry(company_name, annual_report_summary, manual_input)
+
     internal_docs = [Path(path).name for path in (input_docs or []) if path]
     payload = {
         **metadata,
+        "industry": industry,
         "source_basis": {
             "urls": [str(item) for item in sources],
             "internal_docs": internal_docs,
-            "manual_input": _manual_input(user_params),
+            "manual_input": manual_input,
         },
         "annual_report_status": annual_report_status,
         "annual_report_source": annual_report_source,

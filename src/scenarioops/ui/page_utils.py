@@ -9,6 +9,8 @@ import sys
 
 import streamlit as st
 
+from scenarioops.graph.tools.storage import default_runs_dir
+
 
 def _find_repo_root(start: Path) -> Path:
     current = start.resolve()
@@ -22,7 +24,7 @@ SRC_DIR = ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.append(str(SRC_DIR))
 
-RUNS_DIR = ROOT / "storage" / "runs"
+RUNS_DIR = default_runs_dir()
 LATEST_POINTER = RUNS_DIR / "latest.json"
 
 
@@ -40,14 +42,49 @@ def _get_query_run_id() -> str | None:
 
 
 def resolve_run_id() -> str | None:
+    def _persist(run_id: str) -> None:
+        st.session_state["run_id"] = run_id
+        st.session_state["last_run_id"] = run_id
+        try:
+            params = st.query_params
+            value = params.get("run_id")
+            if isinstance(value, list):
+                value = value[0] if value else None
+            if value != run_id:
+                st.query_params["run_id"] = run_id
+        except Exception:
+            pass
+
+    def _existing(run_id: str | None) -> str | None:
+        if not run_id:
+            return None
+        candidate = str(run_id).strip()
+        if not candidate:
+            return None
+        return candidate if (RUNS_DIR / candidate).exists() else None
+
     query_run_id = _get_query_run_id()
-    if query_run_id and (RUNS_DIR / query_run_id).exists():
-        return query_run_id
+    existing = _existing(query_run_id)
+    if existing:
+        _persist(existing)
+        return existing
+    session_run_id = _existing(st.session_state.get("run_id"))
+    if session_run_id:
+        _persist(session_run_id)
+        return session_run_id
+    last_run_id = _existing(st.session_state.get("last_run_id"))
+    if last_run_id:
+        _persist(last_run_id)
+        return last_run_id
     if LATEST_POINTER.exists():
         try:
-            return json.loads(LATEST_POINTER.read_text(encoding="utf-8")).get("run_id")
+            latest = json.loads(LATEST_POINTER.read_text(encoding="utf-8"))
         except Exception:
             return None
+        resolved = _existing(latest.get("run_id") if isinstance(latest, dict) else None)
+        if resolved:
+            _persist(resolved)
+        return resolved
     return None
 
 

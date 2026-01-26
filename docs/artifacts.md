@@ -10,7 +10,7 @@ entries are listed below.
   provenance fields.
 - `evidence_units_uploads.json`: evidence units created from uploaded documents.
 - `retrieval_report.json`: retrieval grading, thresholds, and recovery details.
-- `company_profile.json`: company profile enriched with annual report summary.
+- `company_profile.json`: company profile with geography, industry, horizon, and annual report summary.
 - `forces.json`, `drivers.jsonl`, `driving_forces.json`: PESTEL synthesis outputs.
 - `scenarios.json`: synthesized scenarios (narrative + touchpoints).
 - `scenarios_enriched.json`: story text, visual prompts, and image paths.

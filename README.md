@@ -1,7 +1,10 @@
 # ScenarioOps
 
-ScenarioOps is a Python project scaffold for scenario planning and execution with
-retrieval-first evidence collection, scenario synthesis, and run-local provenance.
+ScenarioOps is an evidence-first scenario planning workspace that turns web and
+internal sources into auditable scenarios, strategies, and wind-tunnel stress tests.
+
+Elevator pitch: Evidence-first scenario planning workspace that turns web and internal
+sources into auditable scenarios, strategies, and wind-tunnel stress tests.
 
 ## Layout
 
