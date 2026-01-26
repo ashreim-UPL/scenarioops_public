@@ -9,6 +9,7 @@ if str(SRC_DIR) not in sys.path:
     sys.path.append(str(SRC_DIR))
 
 import pandas as pd
+import plotly.express as px
 import streamlit as st
 
 from scenarioops.ui.page_utils import (
@@ -30,6 +31,17 @@ if not payload:
     st.stop()
 
 forces = payload.get("forces", []) if isinstance(payload, dict) else []
+forces_catalog = load_artifact(run_id, "forces") or {}
+force_rows = forces_catalog.get("forces", []) if isinstance(forces_catalog, dict) else []
+force_meta = {
+    item.get("force_id"): {
+        "label": item.get("label"),
+        "domain": item.get("domain"),
+        "layer": item.get("layer"),
+    }
+    for item in force_rows
+    if isinstance(item, dict)
+}
 coverage = payload.get("coverage_stats", {}) if isinstance(payload, dict) else {}
 coverage_layers = coverage.get("by_layer", {}) if isinstance(coverage, dict) else {}
 
@@ -54,6 +66,30 @@ if not forces:
     st.stop()
 
 df = pd.DataFrame(forces)
+if not df.empty:
+    df["B_business_impact"] = pd.to_numeric(df.get("B_business_impact"), errors="coerce")
+    df["E_emergence"] = pd.to_numeric(df.get("E_emergence"), errors="coerce")
+    df["ebe_score"] = pd.to_numeric(df.get("ebe_score"), errors="coerce")
+    df["label"] = df["force_id"].map(lambda fid: (force_meta.get(fid) or {}).get("label"))
+    df["domain"] = df["force_id"].map(lambda fid: (force_meta.get(fid) or {}).get("domain"))
+    fig = px.scatter(
+        df,
+        x="B_business_impact",
+        y="E_emergence",
+        size="ebe_score",
+        color="domain",
+        text="label",
+        hover_data=["force_id", "rationale"],
+        size_max=70,
+    )
+    fig.update_traces(textposition="top center")
+    fig.update_layout(
+        height=460,
+        xaxis_title="Business impact (local)",
+        yaxis_title="Emergence (global/structural)",
+        showlegend=True,
+    )
+    st.plotly_chart(fig, use_container_width=True)
 if "ebe_score" in df.columns:
     df = df.sort_values(by="ebe_score", ascending=False)
 

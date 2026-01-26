@@ -3,9 +3,11 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping, Sequence
+from urllib.parse import urljoin, urlparse
 
 from scenarioops.app.config import (
     LLMConfig,
@@ -29,6 +31,7 @@ from scenarioops.sources.policy import PESTEL_QUERY_TEMPLATES
 
 _CACHE_VERSION = "v2"
 _MIN_TEXT_CHARS = 200
+_LINK_RE = re.compile(r"href=[\"']([^\"']+)[\"']", re.IGNORECASE)
 
 
 def _seed_queries(company: str, geography: str) -> list[str]:
@@ -69,6 +72,62 @@ def _dedupe_urls(urls: Iterable[str]) -> list[str]:
         seen.add(url)
         deduped.append(url)
     return deduped
+
+
+def _score_discovered_url(url: str, seed_host: str | None) -> int:
+    lowered = url.lower()
+    score = 0
+    if seed_host:
+        parsed = urlparse(url)
+        if parsed.hostname == seed_host:
+            score += 2
+    if lowered.endswith(".pdf") or ".pdf?" in lowered:
+        score += 3
+    if "report" in lowered or "annual" in lowered:
+        score += 2
+    if "investor" in lowered or "insights" in lowered or "overview" in lowered:
+        score += 1
+    return score
+
+
+def _discover_links(
+    url: str,
+    *,
+    allow_web: bool,
+    run_id: str | None,
+    base_dir: Path | None,
+) -> list[str]:
+    if not allow_web:
+        return []
+    try:
+        retrieved = retrieve_url(
+            url,
+            run_id=run_id,
+            allow_web=allow_web,
+            enforce_allowlist=False,
+            base_dir=base_dir,
+        )
+    except Exception:
+        return []
+    if not retrieved.text or "html" not in (retrieved.content_type or "").lower():
+        return []
+    seed_host = urlparse(retrieved.url).hostname
+    candidates: list[str] = []
+    for match in _LINK_RE.findall(retrieved.text):
+        href = match.strip()
+        if not href or href.startswith("#"):
+            continue
+        if href.startswith("javascript:") or href.startswith("mailto:"):
+            continue
+        absolute = urljoin(retrieved.url, href)
+        if absolute.startswith("http"):
+            candidates.append(absolute)
+    ranked = sorted(
+        _dedupe_urls(candidates),
+        key=lambda item: _score_discovered_url(item, seed_host),
+        reverse=True,
+    )
+    return ranked[:10]
 
 
 def _normalize_text(text: str) -> str:
@@ -487,6 +546,21 @@ def run_retrieval_real_node(
         if isinstance(unit, Mapping) and unit.get("url")
     }
 
+    def _attempt_fetch(target_url: str) -> tuple[RetrievedContent | None, str | None]:
+        try:
+            fetched = retriever(
+                target_url,
+                run_id=run_id,
+                allow_web=allow_web,
+                enforce_allowlist=False,
+                base_dir=base_dir,
+            )
+        except Exception as exc:
+            return None, str(exc)
+        if not _is_text_usable(fetched.text):
+            return None, "empty_extracted_text"
+        return fetched, None
+
     def _next_unit_id(prefix: str) -> str:
         nonlocal unit_counter
         while True:
@@ -720,21 +794,25 @@ def run_retrieval_real_node(
                 continue
             processed_urls.add(url)
             source_method = "search" if origin_query else "source_url"
-            try:
-                fetched = retriever(
-                    url,
-                    run_id=run_id,
-                    allow_web=allow_web,
-                    enforce_allowlist=False,
-                    base_dir=base_dir,
-                )
-            except Exception as exc:
-                failures.append(f"{url}: {exc}")
+            fetched, error = _attempt_fetch(url)
+            if not fetched and allow_web and not url.lower().endswith(".pdf"):
+                for candidate in _discover_links(
+                    url, allow_web=allow_web, run_id=run_id, base_dir=base_dir
+                ):
+                    if candidate in processed_urls:
+                        continue
+                    processed_urls.add(candidate)
+                    fetched, error = _attempt_fetch(candidate)
+                    if fetched:
+                        url = candidate
+                        break
+            if not fetched:
+                failures.append(f"{url}: {error}")
                 retrieved_units.append(
                     _build_failed_unit(
                         url=url,
                         source_method=source_method,
-                        reason=str(exc),
+                        reason=str(error),
                     )
                 )
                 counts = _count_units(retrieved_units)
@@ -791,21 +869,25 @@ def run_retrieval_real_node(
                         continue
                     processed_urls.add(url)
                     source_method = "search" if origin_query else "source_url"
-                    try:
-                        fetched = retriever(
-                            url,
-                            run_id=run_id,
-                            allow_web=allow_web,
-                            enforce_allowlist=False,
-                            base_dir=base_dir,
-                        )
-                    except Exception as exc:
-                        failures.append(f"{url}: {exc}")
+                    fetched, error = _attempt_fetch(url)
+                    if not fetched and allow_web and not url.lower().endswith(".pdf"):
+                        for candidate in _discover_links(
+                            url, allow_web=allow_web, run_id=run_id, base_dir=base_dir
+                        ):
+                            if candidate in processed_urls:
+                                continue
+                            processed_urls.add(candidate)
+                            fetched, error = _attempt_fetch(candidate)
+                            if fetched:
+                                url = candidate
+                                break
+                    if not fetched:
+                        failures.append(f"{url}: {error}")
                         retrieved_units.append(
                             _build_failed_unit(
                                 url=url,
                                 source_method=source_method,
-                                reason=str(exc),
+                                reason=str(error),
                             )
                         )
                         counts = _count_units(retrieved_units)

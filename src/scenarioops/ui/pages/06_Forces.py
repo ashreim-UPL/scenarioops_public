@@ -10,6 +10,7 @@ if str(SRC_DIR) not in sys.path:
 
 
 import pandas as pd
+import plotly.express as px
 import streamlit as st
 
 from scenarioops.ui.page_utils import (
@@ -47,4 +48,27 @@ section("Force Inventory", "Core drivers organized by domain and layer.")
 
 df = pd.DataFrame(forces)
 columns = [c for c in ["label", "domain", "layer", "mechanism", "directionality", "confidence"] if c in df.columns]
+chart_df = df.copy()
+if not chart_df.empty:
+    chart_df["confidence"] = pd.to_numeric(chart_df.get("confidence"), errors="coerce").fillna(0.4)
+    fig = px.scatter(
+        chart_df,
+        x="domain",
+        y="confidence",
+        size="confidence",
+        color="domain",
+        symbol="layer",
+        hover_data=["mechanism", "directionality"],
+        text="label",
+        size_max=60,
+    )
+    fig.update_traces(textposition="top center")
+    fig.update_layout(
+        height=460,
+        xaxis_title="Force domain",
+        yaxis_title="Confidence (proxy for impact)",
+        showlegend=True,
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
 st.dataframe(df[columns], height=420)

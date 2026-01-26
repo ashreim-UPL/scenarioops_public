@@ -3,7 +3,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
+import re
 
 from scenarioops.app.config import LLMConfig, ScenarioOpsSettings, llm_config_from_settings
 from scenarioops.graph.gates.source_reputation import classify_publisher
@@ -18,6 +19,7 @@ from scenarioops.sources.policy import policy_for_name
 
 
 Retriever = Callable[..., RetrievedContent]
+_LINK_RE = re.compile(r"href=[\"']([^\"']+)[\"']", re.IGNORECASE)
 
 
 def _publisher(url: str, title: str | None = None) -> str:
@@ -26,6 +28,64 @@ def _publisher(url: str, title: str | None = None) -> str:
     if hostname:
         return hostname
     return title or url
+
+
+def _score_discovered_url(url: str, seed_host: str | None) -> int:
+    lowered = url.lower()
+    score = 0
+    if seed_host:
+        parsed = urlparse(url)
+        if parsed.hostname == seed_host:
+            score += 2
+    if lowered.endswith(".pdf") or ".pdf?" in lowered:
+        score += 3
+    if "report" in lowered or "annual" in lowered:
+        score += 2
+    if "investor" in lowered or "insights" in lowered or "overview" in lowered:
+        score += 1
+    return score
+
+
+def _discover_links(
+    url: str,
+    *,
+    allow_web: bool,
+    run_id: str,
+    base_dir: Path | None,
+    retriever: Retriever,
+    enforce_allowlist: bool,
+) -> list[str]:
+    if not allow_web:
+        return []
+    try:
+        retrieved = retriever(
+            url,
+            run_id=run_id,
+            base_dir=base_dir,
+            allow_web=allow_web,
+            enforce_allowlist=enforce_allowlist,
+        )
+    except Exception:
+        return []
+    if not retrieved.text or "html" not in (retrieved.content_type or "").lower():
+        return []
+    seed_host = urlparse(retrieved.url).hostname
+    candidates: list[str] = []
+    for match in _LINK_RE.findall(retrieved.text):
+        href = match.strip()
+        if not href or href.startswith("#"):
+            continue
+        if href.startswith("javascript:") or href.startswith("mailto:"):
+            continue
+        absolute = urljoin(retrieved.url, href)
+        if absolute.startswith("http"):
+            candidates.append(absolute)
+    ranked = sorted(
+        list(dict.fromkeys(candidates)),
+        key=lambda item: _score_discovered_url(item, seed_host),
+        reverse=True,
+    )
+    return ranked[:10]
 
 
 def run_retrieval_node(
@@ -175,6 +235,28 @@ def run_retrieval_node(
                 allow_web=allow_web,
                 enforce_allowlist=enforce_allowlist,
             )
+            if allow_web and not retrieved.text.strip() and not url.lower().endswith(".pdf"):
+                for candidate in _discover_links(
+                    url,
+                    allow_web=allow_web,
+                    run_id=run_id,
+                    base_dir=base_dir,
+                    retriever=retriever,
+                    enforce_allowlist=enforce_allowlist,
+                ):
+                    try:
+                        retrieved = retriever(
+                            candidate,
+                            run_id=run_id,
+                            base_dir=base_dir,
+                            allow_web=allow_web,
+                            enforce_allowlist=enforce_allowlist,
+                        )
+                    except Exception:
+                        continue
+                    if retrieved.text.strip():
+                        url = candidate
+                        break
             retrieved_at = datetime.now(timezone.utc).isoformat()
             if resolved_mode == "demo" and retrieved.date:
                 retrieved_at = retrieved.date
