@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 import re
+from urllib.parse import urljoin
 from urllib.request import Request, urlopen
 
 from scenarioops.app.config import LLMConfig, ScenarioOpsSettings, llm_config_from_settings
@@ -26,6 +27,7 @@ _ANNUAL_CHUNK_CHARS = int(os.environ.get("ANNUAL_REPORT_CHUNK_CHARS", "2000"))
 _ANNUAL_CHUNK_OVERLAP = int(os.environ.get("ANNUAL_REPORT_CHUNK_OVERLAP", "250"))
 _ANNUAL_MAX_CHUNKS = int(os.environ.get("ANNUAL_REPORT_MAX_CHUNKS", "10"))
 _URL_RE = re.compile(r"https?://[^\s)\]>\"]+")
+_LINK_RE = re.compile(r"href=[\"']([^\"']+)[\"']", re.IGNORECASE)
 _INDUSTRY_BY_COMPANY = {
     "microsoft": "Technology",
     "google": "Technology",
@@ -172,6 +174,35 @@ def _clean_candidate_urls(urls: Sequence[str]) -> list[str]:
         if fixed:
             cleaned.append(fixed)
     return cleaned
+
+
+def _discover_report_links(
+    url: str, *, allow_web: bool, run_id: str | None, base_dir: Path | None
+) -> list[str]:
+    if not allow_web:
+        return []
+    try:
+        retrieved = retrieve_url(url, run_id=run_id, base_dir=base_dir, allow_web=allow_web)
+    except Exception:
+        return []
+    if not retrieved.text or "html" not in (retrieved.content_type or "").lower():
+        return []
+    candidates: list[str] = []
+    for match in _LINK_RE.findall(retrieved.text):
+        href = match.strip()
+        if not href or href.startswith("#"):
+            continue
+        if href.startswith("javascript:") or href.startswith("mailto:"):
+            continue
+        absolute = urljoin(retrieved.url, href)
+        if absolute.startswith("http"):
+            candidates.append(absolute)
+    ranked = sorted(
+        _dedupe_urls(_clean_candidate_urls(candidates)),
+        key=_score_report_url,
+        reverse=True,
+    )
+    return ranked[:8]
 
 
 def _chunk_text(text: str) -> list[str]:
@@ -349,16 +380,24 @@ def run_company_profile_node(
         ranked = sorted(_dedupe_urls(cleaned_candidates), key=_score_report_url, reverse=True)
         last_error = None
         for url in ranked:
-            text, content_type, error = _fetch_report_text(
-                url, run_id=run_id, base_dir=base_dir, allow_web=allow_web
-            )
-            if error:
-                last_error = error
-                continue
-            if text:
-                annual_report_text = text
-                annual_report_source = url
-                annual_report_content_type = content_type
+            discovered = []
+            if not url.lower().endswith(".pdf"):
+                discovered = _discover_report_links(
+                    url, allow_web=allow_web, run_id=run_id, base_dir=base_dir
+                )
+            for candidate in (discovered or [url]):
+                text, content_type, error = _fetch_report_text(
+                    candidate, run_id=run_id, base_dir=base_dir, allow_web=allow_web
+                )
+                if error:
+                    last_error = error
+                    continue
+                if text:
+                    annual_report_text = text
+                    annual_report_source = candidate
+                    annual_report_content_type = content_type
+                    break
+            if annual_report_text:
                 break
         if annual_report_text:
             summary_payload, _, summary_error = _summarize_annual_report(
