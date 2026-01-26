@@ -54,7 +54,7 @@ def _company_profile_payload(run_id: str) -> dict[str, Any]:
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "company_name": "Acme",
         "geography": "Global",
-        "horizon_months": 12,
+        "horizon_months": 60,
         "source_basis": {"urls": [], "internal_docs": [], "manual_input": "Acme"},
         "simulated": False,
     }
@@ -67,7 +67,7 @@ def _evidence_units_payload(run_id: str) -> dict[str, Any]:
         "timestamp": timestamp,
         "company_name": "Acme",
         "geography": "Global",
-        "horizon_months": 12,
+        "horizon_months": 60,
         "simulated": False,
         "evidence_units": [
             {
@@ -156,7 +156,7 @@ def test_resume_uses_cache_when_missing_artifact(tmp_path: Path) -> None:
         "metadata": {
             "company_name": "Acme",
             "geography": "Global",
-            "horizon_months": 12,
+            "horizon_months": 60,
         },
         "evidence_units": _evidence_units_payload(run_id)["evidence_units"],
     }

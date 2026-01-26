@@ -107,7 +107,6 @@ def _apply_run_defaults(run_id: str | None) -> dict[str, Any]:
         return defaults
     if st.session_state.get("run_defaults_loaded_for") == run_id:
         return defaults
-
     def _set_default(key: str, value: Any) -> None:
         if value is None or value == "":
             return
@@ -146,7 +145,7 @@ def _apply_run_defaults(run_id: str | None) -> dict[str, Any]:
             _set_default("scope_choice", "auto")
     horizon_months = defaults.get("horizon_months")
     if isinstance(horizon_months, int) and horizon_months > 0:
-        _set_default("horizon_months", horizon_months)
+        _set_default("horizon_months", _clamp_horizon_months(horizon_months))
 
     st.session_state["run_defaults_loaded_for"] = run_id
     return defaults
@@ -452,6 +451,13 @@ COMPANY_GEO_HINTS = {
 
 def _normalize_label(value: str) -> str:
     return " ".join(value.lower().strip().split())
+
+def _clamp_horizon_months(value: int) -> int:
+    if value < 36:
+        return 36
+    if value > 120:
+        return 120
+    return value
 
 
 def _safe_filename(name: str) -> str:
@@ -1150,9 +1156,9 @@ with st.sidebar:
 
         horizon = st.slider(
             "Horizon (Months)",
-            6,
-            60,
-            int(st.session_state.get("horizon_months", 12) or 12),
+            36,
+            120,
+            _clamp_horizon_months(int(st.session_state.get("horizon_months", 60) or 60)),
             key="horizon_months",
         )
         value = company_name or geography or "Unknown"

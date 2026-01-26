@@ -5,6 +5,13 @@ from typing import Any, Mapping
 
 from scenarioops.graph.tools.storage import get_run_timestamp
 
+def _clamp_horizon_months(value: int) -> int:
+    if value < 36:
+        return 36
+    if value > 120:
+        return 120
+    return value
+
 def build_run_metadata(
     *,
     run_id: str,
@@ -27,7 +34,8 @@ def build_run_metadata(
             if isinstance(horizon_years, int) and horizon_years > 0:
                 horizon_months = horizon_years * 12
     if horizon_months is None:
-        horizon_months = 0
+        horizon_months = 60
+    horizon_months = _clamp_horizon_months(int(horizon_months))
     if timestamp is None:
         registered = get_run_timestamp(run_id)
         if registered:

@@ -41,7 +41,7 @@ class BuildRequest(BaseModel):
     value: str
     company: str | None = None
     geography: str | None = None
-    horizon: int = Field(..., ge=1)
+    horizon: int = Field(..., ge=36, le=120)
     sources: list[str] | None = None
     run_id: str | None = None
     mock: bool = True

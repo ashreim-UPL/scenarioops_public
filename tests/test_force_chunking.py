@@ -42,7 +42,7 @@ def _evidence_units_payload(run_id: str, count: int) -> dict[str, Any]:
         "timestamp": timestamp,
         "company_name": "Acme",
         "geography": "Global",
-        "horizon_months": 12,
+        "horizon_months": 60,
         "simulated": False,
         "evidence_units": units,
     }

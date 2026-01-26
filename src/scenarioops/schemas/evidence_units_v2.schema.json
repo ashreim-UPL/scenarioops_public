@@ -17,7 +17,7 @@
     "timestamp": { "type": "string", "minLength": 1 },
     "company_name": { "type": "string", "minLength": 1 },
     "geography": { "type": "string", "minLength": 1 },
-    "horizon_months": { "type": "integer", "minimum": 0 },
+    "horizon_months": { "type": "integer", "minimum": 36, "maximum": 120 },
     "schema_version": { "type": "string", "const": "2.0" },
     "simulated": { "type": "boolean" },
     "evidence_units": {

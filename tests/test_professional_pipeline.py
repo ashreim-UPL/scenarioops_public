@@ -58,7 +58,7 @@ def test_force_traceability_links(tmp_path):
         "timestamp": "2026-01-01T00:00:00+00:00",
         "company_name": "Acme",
         "geography": "Global",
-        "horizon_months": 12,
+        "horizon_months": 60,
         "simulated": False,
         "evidence_units": [
             {

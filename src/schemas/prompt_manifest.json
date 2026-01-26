@@ -8,7 +8,7 @@
     "timestamp": { "type": "string", "minLength": 1 },
     "company_name": { "type": "string", "minLength": 1 },
     "geography": { "type": "string", "minLength": 1 },
-    "horizon_months": { "type": "integer", "minimum": 0 },
+    "horizon_months": { "type": "integer", "minimum": 36, "maximum": 120 },
     "prompts": {
       "type": "array",
       "items": {

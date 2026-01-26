@@ -38,6 +38,7 @@ from scenarioops.graph.nodes import (
 from scenarioops.graph.nodes.charter import run_charter_node
 from scenarioops.graph.state import ScenarioOpsState
 from scenarioops.graph.tools.scoring import hash_scoring_result, score_with_rubric
+from scenarioops.reporting import build_management_report
 from scenarioops.graph.tools.storage import (
     default_runs_dir,
     read_latest_status,
@@ -302,7 +303,7 @@ def _run_verify(args: argparse.Namespace) -> None:
         config = llm_config_from_settings(settings)
         sources = default_sources()
         inputs = GraphInputs(
-            user_params={"scope": "country", "value": "UAE", "horizon": 24},
+            user_params={"scope": "country", "value": "UAE", "horizon": 60},
             sources=sources,
             signals=[],
             input_docs=[],
@@ -407,7 +408,7 @@ def _run_verify(args: argparse.Namespace) -> None:
         _verify_fail("verify --live requires --sources.")
 
     inputs = GraphInputs(
-        user_params={"scope": "country", "value": "UAE", "horizon": 24},
+        user_params={"scope": "country", "value": "UAE", "horizon": 60},
         sources=sources,
         signals=[],
         input_docs=[],
@@ -453,6 +454,8 @@ def _run_build_scenarios(args: argparse.Namespace) -> None:
         if not latest:
             raise ValueError("No run_id found to resume from. Run build-scenarios first.")
         run_id = latest
+    if args.horizon < 36 or args.horizon > 120:
+        raise ValueError("Horizon must be between 36 and 120 months (3-10 years).")
     user_params = {"scope": args.scope, "value": args.value, "horizon": args.horizon}
     if getattr(args, "company", None):
         user_params["company"] = args.company
@@ -564,6 +567,15 @@ def _run_add_strategies(args: argparse.Namespace) -> None:
         config=config,
     )
     _print_result(run_id, base_dir)
+
+
+def _run_build_report(args: argparse.Namespace) -> None:
+    base_dir = Path(args.base_dir) if args.base_dir else None
+    run_id = args.run_id or latest_run_id(base_dir)
+    if not run_id:
+        raise ValueError("No run_id found to build a report.")
+    output_path = build_management_report(run_id, base_dir=base_dir)
+    _log_json("report_ready", {"run_id": run_id, "path": str(output_path)})
 
 
 def _run_daily(args: argparse.Namespace) -> None:
@@ -772,6 +784,11 @@ def main(argv: Sequence[str] | None = None) -> None:
     strategies_parser.add_argument("--base-dir", default=None)
     _add_settings_args(strategies_parser)
     strategies_parser.set_defaults(handler=_run_add_strategies)
+
+    report_parser = subparsers.add_parser("build-report")
+    report_parser.add_argument("--run-id", default=None)
+    report_parser.add_argument("--base-dir", default=None)
+    report_parser.set_defaults(handler=_run_build_report)
 
     daily_parser = subparsers.add_parser("run-daily")
     daily_parser.add_argument("--run-id", default=None)

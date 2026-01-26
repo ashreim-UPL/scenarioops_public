@@ -38,7 +38,7 @@ def test_evidence_units_schema_accepts_ok_unit() -> None:
         "timestamp": "2026-01-01T00:00:00+00:00",
         "company_name": "Acme",
         "geography": "Global",
-        "horizon_months": 12,
+        "horizon_months": 60,
         "schema_version": "2.0",
         "simulated": False,
         "evidence_units": [
@@ -70,7 +70,7 @@ def test_evidence_units_schema_accepts_failed_unit_without_summary() -> None:
         "timestamp": "2026-01-01T00:00:00+00:00",
         "company_name": "Acme",
         "geography": "Global",
-        "horizon_months": 12,
+        "horizon_months": 60,
         "schema_version": "2.0",
         "simulated": False,
         "evidence_units": [

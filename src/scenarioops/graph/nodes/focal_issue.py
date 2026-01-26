@@ -38,6 +38,14 @@ def run_focal_issue_node(
     schema = load_schema("focal_issue.schema")
     response = client.generate_json(prompt, schema)
     parsed = ensure_dict(response, node_name="focal_issue")
+    scope = parsed.get("scope")
+    if isinstance(scope, Mapping):
+        horizon_years = scope.get("time_horizon_years")
+        if isinstance(horizon_years, int):
+            if horizon_years < 3:
+                parsed["scope"] = {**scope, "time_horizon_years": 3}
+            elif horizon_years > 10:
+                parsed["scope"] = {**scope, "time_horizon_years": 10}
     validate_artifact("focal_issue.schema", parsed)
 
     metadata = build_run_metadata(

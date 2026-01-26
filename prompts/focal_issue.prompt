@@ -31,7 +31,7 @@ REQUIREMENTS:
 2) Define scope:
    - geography (one)
    - sector/industry (1-3)
-   - time horizon years (>= 5 for national/world; >= 3 for company)
+   - time horizon years (must be between 3 and 10)
 3) Define exclusions (what is explicitly out of scope).
 4) Define success criteria: what a good scenario outcome enables.
 

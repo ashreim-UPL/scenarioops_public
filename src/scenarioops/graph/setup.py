@@ -48,7 +48,7 @@ def _mock_payloads(sources: Sequence[str]) -> dict[str, dict[str, Any]]:
             "purpose": "Assess operational resilience.",
             "decision_context": "Resilience investment prioritization.",
             "scope": "Supply chain",
-            "time_horizon": "12 months",
+            "time_horizon": "5 years (60 months)",
             "stakeholders": ["Operations", "Finance"],
             "constraints": ["No headcount increase"],
             "assumptions": ["Stable demand"],

@@ -22,7 +22,7 @@
           "minItems": 1,
           "maxItems": 3
         },
-        "time_horizon_years": { "type": "integer", "minimum": 3 }
+        "time_horizon_years": { "type": "integer", "minimum": 3, "maximum": 10 }
       },
       "additionalProperties": false
     },
