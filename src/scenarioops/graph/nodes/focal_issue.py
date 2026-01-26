@@ -40,12 +40,17 @@ def run_focal_issue_node(
     parsed = ensure_dict(response, node_name="focal_issue")
     scope = parsed.get("scope")
     if isinstance(scope, Mapping):
-        horizon_years = scope.get("time_horizon_years")
-        if isinstance(horizon_years, int):
-            if horizon_years < 3:
-                parsed["scope"] = {**scope, "time_horizon_years": 3}
-            elif horizon_years > 10:
-                parsed["scope"] = {**scope, "time_horizon_years": 10}
+        horizon_months = scope.get("time_horizon_months")
+        if horizon_months is None and isinstance(scope.get("time_horizon_years"), int):
+            horizon_months = int(scope.get("time_horizon_years")) * 12
+        if isinstance(horizon_months, int):
+            if horizon_months < 36:
+                horizon_months = 36
+            elif horizon_months > 120:
+                horizon_months = 120
+            updated_scope = {**scope, "time_horizon_months": horizon_months}
+            updated_scope.pop("time_horizon_years", None)
+            parsed["scope"] = updated_scope
     validate_artifact("focal_issue.schema", parsed)
 
     metadata = build_run_metadata(

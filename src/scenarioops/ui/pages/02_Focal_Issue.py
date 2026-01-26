@@ -38,7 +38,7 @@ scope = focal.get("scope", {}) if isinstance(focal.get("scope"), dict) else {}
 card_grid(
     [
         ("Geography", scope.get("geography", "Pending")),
-        ("Time Horizon (years)", scope.get("time_horizon_years", "Pending")),
+        ("Time Horizon (months)", scope.get("time_horizon_months", "Pending")),
         ("Decision Type", focal.get("decision_type", "Pending")),
     ]
 )

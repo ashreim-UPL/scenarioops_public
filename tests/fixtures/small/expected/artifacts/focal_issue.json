@@ -10,7 +10,7 @@
     "sectors": [
       "supply chain"
     ],
-    "time_horizon_years": 5
+    "time_horizon_months": 60
   },
   "success_criteria": "Scenarios enable resilient investment sequencing and risk-aware budgeting."
 }

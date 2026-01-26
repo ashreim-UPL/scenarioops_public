@@ -40,7 +40,7 @@ def _focal_issue_payload() -> dict[str, Any]:
         "scope": {
             "geography": "Global",
             "sectors": ["Technology"],
-            "time_horizon_years": 5,
+            "time_horizon_months": 60,
         },
         "decision_type": "Strategy",
         "exclusions": ["Ops"],

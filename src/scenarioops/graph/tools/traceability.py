@@ -30,9 +30,13 @@ def build_run_metadata(
         scope = focal_issue.get("scope")
         if isinstance(scope, Mapping):
             geography = scope.get("geography") or geography
-            horizon_years = scope.get("time_horizon_years")
-            if isinstance(horizon_years, int) and horizon_years > 0:
-                horizon_months = horizon_years * 12
+            horizon_months_value = scope.get("time_horizon_months")
+            if isinstance(horizon_months_value, int) and horizon_months_value > 0:
+                horizon_months = horizon_months_value
+            else:
+                horizon_years = scope.get("time_horizon_years")
+                if isinstance(horizon_years, int) and horizon_years > 0:
+                    horizon_months = horizon_years * 12
     if horizon_months is None:
         horizon_months = 60
     horizon_months = _clamp_horizon_months(int(horizon_months))

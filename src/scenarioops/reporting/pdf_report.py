@@ -101,7 +101,7 @@ def build_management_report(run_id: str, base_dir: Path | None = None) -> Path:
         body = [
             focal.get("focal_issue", "Pending"),
             f"Geography: {scope.get('geography', 'Pending')}.",
-            f"Time horizon (years): {scope.get('time_horizon_years', 'Pending')}.",
+            f"Time horizon (months): {scope.get('time_horizon_months', 'Pending')}.",
         ]
         story.append(_paragraph(" ".join(body), styles["Body"]))
     else:

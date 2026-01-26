@@ -56,7 +56,7 @@ def _mock_payloads(sources: Sequence[str]) -> dict[str, dict[str, Any]]:
         }},
         "focal_issue": {"json": {
             "focal_issue": "How should the organization prioritize resilience investments?",
-            "scope": {"geography": "UAE", "sectors": ["supply chain"], "time_horizon_years": 5},
+            "scope": {"geography": "UAE", "sectors": ["supply chain"], "time_horizon_months": 60},
             "decision_type": "strategic planning",
             "exclusions": [],
             "success_criteria": "Scenarios enable resilient investment.",

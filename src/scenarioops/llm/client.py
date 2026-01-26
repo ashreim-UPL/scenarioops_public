@@ -319,7 +319,7 @@ class MockLLMClient:
                 "scope": {
                     "geography": "Global",
                     "sectors": ["Technology"],
-                    "time_horizon_years": 5
+                    "time_horizon_months": 60
                 },
                 "decision_type": "Strategic",
                 "exclusions": ["Operational details"],
