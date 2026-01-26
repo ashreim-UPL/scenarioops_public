@@ -87,6 +87,11 @@ class GeminiClient:
             _normalize_scenarios_axis_states(parsed)
         if schema_name == "Strategies":
             _normalize_strategies_ids(parsed, raw)
+        if schema_name == "Scenario Story" and isinstance(schema, Mapping):
+            properties = schema.get("properties")
+            if isinstance(properties, Mapping):
+                allowed = set(properties.keys())
+                parsed = {key: value for key, value in parsed.items() if key in allowed}
         from scenarioops.graph.tools.schema_validate import SchemaValidationError, validate_schema
         try:
             validate_schema(parsed, schema, schema_name)
