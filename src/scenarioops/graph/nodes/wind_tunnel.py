@@ -9,7 +9,7 @@ from scenarioops.graph.nodes.utils import build_prompt, get_client
 from scenarioops.graph.state import ScenarioOpsState, WindTunnel, WindTunnelTest
 from scenarioops.graph.tools.normalization import stable_id
 from scenarioops.graph.tools.schema_validate import load_schema, validate_artifact
-from scenarioops.graph.tools.scoring import score_with_rubric
+from scenarioops.graph.tools.scoring import DEFAULT_WEIGHTS, score_with_rubric
 from scenarioops.graph.tools.storage import (
     log_normalization,
     write_artifact,
@@ -60,6 +60,21 @@ def _normalize_tests(raw_tests: list[dict[str, Any]]) -> list[dict[str, Any]]:
     normalized: list[dict[str, Any]] = []
     for entry in raw_tests:
         rubric_inputs = entry.get("rubric_inputs", {})
+        if not rubric_inputs:
+            fallback_score = entry.get("rubric_score")
+            if fallback_score is None:
+                fallback_score = entry.get("confidence")
+            if fallback_score is None:
+                fallback_score = entry.get("feasibility_score")
+            if isinstance(fallback_score, (int, float)):
+                fallback = float(fallback_score)
+                if fallback > 1.0 and fallback <= 100.0:
+                    fallback = fallback / 100.0
+                if fallback < 0.0:
+                    fallback = 0.0
+                if fallback > 1.0:
+                    fallback = 1.0
+                rubric_inputs = {key: fallback for key in DEFAULT_WEIGHTS.keys()}
         scoring = score_with_rubric(rubric_inputs)
         raw_feasibility = entry.get("feasibility_score", 0.0)
         try:
@@ -74,10 +89,6 @@ def _normalize_tests(raw_tests: list[dict[str, Any]]) -> list[dict[str, Any]]:
         elif feasibility_score < 0.0:
             feasibility_score = 0.0
         action = scoring.action
-        if action == "KEEP" and feasibility_score < FEASIBILITY_THRESHOLD:
-            raise ValueError(
-                f"KEEP action requires feasibility >= {FEASIBILITY_THRESHOLD:.2f}."
-            )
 
         payload = {
             "id": entry.get("id"),
@@ -301,6 +312,8 @@ def run_wind_tunnel_node(
             "- Keep each failure_mode/adaptation <= 10 words.\n"
             "- Keep outcome <= 3 words.\n"
             "- Omit the matrix field entirely (it will be computed).\n"
+            "- For each test, include rubric_inputs with relevance/credibility/recency/specificity (0-1 each).\n"
+            f"- If action is KEEP, feasibility_score must be >= {FEASIBILITY_THRESHOLD:.2f}.\n"
             "- Keep responses compact; avoid extra commentary.\n"
         )
         if len(chunks) > 1 and idx > 1:
@@ -347,6 +360,31 @@ def run_wind_tunnel_node(
 
     raw_tests = parsed.get("tests", [])
     normalized_tests = _normalize_tests(raw_tests)
+    keep_downgrades: list[dict[str, Any]] = []
+    for test in normalized_tests:
+        action = str(test.get("action") or "")
+        feasibility = float(test.get("feasibility_score") or 0.0)
+        if action == "KEEP" and feasibility < FEASIBILITY_THRESHOLD:
+            new_action = "MODIFY" if feasibility >= 0.35 else "HEDGE"
+            test["action"] = new_action
+            keep_downgrades.append(
+                {
+                    "test_id": test.get("id"),
+                    "strategy_id": test.get("strategy_id"),
+                    "scenario_id": test.get("scenario_id"),
+                    "feasibility_score": feasibility,
+                    "action_from": action,
+                    "action_to": new_action,
+                }
+            )
+    if keep_downgrades:
+        log_normalization(
+            run_id=run_id,
+            node_name="wind_tunnel",
+            operation="keep_action_downgraded",
+            details={"count": len(keep_downgrades), "samples": keep_downgrades[:5]},
+            base_dir=base_dir,
+        )
     missing_test_ids = [idx for idx, test in enumerate(normalized_tests, start=1) if not test.get("id")]
     if missing_test_ids:
         for idx, test in enumerate(normalized_tests, start=1):

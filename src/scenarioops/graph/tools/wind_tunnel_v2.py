@@ -104,6 +104,8 @@ def _infer_break_conditions(
     if not break_conditions:
         return []
     label = _normalize_label(outcome_label)
+    if label == "inconclusive":
+        return []
     if score < 40 or "failure" in label or "irrelevant" in label:
         return break_conditions[: min(2, len(break_conditions))]
     if score < 55:
