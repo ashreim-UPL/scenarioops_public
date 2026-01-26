@@ -28,6 +28,7 @@ _JSON_MAPPING: Final[dict[str, str]] = {
     "strategies": "strategies",
     "wind_tunnel": "wind_tunnel",
     "wind_tunnel_debug": "wind_tunnel_debug",
+    "wind_tunnel_evaluations_v2": "wind_tunnel_evaluations_v2",
     "daily_brief": "daily_brief",
     "scenario_profiles": "scenario_profiles",
     "scenarios": "scenarios",
@@ -51,5 +52,7 @@ def schema_for_artifact(name: str, suffix: str) -> str | None:
     if suffix == ".json":
         if name.startswith("narrative_"):
             return "markdown"
+        if name.startswith("wind_tunnel_failure_"):
+            return "wind_tunnel_debug"
         return _JSON_MAPPING.get(name)
     return None

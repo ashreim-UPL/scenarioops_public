@@ -50,6 +50,7 @@ def build_management_report(run_id: str, base_dir: Path | None = None) -> Path:
     scenarios = _load_artifact(run_id, "scenarios", base_dir)
     strategies = _load_artifact(run_id, "strategies", base_dir)
     wind = _load_artifact(run_id, "wind_tunnel", base_dir)
+    wind_eval = _load_artifact(run_id, "wind_tunnel_evaluations_v2", base_dir)
     audit = _load_artifact(run_id, "audit_report", base_dir)
 
     styles = getSampleStyleSheet()
@@ -196,6 +197,138 @@ def build_management_report(run_id: str, base_dir: Path | None = None) -> Path:
         story.append(table)
     else:
         story.append(_paragraph("Wind tunnel outcomes not available.", styles["Body"]))
+
+    # Wind tunnel scorecard & rankings
+    if wind_eval and isinstance(wind_eval.get("evaluations"), list):
+        evaluations = wind_eval.get("evaluations", [])
+        rankings = wind_eval.get("rankings", {}) if isinstance(wind_eval.get("rankings"), dict) else {}
+        recommendations = (
+            wind_eval.get("recommendations", {})
+            if isinstance(wind_eval.get("recommendations"), dict)
+            else {}
+        )
+
+        story.append(_paragraph("Wind Tunnel Scorecard", styles["Section"]))
+        scenario_ids = []
+        strategy_ids = []
+        for item in evaluations:
+            scenario_id = item.get("scenario_id")
+            strategy_id = item.get("strategy_id")
+            if scenario_id and scenario_id not in scenario_ids:
+                scenario_ids.append(scenario_id)
+            if strategy_id and strategy_id not in strategy_ids:
+                strategy_ids.append(strategy_id)
+        header = ["Strategy"] + scenario_ids
+        table_rows = [header]
+        for strategy_id in strategy_ids:
+            strategy_name = next(
+                (
+                    item.get("strategy_name")
+                    for item in evaluations
+                    if item.get("strategy_id") == strategy_id
+                ),
+                strategy_id,
+            )
+            row = [strategy_name]
+            for scenario_id in scenario_ids:
+                cell = next(
+                    (
+                        item
+                        for item in evaluations
+                        if item.get("strategy_id") == strategy_id
+                        and item.get("scenario_id") == scenario_id
+                    ),
+                    None,
+                )
+                if not cell:
+                    row.append("-")
+                else:
+                    row.append(
+                        f"{cell.get('grade_letter')} ({cell.get('score_0_100')})"
+                    )
+            table_rows.append(row)
+        score_table = Table(table_rows, hAlign="LEFT")
+        score_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0e7c86")),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                    ("BACKGROUND", (0, 1), (-1, -1), colors.HexColor("#f7f4ef")),
+                ]
+            )
+        )
+        story.append(score_table)
+
+        story.append(_paragraph("Strategy Ranking Summary", styles["Section"]))
+        overall = rankings.get("overall", []) if isinstance(rankings, dict) else []
+        if overall:
+            ranking_rows = [["Strategy", "Overall", "Min", "Variance", "Robustness"]]
+            for entry in overall:
+                ranking_rows.append(
+                    [
+                        entry.get("strategy_name", entry.get("strategy_id")),
+                        entry.get("overall_score"),
+                        entry.get("min_score"),
+                        entry.get("variance"),
+                        entry.get("robustness_index"),
+                    ]
+                )
+            ranking_table = Table(ranking_rows, hAlign="LEFT")
+            ranking_table.setStyle(
+                TableStyle(
+                    [
+                        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0e7c86")),
+                        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                        ("BACKGROUND", (0, 1), (-1, -1), colors.HexColor("#f7f4ef")),
+                    ]
+                )
+            )
+            story.append(ranking_table)
+        else:
+            story.append(_paragraph("Strategy ranking pending.", styles["Body"]))
+
+        story.append(_paragraph("Recommendation", styles["Section"]))
+        primary = recommendations.get("primary_recommended_strategy", {}) if isinstance(recommendations, dict) else {}
+        if primary:
+            story.append(
+                _paragraph(
+                    f"Recommended strategy now: {primary.get('strategy_name', primary.get('strategy_id'))}.",
+                    styles["Body"],
+                )
+            )
+            story.append(_paragraph(primary.get("rationale", ""), styles["Body"]))
+        hardening = recommendations.get("hardening_actions", []) if isinstance(recommendations, dict) else []
+        if hardening:
+            story.append(_paragraph("Hardening actions:", styles["Body"]))
+            story.append(_paragraph(_bullet_lines(hardening[:5]), styles["Body"]))
+        triggers = recommendations.get("triggers_to_watch", []) if isinstance(recommendations, dict) else []
+        if triggers:
+            trigger_lines = [t.get("description", "") for t in triggers if isinstance(t, dict)]
+            story.append(_paragraph("Triggers and pivot plan:", styles["Body"]))
+            story.append(_paragraph(_bullet_lines(trigger_lines[:5]), styles["Body"]))
+
+        story.append(_paragraph("Appendix: Cell Evidence", styles["Section"]))
+        by_strategy: dict[str, list[dict[str, Any]]] = {}
+        for item in evaluations:
+            by_strategy.setdefault(item.get("strategy_id", "unknown"), []).append(item)
+        for strategy_id, items in by_strategy.items():
+            story.append(_paragraph(f"Strategy: {strategy_id}", styles["Body"]))
+            for item in items:
+                headline = (
+                    f"{item.get('scenario_id')}: {item.get('outcome_label')} "
+                    f"{item.get('grade_letter')} ({item.get('score_0_100')}) "
+                    f"confidence {item.get('confidence_0_1')}"
+                )
+                story.append(_paragraph(headline, styles["Body"]))
+                rationale = item.get("rationale_bullets", [])
+                if rationale:
+                    story.append(_paragraph(_bullet_lines(rationale[:3]), styles["Body"]))
+                triggers = item.get("trigger_points", [])
+                if triggers:
+                    trigger_lines = [t.get("description", "") for t in triggers if isinstance(t, dict)]
+                    story.append(_paragraph(_bullet_lines(trigger_lines[:2]), styles["Body"]))
 
     # Audit
     story.append(_paragraph("Audit Findings", styles["Section"]))

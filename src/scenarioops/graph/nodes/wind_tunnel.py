@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+import os
 
 from scenarioops.app.config import LLMConfig, ScenarioOpsSettings
 from scenarioops.graph.nodes.utils import build_prompt, get_client
@@ -14,10 +15,23 @@ from scenarioops.graph.tools.storage import (
     write_artifact,
     write_trace_artifact,
 )
+from scenarioops.graph.tools.wind_tunnel_v2 import (
+    EvaluationInputs,
+    build_wind_tunnel_evaluations,
+)
 from scenarioops.llm.guards import ensure_dict
 
 
 FEASIBILITY_THRESHOLD = 0.6
+
+
+def _max_test_pairs() -> int:
+    raw = os.environ.get("SCENARIOOPS_WIND_TUNNEL_MAX_PAIRS", "8")
+    try:
+        value = int(raw)
+    except ValueError:
+        return 16
+    return max(1, value)
 
 
 def _relax_wind_tunnel_schema(schema: dict[str, Any]) -> dict[str, Any]:
@@ -47,7 +61,18 @@ def _normalize_tests(raw_tests: list[dict[str, Any]]) -> list[dict[str, Any]]:
     for entry in raw_tests:
         rubric_inputs = entry.get("rubric_inputs", {})
         scoring = score_with_rubric(rubric_inputs)
-        feasibility_score = float(entry.get("feasibility_score", 0.0))
+        raw_feasibility = entry.get("feasibility_score", 0.0)
+        try:
+            feasibility_score = float(raw_feasibility)
+        except (TypeError, ValueError):
+            feasibility_score = 0.0
+        if feasibility_score > 1.0:
+            if feasibility_score <= 100.0:
+                feasibility_score = feasibility_score / 100.0
+            else:
+                feasibility_score = 1.0
+        elif feasibility_score < 0.0:
+            feasibility_score = 0.0
         action = scoring.action
         if action == "KEEP" and feasibility_score < FEASIBILITY_THRESHOLD:
             raise ValueError(
@@ -79,6 +104,107 @@ def _truncate(value: str, limit: int) -> str:
     return value if len(value) <= limit else value[: limit - 3].rstrip() + "..."
 
 
+def _compact_strategy(strategy: Any) -> dict[str, Any]:
+    return {
+        "id": getattr(strategy, "id", None),
+        "name": _truncate(str(getattr(strategy, "name", "") or ""), 120),
+        "objective": _truncate(str(getattr(strategy, "objective", "") or ""), 240),
+        "actions": [
+            _truncate(str(item), 160)
+            for item in (getattr(strategy, "actions", []) or [])[:4]
+        ],
+        "kpis": [
+            _truncate(str(item), 120)
+            for item in (getattr(strategy, "kpis", []) or [])[:4]
+        ],
+    }
+
+
+def _compact_scenario_from_logic(scenario: Any) -> dict[str, Any]:
+    return {
+        "id": getattr(scenario, "id", None),
+        "name": _truncate(str(getattr(scenario, "name", "") or ""), 120),
+        "summary": _truncate(str(getattr(scenario, "summary", "") or ""), 400),
+        "logic": _truncate(str(getattr(scenario, "logic", "") or ""), 500),
+    }
+
+
+def _compact_scenario_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "scenario_id": payload.get("scenario_id") or payload.get("id"),
+        "name": _truncate(str(payload.get("name", "") or ""), 120),
+        "axis_states": payload.get("axis_states"),
+        "narrative": _truncate(str(payload.get("narrative", "") or ""), 600),
+    }
+
+
+def _full_strategy(strategy: Any) -> dict[str, Any]:
+    return {
+        "id": getattr(strategy, "id", None),
+        "name": getattr(strategy, "name", None),
+        "objective": getattr(strategy, "objective", None),
+        "actions": list(getattr(strategy, "actions", []) or []),
+        "kpis": list(getattr(strategy, "kpis", []) or []),
+    }
+
+
+def _full_scenario_from_logic(scenario: Any) -> dict[str, Any]:
+    return {
+        "id": getattr(scenario, "id", None),
+        "name": getattr(scenario, "name", None),
+        "summary": getattr(scenario, "summary", None),
+        "logic": getattr(scenario, "logic", None),
+    }
+
+
+def _full_scenario_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": payload.get("scenario_id") or payload.get("id"),
+        "name": payload.get("name"),
+        "narrative": payload.get("narrative"),
+        "summary": payload.get("summary"),
+        "logic": payload.get("logic"),
+    }
+
+
+def _strategy_chunks(
+    strategies: list[dict[str, Any]],
+    scenario_count: int,
+    max_pairs: int,
+) -> list[list[dict[str, Any]]]:
+    if scenario_count <= 0 or not strategies:
+        return [strategies]
+    pair_count = len(strategies) * scenario_count
+    if pair_count <= max_pairs:
+        return [strategies]
+    per_chunk = max(1, max_pairs // scenario_count)
+    return [strategies[idx : idx + per_chunk] for idx in range(0, len(strategies), per_chunk)]
+
+
+def _chunk_list(items: list[dict[str, Any]], size: int) -> list[list[dict[str, Any]]]:
+    if not items:
+        return []
+    if size <= 0:
+        return [items]
+    return [items[idx : idx + size] for idx in range(0, len(items), size)]
+
+
+def _pair_chunks(
+    strategies: list[dict[str, Any]],
+    scenarios: list[dict[str, Any]],
+    max_pairs: int,
+) -> list[tuple[list[dict[str, Any]], list[dict[str, Any]]]]:
+    if not strategies or not scenarios:
+        return [(strategies, scenarios)]
+    strategy_chunks = _strategy_chunks(strategies, len(scenarios), max_pairs)
+    chunks: list[tuple[list[dict[str, Any]], list[dict[str, Any]]]] = []
+    for chunk in strategy_chunks:
+        scenario_chunk_size = max(1, max_pairs // max(1, len(chunk)))
+        for scenario_chunk in _chunk_list(scenarios, scenario_chunk_size):
+            chunks.append((chunk, scenario_chunk))
+    return chunks
+
+
 def _missing_scenarios(
     tests: list[dict[str, Any]], scenario_ids: list[str]
 ) -> list[str]:
@@ -107,21 +233,117 @@ def run_wind_tunnel_node(
             raise ValueError("Logic or scenarios are required for the wind tunnel.")
         scenario_payload = state.scenarios.get("scenarios", [])
 
-    context = {
-        "strategies": [strategy.__dict__ for strategy in state.strategies.strategies],
-        "scenarios": [scenario.__dict__ for scenario in state.logic.scenarios]
-        if state.logic is not None
-        else scenario_payload,
-    }
-    prompt_bundle = build_prompt("wind_tunnel", context)
-    prompt = prompt_bundle.text
+    strategies_compact = [
+        _compact_strategy(strategy) for strategy in state.strategies.strategies
+    ]
+    strategies_full = [
+        _full_strategy(strategy) for strategy in state.strategies.strategies
+    ]
+    if state.logic is not None:
+        scenarios_compact = [
+            _compact_scenario_from_logic(scenario) for scenario in state.logic.scenarios
+        ]
+        scenarios_full = [
+            _full_scenario_from_logic(scenario) for scenario in state.logic.scenarios
+        ]
+    else:
+        scenarios_compact = [
+            _compact_scenario_payload(entry)
+            for entry in (scenario_payload or [])
+            if isinstance(entry, dict)
+        ]
+        scenarios_full = [
+            _full_scenario_payload(entry)
+            for entry in (scenario_payload or [])
+            if isinstance(entry, dict)
+        ]
 
     client = get_client(llm_client, config)
     strict_schema = load_schema("wind_tunnel")
     schema = _relax_wind_tunnel_schema(strict_schema)
-    response = client.generate_json(prompt, schema)
-    response_raw = getattr(response, "raw", None)
-    parsed = ensure_dict(response, node_name="wind_tunnel")
+
+    scenario_count = len(scenarios_compact)
+    max_pairs = _max_test_pairs()
+    chunks = _pair_chunks(strategies_compact, scenarios_compact, max_pairs)
+    if len(chunks) > 1:
+        log_normalization(
+            run_id=run_id,
+            node_name="wind_tunnel",
+            operation="chunked_requests",
+            details={
+                "chunks": len(chunks),
+                "max_pairs": max_pairs,
+                "strategy_count": len(strategies_compact),
+                "scenario_count": scenario_count,
+            },
+            base_dir=base_dir,
+        )
+
+    prompt_bundle = None
+    response_raw = None
+    parsed = {}
+    collected_tests: list[dict[str, Any]] = []
+    collected_break_conditions: list[str] = []
+    collected_triggers: list[str] = []
+
+    for idx, (strategy_chunk, scenario_chunk) in enumerate(chunks, start=1):
+        context = {
+            "strategies": strategy_chunk,
+            "scenarios": scenario_chunk,
+        }
+        prompt_bundle = build_prompt("wind_tunnel", context)
+        prompt = (
+            f"{prompt_bundle.text}\n\n"
+            "Output constraints:\n"
+            "- Keep break_conditions and triggers concise (max 3 each).\n"
+            "- Keep each break_condition/trigger <= 12 words.\n"
+            "- Keep failure_modes/adaptations concise (max 3 each).\n"
+            "- Keep each failure_mode/adaptation <= 10 words.\n"
+            "- Keep outcome <= 3 words.\n"
+            "- Omit the matrix field entirely (it will be computed).\n"
+            "- Keep responses compact; avoid extra commentary.\n"
+        )
+        if len(chunks) > 1 and idx > 1:
+            prompt += "- For this chunk, set break_conditions and triggers to empty arrays.\n"
+        try:
+            response = client.generate_json(prompt, schema)
+        except Exception as exc:
+            write_trace_artifact(
+                run_id=run_id,
+                artifact_name=f"wind_tunnel_failure_{idx}",
+                payload={
+                    "node": "wind_tunnel",
+                    "chunk_index": idx,
+                    "chunks": len(chunks),
+                    "error": str(exc),
+                    "strategy_count": len(strategy_chunk),
+                    "scenario_count": len(scenario_chunk),
+                },
+                input_values={"chunk": idx, "chunks": len(chunks)},
+                prompt_values={
+                    "prompt_name": prompt_bundle.name,
+                    "prompt_sha256": prompt_bundle.sha256,
+                },
+                tool_versions={"wind_tunnel_node": "0.1.0"},
+                base_dir=base_dir,
+            )
+            raise
+
+        response_raw = getattr(response, "raw", None)
+        parsed = ensure_dict(response, node_name="wind_tunnel")
+        raw_tests = parsed.get("tests", [])
+        if isinstance(raw_tests, list):
+            collected_tests.extend(raw_tests)
+        if isinstance(parsed.get("break_conditions"), list):
+            collected_break_conditions.extend(parsed.get("break_conditions") or [])
+        if isinstance(parsed.get("triggers"), list):
+            collected_triggers.extend(parsed.get("triggers") or [])
+
+    parsed["tests"] = collected_tests
+    if collected_break_conditions:
+        parsed["break_conditions"] = collected_break_conditions
+    if collected_triggers:
+        parsed["triggers"] = collected_triggers
 
     raw_tests = parsed.get("tests", [])
     normalized_tests = _normalize_tests(raw_tests)
@@ -210,7 +432,16 @@ def run_wind_tunnel_node(
             for test in normalized_tests
         ]
 
-    if isinstance(matrix, dict):
+    if len(chunks) > 1:
+        matrix = _matrix_from_tests()
+        log_normalization(
+            run_id=run_id,
+            node_name="wind_tunnel",
+            operation="matrix_rebuilt_from_tests",
+            details={"entries": len(matrix)},
+            base_dir=base_dir,
+        )
+    elif isinstance(matrix, dict):
         rebuilt: list[dict[str, Any]] = []
         for strategy_id, scenarios in matrix.items():
             if not isinstance(scenarios, dict):
@@ -293,6 +524,31 @@ def run_wind_tunnel_node(
             "prompt_sha256": prompt_bundle.sha256,
         },
         tool_versions={"wind_tunnel_node": "0.1.0"},
+        base_dir=base_dir,
+    )
+
+    evaluation_payload = build_wind_tunnel_evaluations(
+        EvaluationInputs(
+            run_id=run_id,
+            strategies=strategies_full,
+            scenarios=scenarios_full,
+            tests=normalized_tests,
+            forces=(state.forces or {}).get("forces", []) if state.forces else [],
+            break_conditions=payload.get("break_conditions", []),
+            triggers=payload.get("triggers", []),
+        )
+    )
+    validate_artifact("wind_tunnel_evaluations_v2", evaluation_payload)
+    write_artifact(
+        run_id=run_id,
+        artifact_name="wind_tunnel_evaluations_v2",
+        payload=evaluation_payload,
+        ext="json",
+        input_values={
+            "strategy_count": len(strategies_full),
+            "scenario_count": len(scenarios_full),
+        },
+        tool_versions={"wind_tunnel_evaluations_v2": "0.1.0"},
         base_dir=base_dir,
     )
 

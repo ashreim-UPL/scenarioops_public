@@ -4,5 +4,5 @@ Return ONLY a JSON object that matches the Wind Tunnel schema. No prose, no mark
 Rules:
 - Provide tests for every strategy x scenario pair.
 - Include failure_modes, adaptations, feasibility_score, rubric_score, and action.
-- Add matrix entries with robustness_score per strategy/scenario.
-- Include break_conditions and triggers at the top level.
+- Omit the matrix field (it will be computed downstream).
+- Include break_conditions and triggers at the top level, keep them short.

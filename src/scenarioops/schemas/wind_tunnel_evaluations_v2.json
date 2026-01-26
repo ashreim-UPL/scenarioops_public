@@ -1,0 +1,188 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Wind Tunnel Evaluations V2",
+  "type": "object",
+  "required": ["run_id", "generated_at", "evaluations", "rankings", "recommendations"],
+  "properties": {
+    "run_id": { "type": "string", "minLength": 1 },
+    "generated_at": { "type": "string", "minLength": 1 },
+    "evaluations": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/evaluation" },
+      "minItems": 1
+    },
+    "rankings": { "$ref": "#/$defs/rankings" },
+    "recommendations": { "$ref": "#/$defs/recommendations" }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "evaluation": {
+      "type": "object",
+      "required": [
+        "run_id",
+        "strategy_id",
+        "scenario_id",
+        "outcome_label",
+        "grade_letter",
+        "score_0_100",
+        "confidence_0_1",
+        "kpi_projection",
+        "dominant_forces",
+        "failed_assumptions",
+        "break_conditions_triggered",
+        "rationale_bullets",
+        "recommended_hardening_actions",
+        "trigger_points"
+      ],
+      "properties": {
+        "run_id": { "type": "string", "minLength": 1 },
+        "strategy_id": { "type": "string", "minLength": 1 },
+        "scenario_id": { "type": "string", "minLength": 1 },
+        "outcome_label": { "type": "string", "minLength": 1 },
+        "grade_letter": { "type": "string", "enum": ["A", "B", "C", "D", "F"] },
+        "score_0_100": { "type": "number", "minimum": 0, "maximum": 100 },
+        "confidence_0_1": { "type": "number", "minimum": 0, "maximum": 1 },
+        "kpi_projection": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/kpiProjection" }
+        },
+        "dominant_forces": { "type": "array", "items": { "type": "string" } },
+        "failed_assumptions": { "type": "array", "items": { "type": "string" } },
+        "break_conditions_triggered": { "type": "array", "items": { "type": "string" } },
+        "rationale_bullets": { "type": "array", "items": { "type": "string" }, "minItems": 3 },
+        "recommended_hardening_actions": { "type": "array", "items": { "type": "string" } },
+        "trigger_points": { "type": "array", "items": { "$ref": "#/$defs/triggerPoint" } }
+      },
+      "additionalProperties": true
+    },
+    "kpiProjection": {
+      "type": "object",
+      "required": ["direction", "rationale"],
+      "properties": {
+        "direction": { "type": "string", "minLength": 1 },
+        "rationale": { "type": "string", "minLength": 1 },
+        "est_range_if_any": { "type": ["string", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "triggerPoint": {
+      "type": "object",
+      "required": ["trigger_id", "description", "signal_source", "threshold", "recommended_action"],
+      "properties": {
+        "trigger_id": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 },
+        "signal_source": { "type": "string", "minLength": 1 },
+        "threshold": { "type": "string", "minLength": 1 },
+        "recommended_action": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": true
+    },
+    "rankings": {
+      "type": "object",
+      "required": ["per_scenario", "overall", "scenario_fit"],
+      "properties": {
+        "per_scenario": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/perScenarioRanking" }
+        },
+        "overall": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/overallRanking" }
+        },
+        "scenario_fit": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/scenarioFit" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "perScenarioRanking": {
+      "type": "object",
+      "required": ["scenario_id", "scenario_name", "rankings"],
+      "properties": {
+        "scenario_id": { "type": "string", "minLength": 1 },
+        "scenario_name": { "type": "string", "minLength": 1 },
+        "rankings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/rankingEntry" }
+        },
+        "top_strategy_id": { "type": ["string", "null"] },
+        "margin_vs_second": { "type": ["number", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "rankingEntry": {
+      "type": "object",
+      "required": ["strategy_id", "strategy_name", "score_0_100", "grade_letter"],
+      "properties": {
+        "strategy_id": { "type": "string", "minLength": 1 },
+        "strategy_name": { "type": "string", "minLength": 1 },
+        "score_0_100": { "type": "number", "minimum": 0, "maximum": 100 },
+        "grade_letter": { "type": "string", "enum": ["A", "B", "C", "D", "F"] }
+      },
+      "additionalProperties": true
+    },
+    "overallRanking": {
+      "type": "object",
+      "required": ["strategy_id", "strategy_name", "overall_score", "min_score", "variance", "robustness_index", "rank"],
+      "properties": {
+        "strategy_id": { "type": "string", "minLength": 1 },
+        "strategy_name": { "type": "string", "minLength": 1 },
+        "overall_score": { "type": "number" },
+        "min_score": { "type": "number" },
+        "variance": { "type": "number" },
+        "robustness_index": { "type": "number" },
+        "rank": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": true
+    },
+    "scenarioFit": {
+      "type": "object",
+      "required": ["strategy_id", "strategy_name", "best_fit_scenarios", "fail_scenarios", "sensitive_scenarios"],
+      "properties": {
+        "strategy_id": { "type": "string", "minLength": 1 },
+        "strategy_name": { "type": "string", "minLength": 1 },
+        "best_fit_scenarios": { "type": "array", "items": { "type": "string" } },
+        "fail_scenarios": { "type": "array", "items": { "type": "string" } },
+        "sensitive_scenarios": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": true
+    },
+    "recommendations": {
+      "type": "object",
+      "required": ["primary_recommended_strategy", "conditional_recommendations", "hardening_actions", "hedge_actions", "triggers_to_watch"],
+      "properties": {
+        "primary_recommended_strategy": { "$ref": "#/$defs/recommendedStrategy" },
+        "conditional_recommendations": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/conditionalRecommendation" }
+        },
+        "hardening_actions": { "type": "array", "items": { "type": "string" } },
+        "hedge_actions": { "type": "array", "items": { "type": "string" } },
+        "triggers_to_watch": { "type": "array", "items": { "$ref": "#/$defs/triggerPoint" } }
+      },
+      "additionalProperties": true
+    },
+    "recommendedStrategy": {
+      "type": "object",
+      "required": ["strategy_id", "strategy_name", "rationale"],
+      "properties": {
+        "strategy_id": { "type": ["string", "null"] },
+        "strategy_name": { "type": ["string", "null"] },
+        "rationale": { "type": ["string", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "conditionalRecommendation": {
+      "type": "object",
+      "required": ["condition", "strategy_id", "strategy_name", "rationale"],
+      "properties": {
+        "condition": { "type": "string", "minLength": 1 },
+        "strategy_id": { "type": "string", "minLength": 1 },
+        "strategy_name": { "type": "string", "minLength": 1 },
+        "rationale": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": true
+    }
+  }
+}

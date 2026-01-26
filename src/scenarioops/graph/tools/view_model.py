@@ -126,6 +126,9 @@ def build_view_model(run_dir: Path) -> dict[str, Any]:
     if not isinstance(strategies, list):
         strategies = []
     wind_tunnel_payload = _load_json(artifacts_dir / "wind_tunnel.json")
+    wind_tunnel_evaluations_v2 = _load_json(
+        artifacts_dir / "wind_tunnel_evaluations_v2.json"
+    )
 
     latest_status = read_latest_status(run_dir.parent) or {}
     run_config = _load_json(run_dir / "run_config.json")
@@ -160,6 +163,7 @@ def build_view_model(run_dir: Path) -> dict[str, Any]:
         "ewis": ewis,
         "strategies": strategies,
         "wind_tunnel": wind_tunnel_payload,
+        "wind_tunnel_evaluations_v2": wind_tunnel_evaluations_v2,
         "daily_brief_md": daily_brief_md,
         "run_meta": run_meta,
     }
