@@ -72,17 +72,24 @@ if not df.empty:
     df["ebe_score"] = pd.to_numeric(df.get("ebe_score"), errors="coerce")
     df["label"] = df["force_id"].map(lambda fid: (force_meta.get(fid) or {}).get("label"))
     df["domain"] = df["force_id"].map(lambda fid: (force_meta.get(fid) or {}).get("domain"))
+    top_labels = (
+        df.sort_values(by="ebe_score", ascending=False)
+        .head(10)["label"]
+        .dropna()
+        .tolist()
+    )
+    df["label_display"] = df["label"].where(df["label"].isin(top_labels), "")
     fig = px.scatter(
         df,
         x="B_business_impact",
         y="E_emergence",
         size="ebe_score",
         color="domain",
-        text="label",
+        text="label_display",
         hover_data=["force_id", "rationale"],
         size_max=70,
     )
-    fig.update_traces(textposition="top center")
+    fig.update_traces(textposition="top center", opacity=0.75)
     fig.update_layout(
         height=460,
         xaxis_title="Business impact (local)",
@@ -90,6 +97,17 @@ if not df.empty:
         showlegend=True,
     )
     st.plotly_chart(fig, use_container_width=True)
+    top_bar = df.sort_values(by="ebe_score", ascending=False).head(10)
+    bar_fig = px.bar(
+        top_bar,
+        x="ebe_score",
+        y="label",
+        color="domain",
+        orientation="h",
+        title="Top 10 EBE scores",
+    )
+    bar_fig.update_layout(height=420, yaxis_title="", xaxis_title="EBE score")
+    st.plotly_chart(bar_fig, use_container_width=True)
 if "ebe_score" in df.columns:
     df = df.sort_values(by="ebe_score", ascending=False)
 

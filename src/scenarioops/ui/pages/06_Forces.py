@@ -51,23 +51,17 @@ columns = [c for c in ["label", "domain", "layer", "mechanism", "directionality"
 chart_df = df.copy()
 if not chart_df.empty:
     chart_df["confidence"] = pd.to_numeric(chart_df.get("confidence"), errors="coerce").fillna(0.4)
-    fig = px.scatter(
+    chart_df["size"] = (chart_df["confidence"].clip(lower=0.2) * 100).round(2)
+    fig = px.treemap(
         chart_df,
-        x="domain",
-        y="confidence",
-        size="confidence",
+        path=["domain", "layer", "label"],
+        values="size",
         color="domain",
-        symbol="layer",
-        hover_data=["mechanism", "directionality"],
-        text="label",
-        size_max=60,
+        hover_data=["mechanism", "directionality", "confidence"],
     )
-    fig.update_traces(textposition="top center")
     fig.update_layout(
-        height=460,
-        xaxis_title="Force domain",
-        yaxis_title="Confidence (proxy for impact)",
-        showlegend=True,
+        height=520,
+        margin=dict(t=10, l=10, r=10, b=10),
     )
     st.plotly_chart(fig, use_container_width=True)
 

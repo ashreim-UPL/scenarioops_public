@@ -114,15 +114,34 @@ for cluster in clusters:
     )
 
 fig = go.Figure()
+top_labels = {item["label"] for item in sorted(cluster_points, key=lambda p: p["size"], reverse=True)[:6]}
 for point in cluster_points:
+    label = point["label"] if point["label"] in top_labels else ""
     fig.add_trace(
         go.Scatter(
             x=[point["x"]],
             y=[point["y"]],
             mode="markers+text",
-            text=[point["label"]],
+            text=[label],
             textposition="top center",
-            marker=dict(size=point["size"], color="#0e7c86", opacity=0.7),
+            hovertext=[point["label"]],
+            marker=dict(size=point["size"], color="#0e7c86", opacity=0.65),
+        )
+    )
+if scenario_positions:
+    scenario_names = list(scenario_positions.keys())
+    scenario_x = [scenario_positions[name][0] for name in scenario_names]
+    scenario_y = [scenario_positions[name][1] for name in scenario_names]
+    fig.add_trace(
+        go.Scatter(
+            x=scenario_x,
+            y=scenario_y,
+            mode="markers+text",
+            text=scenario_names,
+            textposition="bottom center",
+            marker=dict(size=8, color="#666", opacity=0.8),
+            hovertext=scenario_names,
+            showlegend=False,
         )
     )
 fig.add_shape(type="line", x0=0, x1=0, y0=-1.2, y1=1.2, line=dict(color="#999", dash="dot"))

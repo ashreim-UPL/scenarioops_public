@@ -49,22 +49,17 @@ chart_df = df.copy()
 if not chart_df.empty:
     chart_df["force_count"] = chart_df["force_ids"].apply(lambda items: len(items) if isinstance(items, list) else 0)
     chart_df["coherence_score"] = pd.to_numeric(chart_df.get("coherence_score"), errors="coerce")
-    fig = px.scatter(
+    fig = px.treemap(
         chart_df,
-        x="coherence_score",
-        y="force_count",
-        size="force_count",
+        path=["cluster_label"],
+        values="force_count",
         color="coherence_score",
-        text="cluster_label",
         hover_data=["cluster_id", "centroid_summary", "underlying_dynamic"],
-        size_max=80,
         color_continuous_scale="Teal",
     )
-    fig.update_traces(textposition="top center")
     fig.update_layout(
-        height=460,
-        xaxis_title="Coherence score",
-        yaxis_title="Forces per cluster",
+        height=520,
+        margin=dict(t=10, l=10, r=10, b=10),
     )
     st.plotly_chart(fig, use_container_width=True)
 st.dataframe(df[columns], height=420)
