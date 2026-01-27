@@ -96,7 +96,7 @@ if not df.empty:
         yaxis_title="Emergence (global/structural)",
         showlegend=True,
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
     top_bar = df.sort_values(by="ebe_score", ascending=False).head(10)
     bar_fig = px.bar(
         top_bar,
@@ -107,7 +107,7 @@ if not df.empty:
         title="Top 10 EBE scores",
     )
     bar_fig.update_layout(height=420, yaxis_title="", xaxis_title="EBE score")
-    st.plotly_chart(bar_fig, use_container_width=True)
+    st.plotly_chart(bar_fig, width="stretch")
 if "ebe_score" in df.columns:
     df = df.sort_values(by="ebe_score", ascending=False)
 

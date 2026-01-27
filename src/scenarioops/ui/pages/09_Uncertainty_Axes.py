@@ -154,7 +154,7 @@ fig.update_layout(
     yaxis_title=axis_y.get("axis_name", ""),
     showlegend=False,
 )
-st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(fig, width="stretch")
 
 for axis in axes:
     section(axis.get("axis_name", "Axis"), axis.get("independence_notes", ""))

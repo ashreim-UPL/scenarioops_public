@@ -47,7 +47,7 @@ for scenario in scenarios:
     section(scenario.get("name", "Scenario"), scenario.get("narrative", ""))
     image_path = resolve_image_path(run_id, scenario.get("image_artifact_path"))
     if image_path:
-        st.image(str(image_path), use_container_width=True)
+        st.image(str(image_path), width="stretch")
     implications = scenario.get("implications", [])
     if implications:
         st.markdown("**Implications**")

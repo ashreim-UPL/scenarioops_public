@@ -61,5 +61,5 @@ if not chart_df.empty:
         height=520,
         margin=dict(t=10, l=10, r=10, b=10),
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 st.dataframe(df[columns], height=420)
