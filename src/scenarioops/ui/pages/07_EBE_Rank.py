@@ -10,6 +10,7 @@ if str(SRC_DIR) not in sys.path:
 
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 
 from scenarioops.ui.page_utils import (
@@ -72,42 +73,97 @@ if not df.empty:
     df["ebe_score"] = pd.to_numeric(df.get("ebe_score"), errors="coerce")
     df["label"] = df["force_id"].map(lambda fid: (force_meta.get(fid) or {}).get("label"))
     df["domain"] = df["force_id"].map(lambda fid: (force_meta.get(fid) or {}).get("domain"))
-    top_labels = (
-        df.sort_values(by="ebe_score", ascending=False)
-        .head(10)["label"]
-        .dropna()
-        .tolist()
+    df = df.dropna(subset=["ebe_score"]).copy()
+    df = df.sort_values(by="ebe_score", ascending=True).reset_index(drop=True)
+    df["rank"] = df.index + 1
+    df["percentile"] = (df["rank"] / len(df)) * 100
+
+    label_stride = 4
+    label_candidates = (
+        df[["label", "percentile", "ebe_score"]]
+        .dropna(subset=["label"])
+        .to_dict("records")
     )
-    df["label_display"] = df["label"].where(df["label"].isin(top_labels), "")
-    fig = px.scatter(
-        df,
-        x="B_business_impact",
-        y="E_emergence",
-        size="ebe_score",
-        color="domain",
-        text="label_display",
-        hover_data=["force_id", "rationale"],
-        size_max=70,
+
+    domain_colors = {
+        "economic": "#1f77b4",
+        "technological": "#2ca02c",
+        "political": "#d62728",
+        "legal": "#9467bd",
+        "environmental": "#17becf",
+        "social": "#2aa198",
+    }
+
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=df["percentile"],
+            y=df["ebe_score"],
+            mode="lines",
+            line=dict(color="rgba(80,80,80,0.35)", width=2),
+            hoverinfo="skip",
+            showlegend=False,
+        )
     )
-    fig.update_traces(textposition="top center", opacity=0.75)
+    for domain, group in df.groupby("domain"):
+        fig.add_trace(
+            go.Scatter(
+                x=group["percentile"],
+                y=group["ebe_score"],
+                mode="markers",
+                name=domain or "unknown",
+                marker=dict(
+                    size=8,
+                    color=domain_colors.get(domain, "#6b7280"),
+                    line=dict(color="white", width=0.5),
+                    opacity=0.9,
+                ),
+                hovertemplate=(
+                    "<b>%{customdata[0]}</b><br>"
+                    "EBE: %{y:.2f}<br>"
+                    "Percentile: %{x:.0f}%<extra></extra>"
+                ),
+                customdata=group[["label"]].fillna(""),
+            )
+        )
+
+    for pct in (25, 50, 75):
+        fig.add_vline(x=pct, line_width=1, line_color="rgba(120,120,120,0.2)")
+
+    toggle = 1
+    for idx, row in enumerate(label_candidates):
+        if idx % label_stride != 0:
+            continue
+        x = float(row["percentile"])
+        y = float(row["ebe_score"])
+        toggle *= -1
+        fig.add_annotation(
+            x=x,
+            y=y,
+            text=str(row["label"]),
+            showarrow=True,
+            arrowhead=2,
+            ax=0,
+            ay=50 * toggle,
+            font=dict(size=11, color="#1f2937"),
+            bgcolor="rgba(255,255,255,0.85)",
+            bordercolor="rgba(0,0,0,0.08)",
+            borderpad=4,
+        )
+
     fig.update_layout(
-        height=460,
-        xaxis_title="Business impact (local)",
-        yaxis_title="Emergence (global/structural)",
-        showlegend=True,
+        title="EBE ranking curve",
+        height=480,
+        margin=dict(l=50, r=20, t=60, b=50),
+        xaxis_title="Forces by percentile (ascending EBE score)",
+        yaxis_title="EBE score",
+        xaxis=dict(showgrid=True, gridcolor="rgba(0,0,0,0.06)", zeroline=False),
+        yaxis=dict(showgrid=True, gridcolor="rgba(0,0,0,0.06)", zeroline=False),
+        legend_title_text="domain",
+        plot_bgcolor="white",
+        paper_bgcolor="white",
     )
     st.plotly_chart(fig, width="stretch")
-    top_bar = df.sort_values(by="ebe_score", ascending=False).head(10)
-    bar_fig = px.bar(
-        top_bar,
-        x="ebe_score",
-        y="label",
-        color="domain",
-        orientation="h",
-        title="Top 10 EBE scores",
-    )
-    bar_fig.update_layout(height=420, yaxis_title="", xaxis_title="EBE score")
-    st.plotly_chart(bar_fig, width="stretch")
 if "ebe_score" in df.columns:
     df = df.sort_values(by="ebe_score", ascending=False)
 

@@ -8,7 +8,7 @@ SRC_DIR = ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.append(str(SRC_DIR))
 
-import plotly.graph_objects as go
+import html
 import streamlit as st
 
 from scenarioops.ui.page_utils import (
@@ -47,114 +47,153 @@ axis_x = axes[0] if len(axes) > 0 else {}
 axis_y = axes[1] if len(axes) > 1 else {}
 
 section("Axes Overview", "Two primary uncertainties defining the scenario space.")
-st.markdown(f"**X-axis (left/right):** {axis_x.get('axis_name', '')}")
-st.markdown(f"**Left:** {axis_x.get('pole_b', '')}")
-st.markdown(f"**Right:** {axis_x.get('pole_a', '')}")
-st.markdown(f"**Y-axis (bottom/top):** {axis_y.get('axis_name', '')}")
-st.markdown(f"**Bottom:** {axis_y.get('pole_b', '')}")
-st.markdown(f"**Top:** {axis_y.get('pole_a', '')}")
+st.markdown(f"**X-axis:** {axis_x.get('axis_name', '')}")
+st.markdown(f"**Y-axis:** {axis_y.get('axis_name', '')}")
 
 scenarios = scenarios_payload.get("scenarios", []) if isinstance(scenarios_payload, dict) else []
 axis_ids = scenarios_payload.get("axes", []) if isinstance(scenarios_payload, dict) else []
 axis_x_id = axis_ids[0] if len(axis_ids) > 0 else axis_x.get("axis_id")
 axis_y_id = axis_ids[1] if len(axis_ids) > 1 else axis_y.get("axis_id")
 
-def _axis_value(axis, state_value):
-    if not state_value:
-        return 0
-    if state_value == axis.get("pole_a"):
-        return 1
-    if state_value == axis.get("pole_b"):
-        return -1
-    return 0
+def _quadrant_key(axis_states: dict[str, str]) -> str | None:
+    if not axis_states:
+        return None
+    x_state = axis_states.get(axis_x_id)
+    y_state = axis_states.get(axis_y_id)
+    if not x_state or not y_state:
+        return None
+    x_right = x_state == axis_x.get("pole_a")
+    y_top = y_state == axis_y.get("pole_a")
+    if x_right and y_top:
+        return "tr"
+    if not x_right and y_top:
+        return "tl"
+    if not x_right and not y_top:
+        return "bl"
+    return "br"
 
-scenario_positions = {}
+
+def _truncate(text: str, limit: int = 160) -> str:
+    text = text.strip()
+    if len(text) <= limit:
+        return text
+    return text[:limit].rsplit(" ", 1)[0] + "…"
+
+
+quadrant_titles = {
+    "tr": f"{axis_y.get('pole_a', '')} / {axis_x.get('pole_a', '')}",
+    "tl": f"{axis_y.get('pole_a', '')} / {axis_x.get('pole_b', '')}",
+    "bl": f"{axis_y.get('pole_b', '')} / {axis_x.get('pole_b', '')}",
+    "br": f"{axis_y.get('pole_b', '')} / {axis_x.get('pole_a', '')}",
+}
+
+quadrant_scenarios: dict[str, list[dict[str, str]]] = {"tr": [], "tl": [], "bl": [], "br": []}
 for scenario in scenarios:
     axis_states = scenario.get("axis_states", {})
     if not isinstance(axis_states, dict):
         continue
-    x_val = _axis_value(axis_x, axis_states.get(axis_x_id))
-    y_val = _axis_value(axis_y, axis_states.get(axis_y_id))
-    scenario_positions[scenario.get("name", "")] = (x_val, y_val, scenario)
-
-clusters = clusters_payload.get("clusters", []) if isinstance(clusters_payload, dict) else []
-cluster_points = []
-for cluster in clusters:
-    cluster_id = cluster.get("cluster_id")
-    if not cluster_id:
+    key = _quadrant_key(axis_states)
+    if not key:
         continue
-    hits = []
-    for scenario in scenarios:
-        evidence = scenario.get("evidence_touchpoints", {})
-        if not isinstance(evidence, dict):
-            continue
-        cluster_ids = evidence.get("cluster_ids", [])
-        if cluster_id in cluster_ids:
-            axis_states = scenario.get("axis_states", {})
-            if not isinstance(axis_states, dict):
-                continue
-            hits.append(
-                (
-                    _axis_value(axis_x, axis_states.get(axis_x_id)),
-                    _axis_value(axis_y, axis_states.get(axis_y_id)),
-                )
-            )
-    if not hits:
-        continue
-    x_avg = sum(item[0] for item in hits) / len(hits)
-    y_avg = sum(item[1] for item in hits) / len(hits)
-    force_count = len(cluster.get("force_ids", [])) if isinstance(cluster.get("force_ids"), list) else 0
-    cluster_points.append(
+    quadrant_scenarios[key].append(
         {
-            "label": cluster.get("cluster_label", cluster_id),
-            "x": x_avg,
-            "y": y_avg,
-            "size": max(10, force_count * 3),
+            "name": str(scenario.get("name", "Scenario")),
+            "summary": str(scenario.get("summary") or ""),
         }
     )
 
-fig = go.Figure()
-top_labels = {item["label"] for item in sorted(cluster_points, key=lambda p: p["size"], reverse=True)[:6]}
-for point in cluster_points:
-    label = point["label"] if point["label"] in top_labels else ""
-    fig.add_trace(
-        go.Scatter(
-            x=[point["x"]],
-            y=[point["y"]],
-            mode="markers+text",
-            text=[label],
-            textposition="top center",
-            hovertext=[point["label"]],
-            marker=dict(size=point["size"], color="#0e7c86", opacity=0.65),
+quadrant_html = []
+for key in ("tl", "tr", "bl", "br"):
+    title = html.escape(quadrant_titles.get(key, ""))
+    cards = []
+    for item in quadrant_scenarios.get(key, []):
+        summary = html.escape(_truncate(item.get("summary", "")))
+        cards.append(
+            f"""
+<div class="quad-card">
+  <div class="quad-title">{html.escape(item['name'])}</div>
+  <div class="quad-summary">{summary}</div>
+</div>
+"""
         )
+    cards_html = "".join(cards) if cards else "<div class='quad-empty'>No scenario</div>"
+    quadrant_html.append(
+        f"""
+<div class="quad-cell">
+  <div class="quad-bg">{title}</div>
+  <div class="quad-cards">{cards_html}</div>
+</div>
+"""
     )
-if scenario_positions:
-    scenario_names = list(scenario_positions.keys())
-    scenario_x = [scenario_positions[name][0] for name in scenario_names]
-    scenario_y = [scenario_positions[name][1] for name in scenario_names]
-    fig.add_trace(
-        go.Scatter(
-            x=scenario_x,
-            y=scenario_y,
-            mode="markers+text",
-            text=scenario_names,
-            textposition="bottom center",
-            marker=dict(size=8, color="#666", opacity=0.8),
-            hovertext=scenario_names,
-            showlegend=False,
-        )
-    )
-fig.add_shape(type="line", x0=0, x1=0, y0=-1.2, y1=1.2, line=dict(color="#999", dash="dot"))
-fig.add_shape(type="line", x0=-1.2, x1=1.2, y0=0, y1=0, line=dict(color="#999", dash="dot"))
-fig.update_layout(
-    height=520,
-    xaxis=dict(range=[-1.2, 1.2], tickvals=[-1, 1], ticktext=[axis_x.get("pole_b", ""), axis_x.get("pole_a", "")]),
-    yaxis=dict(range=[-1.2, 1.2], tickvals=[-1, 1], ticktext=[axis_y.get("pole_b", ""), axis_y.get("pole_a", "")]),
-    xaxis_title=axis_x.get("axis_name", ""),
-    yaxis_title=axis_y.get("axis_name", ""),
-    showlegend=False,
+
+st.markdown(
+    """
+<style>
+.quad-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+.quad-cell {
+  position: relative;
+  min-height: 260px;
+  border: 1px solid #e6dfd4;
+  border-radius: 16px;
+  background: #fffdf8;
+  padding: 24px;
+  overflow: hidden;
+}
+.quad-bg {
+  position: absolute;
+  inset: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgba(80,80,80,0.12);
+  line-height: 1.25;
+  pointer-events: none;
+}
+.quad-cards {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  z-index: 2;
+}
+.quad-card {
+  background: rgba(14,124,134,0.08);
+  border: 1px solid rgba(14,124,134,0.25);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.quad-title {
+  font-weight: 600;
+  font-size: 15px;
+  color: #0a4a52;
+}
+.quad-summary {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #285e66;
+  line-height: 1.45;
+}
+.quad-empty {
+  font-size: 12px;
+  color: #7a7a7a;
+}
+@media (max-width: 900px) {
+  .quad-grid { grid-template-columns: 1fr; }
+}
+</style>
+""",
+    unsafe_allow_html=True,
 )
-st.plotly_chart(fig, width="stretch")
+
+st.markdown(f"<div class='quad-grid'>{''.join(quadrant_html)}</div>", unsafe_allow_html=True)
 
 for axis in axes:
     section(axis.get("axis_name", "Axis"), axis.get("independence_notes", ""))
