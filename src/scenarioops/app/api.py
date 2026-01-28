@@ -79,9 +79,9 @@ class RunResponse(BaseModel):
 
 
 class LatestResponse(BaseModel):
-    run_id: str
-    daily_brief: dict[str, Any]
-    links: list[str]
+    run_id: str | None = None
+    daily_brief: dict[str, Any] = Field(default_factory=dict)
+    links: list[str] = Field(default_factory=list)
 
 
 class RunsResponse(BaseModel):
@@ -96,7 +96,7 @@ def _load_daily_brief(run_id: str, base_dir: Path) -> dict[str, Any]:
     artifacts_dir = base_dir / run_id / "artifacts"
     path = artifacts_dir / "daily_brief.json"
     if not path.exists():
-        raise FileNotFoundError("daily_brief.json not found.")
+        return {}
     return json.loads(path.read_text(encoding="utf-8"))
 
 
@@ -188,7 +188,7 @@ def build(
         {**tenant_overrides, **overrides, **(payload.settings_overrides or {})}
     )
     use_fixtures = settings.sources_policy == "fixtures"
-    if not sources and use_fixtures:
+    if not sources:
         sources = default_sources()
 
     inputs = GraphInputs(
@@ -424,11 +424,8 @@ def latest(tenant: TenantContext = Depends(_tenant_context)) -> LatestResponse:
         base_dir=tenant.base_dir
     )
     if not run_id:
-        raise HTTPException(status_code=404, detail="No runs available.")
-    try:
-        daily_brief = _load_daily_brief(run_id, tenant.base_dir)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        return LatestResponse()
+    daily_brief = _load_daily_brief(run_id, tenant.base_dir)
     return LatestResponse(
         run_id=run_id,
         daily_brief=daily_brief,
