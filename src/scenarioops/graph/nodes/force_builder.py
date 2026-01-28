@@ -792,8 +792,6 @@ def _validate_distribution(
     forces: list[dict[str, Any]], min_forces: int, min_per_domain: int
 ) -> list[str]:
     warnings: list[str] = []
-    if any(str(force.get("force_id", "")).startswith(f"{run_id}-fallback") for force in normalized_forces):
-        warnings.append("fallback_forces_generated")
     if len(forces) < min_forces:
         warnings.append(
             f"force_count_below_min: {len(forces)} < {min_forces}"
@@ -1070,6 +1068,8 @@ def run_force_builder_node(
         deficits = _deficits(domain_targets, _domain_counts(normalized_forces))
 
     warnings: list[str] = []
+    if any(str(force.get("force_id", "")).startswith(f"{run_id}-fallback") for force in normalized_forces):
+        warnings.append("fallback_forces_generated")
     linked = 0
     for force in normalized_forces:
         linked_ids = [
