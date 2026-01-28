@@ -66,7 +66,7 @@ _INT_FIELDS = {
     "min_evidence_ok",
     "min_evidence_total",
 }
-_FLOAT_FIELDS = {"max_failed_ratio"}
+_FLOAT_FIELDS = {"max_failed_ratio", "temperature"}
 _MODEL_FIELDS = {
     "gemini_model",
     "llm_model",
@@ -151,6 +151,7 @@ class ScenarioOpsSettings:
     summarizer_model: str = DEFAULT_SUMMARIZER_MODEL
     embed_model: str = DEFAULT_EMBED_MODEL
     image_model: str = DEFAULT_IMAGE_MODEL
+    temperature: float = 0.2
     sources_policy: SourcesPolicyLiteral = "mixed_reputable"
     allow_web: bool = False
     min_sources_per_domain: int = 8
@@ -174,6 +175,7 @@ class ScenarioOpsSettings:
             "summarizer_model": self.summarizer_model,
             "embed_model": self.embed_model,
             "image_model": self.image_model,
+            "temperature": self.temperature,
             "sources_policy": self.sources_policy,
             "allow_web": self.allow_web,
             "min_sources_per_domain": self.min_sources_per_domain,
@@ -335,4 +337,4 @@ def llm_config_from_settings(settings: ScenarioOpsSettings) -> LLMConfig:
     else:
         mode = "mock"
     model_name = settings.llm_model or settings.gemini_model or DEFAULT_LLM_MODEL
-    return LLMConfig(model_name=model_name, mode=mode)
+    return LLMConfig(model_name=model_name, mode=mode, temperature=settings.temperature)

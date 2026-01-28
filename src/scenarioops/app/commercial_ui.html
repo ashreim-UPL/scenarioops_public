@@ -3,21 +3,27 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ScenarioOps Strategic Dashboard</title>
+    <title>ScenarioOps War Room</title>
     <style>
-      @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Serif:wght@400;500;600&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap");
 
       :root {
-        --bg: #f3f6fb;
-        --panel: #ffffff;
-        --ink: #0e1b2c;
-        --muted: #5c6b82;
-        --accent: #1f4fd1;
-        --accent-soft: #e3edff;
-        --edge: #e5e9f2;
-        --shadow: 0 20px 40px rgba(16, 29, 47, 0.08);
-        --font-head: "IBM Plex Serif", "Georgia", serif;
-        --font-body: "IBM Plex Sans", "Segoe UI", sans-serif;
+        --bg: radial-gradient(1200px 800px at 20% 10%, rgba(33, 66, 148, 0.35), transparent 60%),
+          radial-gradient(1000px 700px at 80% 0%, rgba(0, 153, 255, 0.25), transparent 60%),
+          linear-gradient(135deg, #05070f 0%, #0b1020 50%, #0a0f1d 100%);
+        --ink: #e6ecff;
+        --muted: rgba(205, 216, 255, 0.6);
+        --glass: rgba(15, 24, 44, 0.6);
+        --glass-strong: rgba(15, 24, 44, 0.85);
+        --edge: rgba(110, 140, 200, 0.25);
+        --accent: #3aa4ff;
+        --accent-2: #28f0c8;
+        --success: #33e49a;
+        --warn: #f1b64f;
+        --error: #ff5c77;
+        --shadow: 0 20px 40px rgba(5, 12, 24, 0.45);
+        --font-body: "Space Grotesk", "Segoe UI", sans-serif;
+        --font-mono: "IBM Plex Mono", "Consolas", monospace;
       }
 
       * {
@@ -28,229 +34,479 @@
         margin: 0;
         font-family: var(--font-body);
         color: var(--ink);
-        background:
-          radial-gradient(900px 500px at 85% -10%, rgba(31, 79, 209, 0.12), transparent 70%),
-          linear-gradient(120deg, #f3f6fb 0%, #eef2f8 40%, #f6f8fc 100%);
+        background: var(--bg);
         min-height: 100vh;
       }
 
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
       .page {
-        max-width: 1280px;
+        max-width: 1400px;
         margin: 0 auto;
-        padding: 28px 24px 80px;
+        padding: 24px 28px 80px;
       }
 
-      header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 14px 20px;
-        border-radius: 16px;
-        background: rgba(255, 255, 255, 0.95);
+      .glass {
+        background: var(--glass);
         border: 1px solid var(--edge);
+        border-radius: 18px;
         box-shadow: var(--shadow);
+        backdrop-filter: blur(14px);
       }
 
-      .brand {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
+      .glass-strong {
+        background: var(--glass-strong);
       }
 
-      .brand span {
-        font-size: 12px;
-        letter-spacing: 0.24em;
-        text-transform: uppercase;
-        color: var(--muted);
-        font-weight: 600;
-      }
-
-      .brand h1 {
-        margin: 0;
-        font-family: var(--font-head);
-        font-size: 24px;
-      }
-
-      .header-actions {
-        display: flex;
-        gap: 12px;
-        align-items: center;
-      }
-
-      .pill {
-        border-radius: 999px;
-        padding: 8px 16px;
-        font-weight: 600;
-        background: var(--ink);
-        color: #fff;
-        border: none;
-        cursor: pointer;
-      }
-
-      .ghost {
-        border-radius: 999px;
-        padding: 8px 16px;
-        background: #fff;
-        border: 1px solid var(--edge);
-        font-weight: 600;
-        color: var(--ink);
-        cursor: pointer;
-      }
-
-      .hero {
-        margin-top: 28px;
-        padding: 28px;
-        border-radius: 20px;
-        background: var(--panel);
-        border: 1px solid var(--edge);
-        box-shadow: var(--shadow);
+      .status-bar {
         display: grid;
-        gap: 12px;
+        grid-template-columns: 1.4fr 1fr 1fr 1.2fr;
+        gap: 16px;
+        padding: 16px 20px;
+        align-items: center;
       }
 
-      .hero h2 {
-        margin: 0;
-        font-size: clamp(28px, 4vw, 42px);
-        font-family: var(--font-head);
-      }
-
-      .hero p {
-        margin: 0;
-        color: var(--muted);
-        max-width: 720px;
-      }
-
-      .hero-meta {
+      .status-left {
         display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
+        align-items: center;
+        gap: 14px;
+      }
+
+      .pulse {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--accent);
+        box-shadow: 0 0 12px rgba(58, 164, 255, 0.9);
+        position: relative;
+      }
+
+      .pulse::after {
+        content: "";
+        position: absolute;
+        inset: -6px;
+        border-radius: 50%;
+        border: 1px solid rgba(58, 164, 255, 0.6);
+        animation: pulse 2s infinite;
+      }
+
+      .pulse.off {
+        background: var(--warn);
+        box-shadow: 0 0 12px rgba(241, 182, 79, 0.8);
+      }
+
+      .pulse.off::after {
+        border-color: rgba(241, 182, 79, 0.5);
+        animation: none;
+      }
+
+      @keyframes pulse {
+        0% {
+          opacity: 0.8;
+          transform: scale(0.7);
+        }
+        70% {
+          opacity: 0.1;
+          transform: scale(1.4);
+        }
+        100% {
+          opacity: 0;
+          transform: scale(1.6);
+        }
+      }
+
+      .context-ribbon {
+        display: flex;
+        gap: 10px;
         font-size: 13px;
         color: var(--muted);
       }
 
-      .grid {
-        display: grid;
-        gap: 18px;
+      .context-pill {
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: rgba(58, 164, 255, 0.15);
+        border: 1px solid rgba(58, 164, 255, 0.35);
+        font-size: 12px;
+      }
+
+      .status-actions {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+      }
+
+      button {
+        border: none;
+        border-radius: 999px;
+        padding: 8px 16px;
+        font-weight: 600;
+        cursor: pointer;
+        background: rgba(58, 164, 255, 0.2);
+        color: var(--ink);
+        border: 1px solid rgba(58, 164, 255, 0.35);
+      }
+
+      button.primary {
+        background: linear-gradient(120deg, rgba(58, 164, 255, 0.9), rgba(40, 240, 200, 0.7));
+        color: #051022;
+        border: none;
+      }
+
+      .top-nav {
+        margin-top: 18px;
+        display: flex;
+        gap: 14px;
+        padding: 10px 16px;
+        align-items: center;
+      }
+
+      .nav-link {
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: var(--muted);
+        padding: 8px 14px;
+        border-radius: 999px;
+      }
+
+      .nav-link.active {
+        background: rgba(58, 164, 255, 0.2);
+        color: var(--ink);
+        border: 1px solid rgba(58, 164, 255, 0.4);
+      }
+
+      .section {
         margin-top: 24px;
       }
 
-      .grid.cols-3 {
-        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      }
-
-      .panel {
-        background: var(--panel);
-        border: 1px solid var(--edge);
-        border-radius: 16px;
-        padding: 18px;
-        box-shadow: var(--shadow);
-      }
-
-      .panel h3 {
-        margin: 0 0 10px;
-        font-size: 16px;
+      .section-title {
+        font-size: 18px;
+        letter-spacing: 0.08em;
         text-transform: uppercase;
-        letter-spacing: 0.1em;
         color: var(--muted);
+        margin-bottom: 12px;
       }
 
-      .panel p {
-        margin: 0;
-        color: var(--ink);
-        line-height: 1.5;
-      }
-
-      .node-list {
+      .kpi-row {
         display: grid;
-        gap: 10px;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 16px;
       }
 
-      .node-item {
-        display: flex;
-        justify-content: space-between;
-        padding: 10px 12px;
-        border-radius: 12px;
-        background: #f6f8fd;
-        border: 1px solid var(--edge);
-        font-size: 13px;
+      .kpi-card {
+        padding: 16px;
       }
 
-      .node-item span {
+      .kpi-card h3 {
+        margin: 0;
+        font-size: 14px;
         color: var(--muted);
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
       }
 
-      .node-status {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
+      .kpi-card p {
+        margin: 10px 0 0;
+        font-size: 24px;
         font-weight: 600;
       }
 
-      .node-status::before {
-        content: "";
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: #cbd4e6;
+      .layout-grid {
+        display: grid;
+        grid-template-columns: 280px 1.2fr 360px;
+        gap: 16px;
       }
 
-      .node-status.ready::before {
-        background: #2ecc71;
+      .sidebar {
+        padding: 16px;
       }
 
-      .section-title {
-        margin: 28px 0 12px;
-        font-family: var(--font-head);
-        font-size: 22px;
+      .sidebar label,
+      .form label {
+        display: grid;
+        gap: 6px;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+      }
+
+      .sidebar input,
+      .sidebar select,
+      .form input,
+      .form select,
+      .form textarea {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(110, 140, 200, 0.3);
+        border-radius: 10px;
+        padding: 8px 10px;
+        color: var(--ink);
+        font-family: var(--font-body);
+      }
+
+      .workflow-map {
+        padding: 18px;
+        min-height: 360px;
+      }
+
+      .workflow-nodes {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 14px;
+      }
+
+      .node {
+        padding: 14px;
+        border-radius: 14px;
+        background: rgba(58, 164, 255, 0.08);
+        border: 1px solid rgba(58, 164, 255, 0.2);
+        text-align: center;
+        font-size: 13px;
+        color: var(--muted);
+        cursor: pointer;
+      }
+
+      .node.running {
+        color: var(--ink);
+        box-shadow: 0 0 18px rgba(58, 164, 255, 0.6);
+        border-color: rgba(58, 164, 255, 0.6);
+      }
+
+      .node.success {
+        color: var(--success);
+        border-color: rgba(51, 228, 154, 0.5);
+      }
+
+      .node.error {
+        color: var(--error);
+        border-color: rgba(255, 92, 119, 0.6);
+      }
+
+      .detail-card {
+        padding: 18px;
+      }
+
+      .terminal {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        background: rgba(5, 10, 20, 0.75);
+        border: 1px solid rgba(110, 140, 200, 0.3);
+        border-radius: 14px;
+        padding: 14px;
+        height: 220px;
+        overflow: auto;
+      }
+
+      .ghost {
+        background: linear-gradient(90deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04));
+        background-size: 200% 100%;
+        animation: shimmer 1.8s infinite;
+      }
+
+      @keyframes shimmer {
+        0% { background-position: 0% 0; }
+        100% { background-position: -200% 0; }
       }
 
       .cards {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
         gap: 16px;
       }
 
       .card {
-        background: var(--panel);
-        border: 1px solid var(--edge);
-        border-radius: 16px;
-        padding: 16px;
-        box-shadow: var(--shadow);
+        padding: 14px;
       }
 
-      .card h4 {
-        margin: 0 0 8px;
-        font-size: 16px;
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 999px;
+        padding: 4px 10px;
+        background: rgba(58, 164, 255, 0.2);
+        border: 1px solid rgba(58, 164, 255, 0.4);
+        font-size: 12px;
+        color: var(--ink);
       }
 
-      .card p {
-        margin: 0;
-        color: var(--muted);
-        font-size: 13px;
-        line-height: 1.5;
-      }
-
-      .scorecard {
+      .matrix {
         overflow-x: auto;
       }
 
-      .scorecard table {
+      .matrix table {
         width: 100%;
         border-collapse: collapse;
         min-width: 640px;
       }
 
-      .scorecard th,
-      .scorecard td {
+      .matrix th,
+      .matrix td {
+        border: 1px solid rgba(110, 140, 200, 0.2);
         padding: 10px;
-        border: 1px solid var(--edge);
         text-align: center;
-        font-size: 13px;
+        font-size: 12px;
       }
 
-      .scorecard th {
-        background: #f6f8fd;
-        font-weight: 600;
+      .matrix th {
+        background: rgba(58, 164, 255, 0.15);
+        color: var(--ink);
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      .tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+
+      .tab {
+        padding: 6px 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(110, 140, 200, 0.35);
+        color: var(--muted);
+        cursor: pointer;
+        font-size: 12px;
+      }
+
+      .tab.active {
+        color: var(--ink);
+        background: rgba(58, 164, 255, 0.25);
+      }
+
+      .ghost {
+        background: linear-gradient(110deg, rgba(255, 255, 255, 0.06) 8%, rgba(255, 255, 255, 0.14) 18%, rgba(255, 255, 255, 0.06) 33%);
+        background-size: 200% 100%;
+        animation: shimmer 2s infinite linear;
+        color: transparent;
+      }
+
+      @keyframes shimmer {
+        0% {
+          background-position: 200% 0;
+        }
+        100% {
+          background-position: -200% 0;
+        }
+      }
+
+      .modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(4, 8, 16, 0.75);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 40;
+      }
+
+      .modal.hidden {
+        display: none;
+      }
+
+      .modal-card {
+        width: min(640px, 92vw);
+        padding: 20px;
+      }
+
+      .modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .helper {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .run-list {
+        margin-top: 10px;
+        display: grid;
+        gap: 8px;
+        max-height: 180px;
+        overflow: auto;
+      }
+
+      .run-item {
+        padding: 8px 10px;
+        border-radius: 12px;
+        border: 1px solid rgba(110, 140, 200, 0.3);
+        background: rgba(15, 24, 44, 0.4);
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 12px;
+      }
+
+      .badge {
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 10px;
+        background: rgba(58, 164, 255, 0.2);
+        border: 1px solid rgba(58, 164, 255, 0.35);
+      }
+
+      .node {
+        padding: 16px 10px;
+        text-align: center;
+        border-radius: 18px;
+        border: 1px solid rgba(110, 140, 200, 0.3);
+        background: rgba(15, 24, 44, 0.6);
+        text-transform: capitalize;
+        font-size: 12px;
+        letter-spacing: 0.06em;
+        clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .node:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0 18px rgba(58, 164, 255, 0.35);
+      }
+
+      .node.running {
+        box-shadow: 0 0 18px rgba(58, 164, 255, 0.7);
+        border-color: rgba(58, 164, 255, 0.6);
+      }
+
+      .node.success {
+        border-color: rgba(51, 228, 154, 0.7);
+        box-shadow: 0 0 16px rgba(51, 228, 154, 0.5);
+      }
+
+      .node.error {
+        border-color: rgba(255, 92, 119, 0.7);
+        box-shadow: 0 0 16px rgba(255, 92, 119, 0.5);
+      }
+
+      .run-steps {
+        margin-top: 10px;
+        display: grid;
+        gap: 6px;
+        font-size: 12px;
+      }
+
+      .run-step {
+        display: flex;
+        justify-content: space-between;
+        padding: 6px 8px;
+        border-radius: 8px;
+        background: rgba(15, 24, 44, 0.5);
+        border: 1px solid rgba(110, 140, 200, 0.2);
+      }
+
+      .matrix td {
+        position: relative;
       }
 
       .grade {
@@ -258,660 +514,1415 @@
         font-weight: 700;
       }
 
-      .recommendations {
-        display: grid;
-        gap: 12px;
+      .score {
+        font-size: 11px;
+        color: var(--muted);
       }
 
-      .chip {
+      .confidence {
+        font-size: 10px;
+        color: var(--muted);
+        text-transform: uppercase;
+      }
+
+      .status-pill {
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(110, 140, 200, 0.3);
+        background: rgba(15, 24, 44, 0.5);
+        font-size: 12px;
+      }
+
+      .tag {
         display: inline-flex;
         gap: 6px;
         align-items: center;
-        padding: 6px 12px;
+        padding: 4px 10px;
         border-radius: 999px;
-        background: var(--accent-soft);
-        color: var(--accent);
-        font-weight: 600;
-        font-size: 12px;
+        font-size: 11px;
+        background: rgba(40, 240, 200, 0.12);
+        border: 1px solid rgba(40, 240, 200, 0.4);
       }
 
-      .footer {
-        margin-top: 40px;
-        font-size: 12px;
-        color: var(--muted);
-        text-align: center;
+      .card-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 16px;
       }
     </style>
   </head>
   <body>
     <div class="page">
-      <header>
-        <div class="brand">
-          <span>ScenarioOps</span>
-          <h1>Strategic Dashboard</h1>
-        </div>
-        <div class="header-actions">
-          <button class="ghost" id="refreshBtn">Refresh</button>
-          <button class="pill" id="accessBtn">Access</button>
-        </div>
-      </header>
-
-      <section class="hero">
-        <h2 id="heroTitle">Loading run...</h2>
-        <p id="heroSubtitle">Preparing strategic intelligence.</p>
-        <div class="hero-meta" id="heroMeta"></div>
-      </section>
-
-      <section class="grid cols-3">
-        <div class="panel">
-          <h3>Company Overview</h3>
-          <p id="companyOverview">Awaiting data.</p>
-        </div>
-        <div class="panel">
-          <h3>Strategic Focus</h3>
-          <p id="strategicFocus">Awaiting data.</p>
-        </div>
-        <div class="panel">
-          <h3>Node Reference</h3>
-          <div class="node-list" id="nodeReference"></div>
-        </div>
-      </section>
-
-      <h3 class="section-title">Run Selector</h3>
-      <section class="panel">
-        <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
-          <select id="runSelect"></select>
-          <button class="ghost" id="loadRunBtn">Load run</button>
-          <span id="runSelectStatus" style="font-size:12px; color:var(--muted);"></span>
-        </div>
-      </section>
-
-      <h3 class="section-title">Run Builder</h3>
-      <section class="panel" id="runBuilder">
-        <div class="grid cols-3">
-          <label>
-            Scope
-            <select id="runScope">
-              <option value="country">Country</option>
-              <option value="region">Region</option>
-              <option value="world">World</option>
-            </select>
-          </label>
-          <label>
-            Value
-            <input id="runValue" placeholder="United States" />
-          </label>
-          <label>
-            Horizon (months)
-            <input id="runHorizon" type="number" min="36" max="120" value="60" />
-          </label>
-          <label>
-            Company (optional)
-            <input id="runCompany" placeholder="Microsoft" />
-          </label>
-          <label>
-            Mode
-            <select id="runMode">
-              <option value="true">Demo / Mock</option>
-              <option value="false">Live</option>
-            </select>
-          </label>
-          <label>
-            Resume from node
-            <select id="resumeFrom">
-              <option value="">Start new run</option>
-              <option value="charter">Charter</option>
-              <option value="focal_issue">Focal Issue</option>
-              <option value="company_profile">Company Profile</option>
-              <option value="retrieval_real">Retrieval</option>
-              <option value="forces">Forces</option>
-              <option value="clusters">Clusters</option>
-              <option value="uncertainty_axes">Uncertainty Axes</option>
-              <option value="scenarios">Scenarios</option>
-              <option value="scenario_media">Scenario Media</option>
-              <option value="strategies">Strategies</option>
-              <option value="wind_tunnel">Wind Tunnel</option>
-              <option value="auditor">Auditor</option>
-            </select>
-          </label>
-          <label>
-            Resume run id
-            <input id="resumeRunId" placeholder="Leave blank for new run" />
-          </label>
-          <label>
-            Generate strategies
-            <select id="generateStrategies">
-              <option value="true">Yes</option>
-              <option value="false">No</option>
-            </select>
-          </label>
-          <label>
-            Upload documents
-            <input id="runUploads" type="file" multiple />
-          </label>
-          <div style="display:flex; align-items:end; gap:8px;">
-            <button class="pill" id="runSubmit">Create Run</button>
-            <span id="runStatus" style="font-size:12px; color:var(--muted);"></span>
+      <div class="glass status-bar">
+        <div class="status-left">
+          <div class="pulse" id="pulseIndicator"></div>
+          <div>
+            <div style="font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted);">
+              ScenarioOps War Room
+            </div>
+            <div id="statusText" style="font-weight: 600;">Connecting...</div>
+            <div id="statusDetail" class="helper">Awaiting connection.</div>
           </div>
         </div>
-        <details style="margin-top:16px;">
-          <summary style="font-weight:600; cursor:pointer;">Advanced overrides (optional)</summary>
-          <p style="color:var(--muted); font-size:13px;">
-            JSON overrides applied to this run only. Examples: allow_web, seed, llm_model, search_model,
-            summarizer_model, embed_model, image_model, min_evidence_ok, min_evidence_total, max_failed_ratio.
-          </p>
-          <textarea id="runOverrides" style="width:100%; min-height:120px; font-family:monospace;">{}</textarea>
-        </details>
+        <div class="context-ribbon" id="contextRibbon"></div>
+        <div id="runState" class="status-pill">Idle</div>
+        <div class="status-actions">
+          <button id="accessBtn">Access</button>
+          <button id="configBtn">Config</button>
+          <button id="newRunBtn">New Run</button>
+          <button id="openLatestBtn">Open Latest</button>
+          <button>Export</button>
+          <button>Share</button>
+        </div>
+      </div>
+
+      <nav class="glass top-nav" id="navBar">
+        <a class="nav-link" data-route="/" href="/">Command Center</a>
+        <a class="nav-link" data-route="/intelligence" href="/intelligence">Intelligence</a>
+        <a class="nav-link" data-route="/scenarios" href="/scenarios">Scenario Lab</a>
+        <a class="nav-link" data-route="/wind-tunnel" href="/wind-tunnel">Wind Tunnel</a>
+        <a class="nav-link" data-route="/actions" href="/actions">Action Console</a>
+      </nav>
+
+      <section class="section" data-view="/runs">
+        <div class="glass" id="emptyState" style="padding: 18px; margin-bottom: 16px; display: none;">
+          <div style="font-size: 24px; font-weight: 600;">No runs available.</div>
+          <div class="helper">Check your API access or create a new run.</div>
+        </div>
+
+        <div class="glass kpi-row">
+          <div class="glass kpi-card">
+            <h3>Market Volatility</h3>
+            <p id="kpiVolatility">--</p>
+          </div>
+          <div class="glass kpi-card">
+            <h3>Strategy Confidence</h3>
+            <p id="kpiConfidence">--</p>
+          </div>
+          <div class="glass kpi-card">
+            <h3>ROI Projection</h3>
+            <p id="kpiROI">--</p>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="card-grid">
+            <div class="glass card">
+              <div class="section-title">Company Overview</div>
+              <p id="companyOverview" class="helper">Awaiting data.</p>
+            </div>
+            <div class="glass card">
+              <div class="section-title">Strategic Focus</div>
+              <p id="strategicFocus" class="helper">Awaiting data.</p>
+            </div>
+            <div class="glass card">
+              <div class="section-title">Node Reference</div>
+              <div id="nodeReference" class="helper">Sentinel, Analyst, Scenario Builder, Critic, Planner, Auditor.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="glass" style="padding: 18px;">
+            <div class="section-title">Executive Briefing</div>
+            <div id="briefing" class="ghost" style="border-radius: 12px; padding: 14px; min-height: 80px;"></div>
+          </div>
+        </div>
+
+        <div class="section layout-grid">
+          <aside class="glass sidebar">
+            <div class="section-title">Run Controls</div>
+            <label>Run Library<select id="runSelect"></select></label>
+            <div style="display:flex; gap:8px; margin-bottom: 10px;">
+              <button id="loadRunBtn">Load Run</button>
+              <button id="latestRunBtn">Latest</button>
+            </div>
+            <div class="section-title" style="margin-top: 10px;">Recent Runs</div>
+            <div id="runList" class="run-list"></div>
+            <label>Resume last run<input id="resumeLast" type="checkbox" /></label>
+            <label>Resume from node<select id="resumeNode"></select></label>
+            <label>Run ID<input id="resumeRunId" placeholder="Optional" /></label>
+            <label>Uploads<input id="uploadInput" type="file" multiple /></label>
+            <div id="uploadStatus" class="helper"></div>
+            <label>Generate strategies<select id="generateStrategies">
+              <option value="true">Yes</option>
+              <option value="false">No</option>
+            </select></label>
+            <div class="section-title" style="margin-top: 14px;">Filters</div>
+            <label>Company Focus<input id="controlCompany" placeholder="Microsoft" /></label>
+            <label>Scenario Depth<input id="controlDepth" type="range" min="1" max="10" value="6" /></label>
+            <label>Time Horizon<input id="controlHorizon" type="range" min="36" max="120" value="60" /></label>
+            <label>Filter Signals<select id="controlSignal"><option>All</option></select></label>
+            <label>Filter Scenarios<select id="controlScenario"><option>All</option></select></label>
+          </aside>
+
+          <div class="glass workflow-map">
+            <div class="section-title">Workflow Map</div>
+            <div class="workflow-nodes" id="workflowNodes"></div>
+          </div>
+
+          <div class="glass detail-card" id="nodeDetail">
+            <div class="section-title">Node Detail</div>
+            <div id="nodeDetailBody" class="ghost" style="padding: 12px; border-radius: 12px; min-height: 240px;"></div>
+            <div class="section-title" style="margin-top: 14px;">Run Steps</div>
+            <div id="runSteps" class="run-steps"></div>
+            <div class="section-title" style="margin-top: 14px;">Artifacts</div>
+            <div id="artifactList" class="run-steps"></div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="glass" style="padding: 18px;">
+            <div style="display:flex; justify-content: space-between; align-items: center;">
+              <div class="section-title">Terminal Lite</div>
+              <label class="helper" style="display:flex; gap:6px; align-items:center;">
+                <input type="checkbox" id="toggleRawLogs" />
+                Show raw logs
+              </label>
+            </div>
+            <div class="tabs" id="logTabs">
+              <div class="tab active" data-log="all">All Logs</div>
+              <div class="tab" data-log="sentinel">Sentinel</div>
+              <div class="tab" data-log="analyst">Analyst</div>
+              <div class="tab" data-log="critic">Critic</div>
+              <div class="tab" data-log="errors">Errors</div>
+            </div>
+            <div class="terminal" id="terminal"></div>
+          </div>
+        </div>
       </section>
 
-      <details class="panel" id="adminPanel" style="margin-top:24px; display:none;">
-        <summary style="font-weight:600; cursor:pointer;">Admin Configuration</summary>
-        <p style="color:var(--muted); font-size:13px;">
-          Advanced settings for models, retrieval thresholds, and seed. Changes apply to new runs.
-        </p>
-        <textarea id="configJson" style="width:100%; min-height:220px; font-family:monospace;"></textarea>
-        <div style="margin-top:12px; display:flex; gap:10px; align-items:center;">
-          <button class="pill" id="configSave">Save Config</button>
-          <span id="configStatus" style="font-size:12px; color:var(--muted);"></span>
+      <section class="section hidden" data-view="/intelligence">
+        <div class="glass" style="padding: 18px;">
+          <div class="section-title">Sentinel Feed</div>
+          <div id="signalFeed" class="cards"></div>
         </div>
-      </details>
+      </section>
 
-      <h3 class="section-title">Strategic Drivers</h3>
-      <section class="cards" id="forceCards"></section>
+      <section class="section hidden" data-view="/scenarios">
+        <div class="glass" style="padding: 18px;">
+          <div class="section-title">Scenario Lab</div>
+          <div class="matrix" id="scenarioMatrix" style="margin-bottom: 16px;"></div>
+          <div class="cards" id="scenarioCards"></div>
+        </div>
+      </section>
 
-      <h3 class="section-title">Scenario Outlook</h3>
-      <section class="cards" id="scenarioCards"></section>
+      <section class="section hidden" data-view="/wind-tunnel">
+        <div class="glass" style="padding: 18px;">
+          <div class="section-title">Strategy Score Grid</div>
+          <div class="matrix" id="scoreMatrix"></div>
+          <div class="section-title" style="margin-top: 16px;">Cell Evidence</div>
+          <div id="windDetail" class="glass" style="padding: 12px; min-height: 120px;">Select a cell for details.</div>
+          <div class="section-title" style="margin-top: 18px;">Comparative Insights</div>
+          <div id="insights" class="cards"></div>
+          <div class="section-title" style="margin-top: 18px;">Strategy Ranking Summary</div>
+          <div class="matrix" id="rankingTable"></div>
+        </div>
+      </section>
 
-      <h3 class="section-title">Strategy Options</h3>
-      <section class="cards" id="strategyCards"></section>
+      <section class="section hidden" data-view="/actions">
+        <div class="glass" style="padding: 18px;">
+          <div class="section-title">Action Console</div>
+          <div class="cards" id="actionBoard"></div>
+          <div style="margin-top:16px; display:flex; gap:10px;">
+            <button>Export PDF</button>
+            <button>Export JSON</button>
+            <button>Send to Jira</button>
+            <button>Send to Slack</button>
+          </div>
+        </div>
+      </section>
 
-      <h3 class="section-title">Wind Tunnel Scorecard</h3>
-      <section class="panel scorecard" id="scorecardPanel"></section>
+      <section class="section">
+        <div class="glass" style="padding: 18px;">
+          <div class="section-title">Strategic Forge</div>
+          <div class="form" id="wizard">
+            <div id="wizardSteps"></div>
+            <div style="margin-top: 12px; display:flex; gap:10px;">
+              <button id="prevStep">Back</button>
+              <button class="primary" id="nextStep">Next</button>
+              <button class="primary" id="launchRun">Launch Run</button>
+            </div>
+            <div id="runStatus" class="helper" style="margin-top: 10px;"></div>
+          </div>
+          <details style="margin-top:12px;" id="advancedPanel">
+            <summary style="cursor:pointer;">Developer Overrides (advanced)</summary>
+            <div class="helper" style="margin: 8px 0 12px;">
+              Configure precise model + data settings. These map to runtime settings overrides.
+            </div>
+            <div class="card-grid">
+              <label>LLM Model<select id="advLlmModel">
+                <option value="">Default</option>
+                <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
+                <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+              </select></label>
+              <label>Search Model<select id="advSearchModel">
+                <option value="">Default</option>
+                <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
+                <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+              </select></label>
+              <label>Summarizer Model<select id="advSummarizerModel">
+                <option value="">Default</option>
+                <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
+                <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+              </select></label>
+              <label>Image Model<select id="advImageModel">
+                <option value="">Default</option>
+                <option value="gemini-2.5-flash-image">Gemini 2.5 Flash Image</option>
+                <option value="imagen-3.0-generate-002">Imagen 3</option>
+              </select></label>
+              <label>Embedding Model<input id="advEmbedModel" placeholder="local-hash-256" /></label>
+              <label>Temperature<input id="advTemperature" type="number" step="0.1" min="0" max="2" placeholder="0.2" /></label>
+              <label>Seed<input id="advSeed" type="number" placeholder="Optional" /></label>
+              <label>Sources Policy<select id="advSourcesPolicy">
+                <option value="">Default</option>
+                <option value="fixtures">Fixtures</option>
+                <option value="academic_only">Academic Only</option>
+                <option value="mixed_reputable">Mixed Reputable</option>
+              </select></label>
+              <label>Allow Web<select id="advAllowWeb">
+                <option value="">Default</option>
+                <option value="true">True</option>
+                <option value="false">False</option>
+              </select></label>
+              <label>Simulate Evidence<select id="advSimulateEvidence">
+                <option value="">Default</option>
+                <option value="true">True</option>
+                <option value="false">False</option>
+              </select></label>
+              <label>Min Sources / Domain<input id="advMinSourcesDomain" type="number" placeholder="8" /></label>
+              <label>Min Citations / Driver<input id="advMinCitations" type="number" placeholder="2" /></label>
+              <label>Min Forces<input id="advMinForces" type="number" placeholder="60" /></label>
+              <label>Min Forces / Domain<input id="advMinForcesDomain" type="number" placeholder="10" /></label>
+              <label>Min Evidence OK<input id="advMinEvidenceOk" type="number" placeholder="10" /></label>
+              <label>Min Evidence Total<input id="advMinEvidenceTotal" type="number" placeholder="15" /></label>
+              <label>Max Failed Ratio<input id="advMaxFailedRatio" type="number" step="0.05" placeholder="Optional" /></label>
+            </div>
+            <details style="margin-top: 12px;">
+              <summary style="cursor:pointer;">Preview (read-only)</summary>
+              <textarea id="advancedPreview" rows="6" style="width:100%; font-family: var(--font-mono);" readonly></textarea>
+            </details>
+          </details>
+        </div>
+      </section>
+    </div>
 
-      <h3 class="section-title">Recommendations & Triggers</h3>
-      <section class="panel recommendations" id="recommendationPanel"></section>
+    <div class="modal hidden" id="accessModal">
+      <div class="glass modal-card">
+        <div class="section-title">API Access</div>
+        <label>API Base URL<input id="apiBaseInput" placeholder="http://localhost:8502" /></label>
+        <label>API Key<input id="apiKeyInput" type="password" placeholder="Enter API key" /></label>
+        <div class="helper">Stored locally in your browser. Required if auth is enabled.</div>
+        <div class="modal-actions">
+          <button id="closeAccess">Cancel</button>
+          <button class="primary" id="saveAccess">Save</button>
+        </div>
+      </div>
+    </div>
 
-      <h3 class="section-title">Run Steps</h3>
-      <section class="panel" id="runStepsPanel"></section>
-
-      <h3 class="section-title">Recent Logs</h3>
-      <section class="panel" id="logsPanel"></section>
-
-      <div class="footer">ScenarioOps · Enterprise Preview</div>
+    <div class="modal hidden" id="configModal">
+      <div class="glass modal-card">
+        <div class="section-title">Admin Configuration</div>
+        <div class="helper">Requires an admin API key. Edit carefully.</div>
+        <textarea id="configEditor" rows="10" style="width:100%; font-family: var(--font-mono);"></textarea>
+        <div id="configStatus" class="helper"></div>
+        <div class="modal-actions">
+          <button id="closeConfig">Close</button>
+          <button class="primary" id="saveConfig">Save Config</button>
+        </div>
+      </div>
     </div>
 
     <script>
       const state = {
         runId: null,
         viewModel: null,
+        nodeEvents: [],
+        normalization: [],
+        logs: [],
+        runs: [],
+        latestLinks: [],
+        uploadedDocs: [],
+        connected: false,
+        lastEventAt: null,
       };
 
-      function getHeaders() {
-        const apiKey = localStorage.getItem("scenarioops_api_key");
-        if (!apiKey) return {};
-        return { "X-Api-Key": apiKey };
+      const defaultNodes = [
+        { id: "sentinel", label: "Sentinel" },
+        { id: "analyst", label: "Analyst" },
+        { id: "scenario_builder", label: "Scenario Builder" },
+        { id: "critic", label: "Critic" },
+        { id: "planner", label: "Planner" },
+        { id: "auditor", label: "Auditor" },
+      ];
+
+      const resumeSteps = [
+        "charter",
+        "focal_issue",
+        "company_profile",
+        "ingest_docs",
+        "retrieval_real",
+        "forces",
+        "ebe_rank",
+        "clusters",
+        "uncertainty_axes",
+        "scenarios",
+        "scenario_media",
+        "strategies",
+        "wind_tunnel",
+        "auditor",
+      ];
+
+      function apiBase() {
+        const base = localStorage.getItem("scenarioops_api_base") || "";
+        return base.endsWith("/") ? base.slice(0, -1) : base;
+      }
+
+      function apiHeaders() {
+        const key = localStorage.getItem("scenarioops_api_key");
+        return key ? { "X-Api-Key": key } : {};
+      }
+
+      async function fetchJson(path, options = {}) {
+        const url = path.startsWith("http") ? path : `${apiBase()}${path}`;
+        const res = await fetch(url, {
+          headers: { ...apiHeaders(), ...(options.headers || {}) },
+          ...options,
+        });
+        if (!res.ok) {
+          const text = await res.text();
+          const error = new Error(text || res.statusText);
+          error.status = res.status;
+          throw error;
+        }
+        const contentType = res.headers.get("content-type") || "";
+        if (contentType.includes("application/json")) {
+          return res.json();
+        }
+        return res.text();
       }
 
       async function fetchLatest() {
-        const res = await fetch("/latest", { headers: getHeaders() });
-        if (!res.ok) {
-          throw new Error("No runs available.");
-        }
-        return res.json();
-      }
-
-      async function fetchArtifact(runId, name) {
-        const res = await fetch(`/artifact/${runId}/${name}`, { headers: getHeaders() });
-        if (!res.ok) {
-          return null;
-        }
-        return res.json();
+        return fetchJson("/latest");
       }
 
       async function fetchRuns() {
-        const res = await fetch("/runs", { headers: getHeaders() });
-        if (!res.ok) return [];
-        const data = await res.json();
-        return data.runs || [];
+        return fetchJson("/runs").then((data) => data.runs || []);
+      }
+
+      async function fetchArtifact(runId, name) {
+        return fetchJson(`/artifact/${runId}/${name}`);
       }
 
       async function fetchNodeEvents(runId) {
-        const res = await fetch(`/run/${runId}/node_events`, { headers: getHeaders() });
-        if (!res.ok) return [];
-        const data = await res.json();
-        return data.entries || [];
+        return fetchJson(`/run/${runId}/node_events`).then((d) => d.entries || []);
       }
 
       async function fetchNormalization(runId) {
-        const res = await fetch(`/run/${runId}/normalization`, { headers: getHeaders() });
-        if (!res.ok) return [];
-        const data = await res.json();
-        return data.entries || [];
+        return fetchJson(`/run/${runId}/normalization`).then((d) => d.entries || []);
       }
 
       async function fetchConfig() {
-        const res = await fetch("/config", { headers: getHeaders() });
-        if (!res.ok) {
-          return null;
-        }
-        return res.json();
+        return fetchJson("/config");
       }
 
       async function saveConfig(settings) {
-        const res = await fetch("/config", {
+        return fetchJson("/config", {
           method: "POST",
-          headers: { "Content-Type": "application/json", ...getHeaders() },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ settings }),
         });
-        if (!res.ok) {
-          throw new Error("Failed to save config.");
+      }
+
+      async function uploadFiles(files) {
+        const form = new FormData();
+        Array.from(files).forEach((file) => form.append("files", file));
+        return fetchJson("/upload", { method: "POST", body: form });
+      }
+
+      function setStatus(connected, message, detail) {
+        state.connected = connected;
+        const pulse = document.getElementById("pulseIndicator");
+        pulse.classList.toggle("off", !connected);
+        document.getElementById("statusText").textContent = message;
+        const baseLabel = apiBase() || window.location.origin;
+        const last = state.lastEventAt ? ` · Last update ${state.lastEventAt.toLocaleTimeString()}` : "";
+        document.getElementById("statusDetail").textContent =
+          detail || (connected ? `Connected to ${baseLabel}${last}` : `Open Access to connect to ${baseLabel}.`);
+        if (connected) {
+          state.lastEventAt = new Date();
         }
-        return res.json();
       }
 
-      function renderHero(viewModel, runId) {
-        const company = viewModel?.company_profile?.company_name || "ScenarioOps";
-        document.getElementById("heroTitle").textContent = `${company} Strategic Outlook`;
-        document.getElementById("heroSubtitle").textContent =
-          viewModel?.focal_issue?.focal_issue || "Strategic situation overview.";
-        document.getElementById("heroMeta").textContent = `Run ${runId}`;
+      function showEmptyState(show) {
+        const emptyState = document.getElementById("emptyState");
+        emptyState.style.display = show ? "block" : "none";
       }
 
-      function renderOverview(viewModel) {
-        document.getElementById("companyOverview").textContent =
-          viewModel?.company_profile?.summary ||
-          viewModel?.company_profile?.description ||
-          "Company profile pending.";
-        const charter = viewModel?.charter || {};
-        document.getElementById("strategicFocus").textContent =
-          charter?.purpose || viewModel?.focal_issue?.focal_issue || "Strategic focus pending.";
-      }
-
-      function renderNodeReference(viewModel) {
-        const nodes = [
-          { key: "charter", label: "Charter" },
-          { key: "focal_issue", label: "Focal Issue" },
-          { key: "company_profile", label: "Company Profile" },
-          { key: "evidence_units", label: "Evidence" },
-          { key: "forces", label: "Forces" },
-          { key: "clusters", label: "Clusters" },
-          { key: "uncertainty_axes", label: "Uncertainty Axes" },
-          { key: "scenarios", label: "Scenarios" },
-          { key: "strategies", label: "Strategies" },
-          { key: "wind_tunnel_evaluations_v2", label: "Wind Tunnel V2" },
+      function updateContext(viewModel, runId) {
+        const ribbon = document.getElementById("contextRibbon");
+        ribbon.innerHTML = "";
+        const scope = viewModel?.focal_issue?.scope || {};
+        const items = [
+          scope.geography || viewModel?.focal_issue?.geography || "Global",
+          `${scope.time_horizon_months || viewModel?.focal_issue?.time_horizon_months || 60} Months`,
+          viewModel?.company_profile?.company_name || viewModel?.charter?.title || "Company",
         ];
-        const container = document.getElementById("nodeReference");
+        items.forEach((item) => {
+          const pill = document.createElement("div");
+          pill.className = "context-pill";
+          pill.textContent = item;
+          ribbon.appendChild(pill);
+        });
+        const status = viewModel?.run_meta?.status || "idle";
+        document.getElementById("runState").textContent = runId ? `${status.toUpperCase()} - ${runId}` : "Idle";
+      }
+
+      function renderCompanyCards() {
+        const company = state.viewModel?.company_profile || {};
+        const focus = state.viewModel?.focal_issue || {};
+        const companyText = company.summary || company.company_name || "Awaiting data.";
+        const focusText = focus.focal_issue || focus.purpose || state.viewModel?.charter?.purpose || "Awaiting data.";
+        document.getElementById("companyOverview").textContent = companyText;
+        document.getElementById("strategicFocus").textContent = focusText;
+      }
+
+      function renderKPIs() {
+        const scenarios = state.viewModel?.scenarios || [];
+        const rankings = state.viewModel?.wind_tunnel_evaluations_v2?.rankings || {};
+        const overall = (rankings.overall || [])[0];
+        const evals = state.viewModel?.wind_tunnel_evaluations_v2?.evaluations || [];
+        const avgScore = evals.length
+          ? (evals.reduce((sum, e) => sum + (e.score_0_100 || 0), 0) / evals.length).toFixed(1)
+          : "--";
+        document.getElementById("kpiVolatility").textContent = `${scenarios.length} scenarios`;
+        document.getElementById("kpiConfidence").textContent = overall ? `${overall.overall_score}` : avgScore;
+        document.getElementById("kpiROI").textContent = overall ? `Robustness ${overall.robustness_index}` : "--";
+      }
+
+      function renderBriefing() {
+        const el = document.getElementById("briefing");
+        el.classList.remove("ghost");
+        const daily = state.viewModel?.daily_brief_md;
+        if (daily) {
+          const lines = daily.split("\n").filter((line) => line.trim()).slice(0, 3);
+          el.innerHTML = `<ul>${lines.map((line) => `<li>${line.replace(/^[-*]\\s*/, "")}</li>`).join("")}</ul>`;
+          return;
+        }
+        const focal = state.viewModel?.focal_issue?.focal_issue || "Briefing pending.";
+        el.innerHTML = `<ul><li>${focal}</li><li>${state.viewModel?.charter?.purpose || ""}</li><li>Next: review wind tunnel recommendations.</li></ul>`;
+      }
+
+      function renderWorkflow() {
+        const map = document.getElementById("workflowNodes");
+        map.innerHTML = "";
+        defaultNodes.forEach((node) => {
+          const entry = state.nodeEvents.find((e) => (e.node || "").toLowerCase().includes(node.id));
+          const div = document.createElement("div");
+          div.className = "node";
+          const status = String(entry?.status || "").toUpperCase();
+          if (status.includes("RUN")) div.classList.add("running");
+          if (status.includes("FAIL")) div.classList.add("error");
+          if (status.includes("OK") || status.includes("DONE")) div.classList.add("success");
+          div.textContent = node.label;
+          div.addEventListener("click", () => renderNodeDetail(entry || { node: node.id, status: "PENDING" }));
+          map.appendChild(div);
+        });
+      }
+
+      function renderNodeDetail(entry) {
+        const detail = document.getElementById("nodeDetailBody");
+        detail.classList.remove("ghost");
+        if (!entry) {
+          detail.textContent = "Select a node to view details.";
+          return;
+        }
+        detail.innerHTML = `
+          <div><strong>${entry.node || "node"}</strong></div>
+          <div>Status: ${entry.status || "OK"}</div>
+          <div>Duration: ${entry.duration_seconds || 0}s</div>
+          <div>Notes: ${entry.message || entry.detail || "None"}</div>
+        `;
+      }
+
+      function renderRunSteps() {
+        const container = document.getElementById("runSteps");
         container.innerHTML = "";
-        nodes.forEach((node) => {
-          const item = document.createElement("div");
-          item.className = "node-item";
-          const label = document.createElement("strong");
-          label.textContent = node.label;
-          const status = document.createElement("span");
-          const hasData = Boolean(viewModel?.[node.key]);
-          status.className = `node-status ${hasData ? "ready" : ""}`;
-          status.textContent = hasData ? "ready" : "pending";
-          item.append(label, status);
-          container.appendChild(item);
+        const steps = state.nodeEvents.length ? state.nodeEvents : defaultNodes.map((node) => ({ node: node.id, status: "PENDING" }));
+        steps.slice(0, 12).forEach((step) => {
+          const div = document.createElement("div");
+          div.className = "run-step";
+          div.innerHTML = `<span>${step.node || "node"}</span><span>${step.status || "PENDING"}</span>`;
+          container.appendChild(div);
         });
       }
 
-      function renderForces(viewModel) {
-        const cards = document.getElementById("forceCards");
-        cards.innerHTML = "";
-        const forces = viewModel?.forces_ranked?.forces || viewModel?.forces || [];
-        const top = forces.slice(0, 6);
-        if (!top.length) {
-          cards.innerHTML = "<div class='card'>Forces pending.</div>";
+      function renderArtifacts() {
+        const container = document.getElementById("artifactList");
+        container.innerHTML = "";
+        if (!state.latestLinks.length) {
+          container.innerHTML = `<div class="helper">Artifacts will appear after a run completes.</div>`;
           return;
         }
-        top.forEach((force) => {
-          const card = document.createElement("div");
-          card.className = "card";
-          const title = document.createElement("h4");
-          title.textContent = force.label || force.name || "Force";
-          const desc = document.createElement("p");
-          desc.textContent = force.mechanism || force.rationale || "Impact assessment pending.";
-          card.append(title, desc);
-          cards.appendChild(card);
+        state.latestLinks.slice(0, 8).forEach((item) => {
+          const div = document.createElement("div");
+          div.className = "run-step";
+          div.innerHTML = `<span>${item}</span>`;
+          container.appendChild(div);
         });
       }
 
-      function renderScenarios(viewModel) {
-        const cards = document.getElementById("scenarioCards");
-        cards.innerHTML = "";
-        const scenarios = viewModel?.scenarios || [];
-        if (!scenarios.length) {
-          cards.innerHTML = "<div class='card'>Scenarios pending.</div>";
-          return;
-        }
-        scenarios.slice(0, 6).forEach((scenario) => {
-          const card = document.createElement("div");
-          card.className = "card";
-          const title = document.createElement("h4");
-          title.textContent = scenario.name || scenario.id || "Scenario";
-          const desc = document.createElement("p");
-          desc.textContent = scenario.narrative || scenario.summary || "Narrative pending.";
-          card.append(title, desc);
-          cards.appendChild(card);
+      function buildLogLines() {
+        const includeRaw = document.getElementById("toggleRawLogs").checked;
+        const lines = [];
+        state.nodeEvents.forEach((entry) => {
+          lines.push({ text: `${entry.node || "node"} :: ${entry.status || "OK"}`, tag: entry.node || "node" });
         });
-      }
-
-      function renderStrategies(viewModel) {
-        const cards = document.getElementById("strategyCards");
-        cards.innerHTML = "";
-        const strategies = viewModel?.strategies || [];
-        if (!strategies.length) {
-          cards.innerHTML = "<div class='card'>Strategies pending.</div>";
-          return;
-        }
-        strategies.slice(0, 6).forEach((strategy) => {
-          const card = document.createElement("div");
-          card.className = "card";
-          const title = document.createElement("h4");
-          title.textContent = strategy.name || strategy.id || "Strategy";
-          const desc = document.createElement("p");
-          desc.textContent = strategy.objective || "Objective pending.";
-          card.append(title, desc);
-          cards.appendChild(card);
-        });
-      }
-
-      function buildScorecard(evaluations) {
-        const scenarioIds = [];
-        const strategyIds = [];
-        evaluations.forEach((evalItem) => {
-          if (evalItem.scenario_id && !scenarioIds.includes(evalItem.scenario_id)) {
-            scenarioIds.push(evalItem.scenario_id);
-          }
-          if (evalItem.strategy_id && !strategyIds.includes(evalItem.strategy_id)) {
-            strategyIds.push(evalItem.strategy_id);
-          }
-        });
-        const rows = [];
-        const header = ["Strategy", ...scenarioIds];
-        rows.push(header);
-        strategyIds.forEach((strategyId) => {
-          const name = evaluations.find((e) => e.strategy_id === strategyId)?.strategy_name || strategyId;
-          const row = [name];
-          scenarioIds.forEach((scenarioId) => {
-            const cell = evaluations.find(
-              (e) => e.strategy_id === strategyId && e.scenario_id === scenarioId
-            );
-            if (!cell) {
-              row.push("-");
-            } else {
-              row.push(`${cell.grade_letter} ${cell.score_0_100}`);
-            }
+        if (includeRaw) {
+          state.normalization.forEach((entry) => {
+            lines.push({ text: `normalize :: ${entry.operation || ""}`, tag: "raw" });
           });
-          rows.push(row);
-        });
-        return rows;
+        }
+        return lines;
       }
 
-      function renderScorecard(viewModel) {
-        const panel = document.getElementById("scorecardPanel");
-        panel.innerHTML = "";
-        const evaluations = viewModel?.wind_tunnel_evaluations_v2?.evaluations || [];
-        if (!evaluations.length) {
-          panel.textContent = "Scorecard pending.";
+      function renderTerminal(logs) {
+        const terminal = document.getElementById("terminal");
+        if (!logs.length) {
+          terminal.innerHTML = "<div class=\"helper\">No logs yet. Launch a run to see live activity.</div>";
           return;
         }
-        const rows = buildScorecard(evaluations);
+        terminal.innerHTML = logs.map((line) => `<div>${line.text}</div>`).join("");
+      }
+
+      function renderSignalFeed() {
+        const feed = document.getElementById("signalFeed");
+        feed.innerHTML = "";
+        const forces = state.viewModel?.forces_ranked?.forces || state.viewModel?.driving_forces || [];
+        const drivers = state.viewModel?.drivers || [];
+        const items = forces.length ? forces : drivers;
+        if (!items.length) {
+          feed.innerHTML = `<div class="helper">No intelligence signals yet.</div>`;
+          return;
+        }
+        items.slice(0, 8).forEach((item) => {
+          const card = document.createElement("div");
+          card.className = "glass card";
+          const label = item.label || item.force || item.title || "Signal";
+          const summary = item.rationale || item.mechanism || item.summary || "";
+          const domain = item.domain || item.category || "Signal";
+          card.innerHTML = `<div class="tag">${domain}</div><h4>${label}</h4><p>${summary}</p>`;
+          feed.appendChild(card);
+        });
+      }
+
+      function renderScenarioMatrix() {
+        const matrix = document.getElementById("scenarioMatrix");
+        const scenarios = state.viewModel?.scenarios || [];
+        const axes = state.viewModel?.uncertainty_axes || [];
+        if (axes.length < 2 || scenarios.length < 4) {
+          matrix.innerHTML = `<div class="helper">Scenario matrix will appear after axes are generated.</div>`;
+          return;
+        }
         const table = document.createElement("table");
-        rows.forEach((row, idx) => {
+        const header = document.createElement("tr");
+        header.innerHTML = `<th></th><th>${axes[0].high || "High"}</th><th>${axes[0].low || "Low"}</th>`;
+        table.appendChild(header);
+        const rows = [
+          { label: axes[1].high || "High", scenarios: [scenarios[0], scenarios[1]] },
+          { label: axes[1].low || "Low", scenarios: [scenarios[2], scenarios[3]] },
+        ];
+        rows.forEach((row) => {
           const tr = document.createElement("tr");
-          row.forEach((cell) => {
-            const el = document.createElement(idx === 0 ? "th" : "td");
-            el.textContent = cell;
-            tr.appendChild(el);
-          });
+          tr.innerHTML = `<th>${row.label}</th>${row.scenarios.map((s) => `<td>${s?.name || s?.id || "Scenario"}</td>`).join("")}`;
           table.appendChild(tr);
         });
-        panel.appendChild(table);
+        matrix.innerHTML = "";
+        matrix.appendChild(table);
       }
 
-      function renderRecommendations(viewModel) {
-        const panel = document.getElementById("recommendationPanel");
-        panel.innerHTML = "";
-        const rec = viewModel?.wind_tunnel_evaluations_v2?.recommendations || null;
-        if (!rec) {
-          panel.textContent = "Recommendations pending.";
+      function renderScenarioCards() {
+        const container = document.getElementById("scenarioCards");
+        container.innerHTML = "";
+        const scenarios = state.viewModel?.scenarios || [];
+        scenarios.forEach((scenario) => {
+          const card = document.createElement("div");
+          card.className = "glass card";
+          card.innerHTML = `<h4>${scenario.name || scenario.id}</h4><p>${scenario.narrative || scenario.summary || ""}</p>`;
+          container.appendChild(card);
+        });
+      }
+
+      function renderWindDetail(evaluation) {
+        const detail = document.getElementById("windDetail");
+        if (!evaluation) {
+          detail.textContent = "Select a cell for details.";
           return;
         }
-        const primary = rec.primary_recommended_strategy || {};
-        const headline = document.createElement("div");
-        headline.innerHTML = `<strong>Recommended Strategy:</strong> ${
-          primary.strategy_name || primary.strategy_id || "TBD"
-        }`;
-        panel.appendChild(headline);
-        if (primary.rationale) {
-          const rationale = document.createElement("p");
-          rationale.textContent = primary.rationale;
-          panel.appendChild(rationale);
-        }
-        const hardening = document.createElement("div");
-        hardening.className = "chip";
-        hardening.textContent = "Hardening actions";
-        panel.appendChild(hardening);
-        const hardList = document.createElement("p");
-        hardList.textContent = (rec.hardening_actions || []).slice(0, 5).join("; ");
-        panel.appendChild(hardList);
-        const trigger = document.createElement("div");
-        trigger.className = "chip";
-        trigger.textContent = "Triggers to watch";
-        panel.appendChild(trigger);
-        const trigList = document.createElement("p");
-        trigList.textContent = (rec.triggers_to_watch || [])
-          .slice(0, 5)
-          .map((t) => t.description || "")
-          .join("; ");
-        panel.appendChild(trigList);
+        const bullets = evaluation.rationale_bullets || [];
+        const triggers = evaluation.trigger_points || [];
+        detail.innerHTML = `
+          <div><strong>${evaluation.strategy_name || evaluation.strategy_id}</strong> vs <strong>${evaluation.scenario_name || evaluation.scenario_id}</strong></div>
+          <div class="helper">Outcome: ${evaluation.outcome_label} | Score ${evaluation.score_0_100} | Confidence ${evaluation.confidence_0_1}</div>
+          <ul>${bullets.map((item) => `<li>${item}</li>`).join("")}</ul>
+          <div class="helper">Dominant forces: ${(evaluation.dominant_forces || []).join(", ") || "None"}</div>
+          <div class="helper">Failed assumptions: ${(evaluation.failed_assumptions || []).join(", ") || "None"}</div>
+          <div class="helper">Triggers: ${triggers.map((t) => t.description).join("; ") || "None"}</div>
+        `;
       }
 
-      function renderRunSteps(events) {
-        const panel = document.getElementById("runStepsPanel");
-        panel.innerHTML = "";
-        if (!events.length) {
-          panel.textContent = "No run steps logged yet.";
+      function renderWindTunnel() {
+        const matrix = document.getElementById("scoreMatrix");
+        matrix.innerHTML = "";
+        const evals = state.viewModel?.wind_tunnel_evaluations_v2?.evaluations || [];
+        const rankings = state.viewModel?.wind_tunnel_evaluations_v2?.rankings || {};
+        if (!evals.length) {
+          matrix.textContent = "No scores yet.";
           return;
         }
-        const grouped = {};
-        events.forEach((event) => {
-          const name = event.node || "unknown";
-          grouped[name] = event;
+        const scenarioMap = {};
+        const strategyMap = {};
+        evals.forEach((e) => {
+          scenarioMap[e.scenario_id] = e.scenario_name || e.scenario_id;
+          strategyMap[e.strategy_id] = e.strategy_name || e.strategy_id;
         });
-        Object.entries(grouped).forEach(([node, event]) => {
-          const item = document.createElement("div");
-          item.className = "node-item";
-          const label = document.createElement("strong");
-          label.textContent = node;
-          const status = document.createElement("span");
-          const normalized = (event.status || "").toUpperCase();
-          status.className = `node-status ${normalized === "OK" ? "ready" : ""}`;
-          status.textContent = normalized || (event.error ? "FAIL" : "OK");
-          item.append(label, status);
-          panel.appendChild(item);
+        const scenarios = Object.keys(scenarioMap);
+        const strategies = Object.keys(strategyMap);
+        const rankingMap = {};
+        (rankings.overall || []).forEach((entry) => {
+          rankingMap[entry.strategy_id] = entry;
         });
-      }
 
-      function renderLogs(events, norms) {
-        const panel = document.getElementById("logsPanel");
-        panel.innerHTML = "";
-        const lines = [];
-        events.slice(-8).forEach((event) => {
-          lines.push(`${event.node || "node"} · ${event.status || "done"} · ${event.duration_seconds || 0}s`);
-        });
-        norms.slice(-5).forEach((item) => {
-          lines.push(`normalize: ${item.node || ""} ${item.operation || ""}`);
-        });
-        if (!lines.length) {
-          panel.textContent = "No logs yet.";
-          return;
-        }
-        const list = document.createElement("ul");
-        list.style.margin = "0";
-        list.style.paddingLeft = "16px";
-        lines.forEach((line) => {
-          const li = document.createElement("li");
-          li.textContent = line;
-          list.appendChild(li);
-        });
-        panel.appendChild(list);
-      }
-
-      async function load() {
-        try {
-          const runList = await fetchRuns();
-          const runSelect = document.getElementById("runSelect");
-          runSelect.innerHTML = "";
-          runList.forEach((runId) => {
-            const opt = document.createElement("option");
-            opt.value = runId;
-            opt.textContent = runId;
-            runSelect.appendChild(opt);
+        const table = document.createElement("table");
+        const header = document.createElement("tr");
+        header.innerHTML = `<th>Strategy</th>${scenarios.map((s) => `<th>${scenarioMap[s]}</th>`).join("")}<th>Robustness</th>`;
+        table.appendChild(header);
+        strategies.forEach((strategy) => {
+          const row = document.createElement("tr");
+          const cells = scenarios
+            .map((scenario) => {
+              const cell = evals.find((e) => e.strategy_id === strategy && e.scenario_id === scenario);
+              if (!cell) return `<td>-</td>`;
+              const confidence = cell.confidence_0_1 >= 0.75 ? "High" : cell.confidence_0_1 >= 0.5 ? "Med" : "Low";
+              return `<td title="${cell.outcome_label}">
+                  <div class="grade">${cell.grade_letter}</div>
+                  <div class="score">${cell.score_0_100}</div>
+                  <div class="confidence">${confidence}</div>
+                </td>`;
+            })
+            .join("");
+          const ranking = rankingMap[strategy];
+          const robustness = ranking ? `${ranking.overall_score}/${ranking.min_score}` : "--";
+          row.innerHTML = `<td>${strategyMap[strategy]}</td>${cells}<td>${robustness}</td>`;
+          row.querySelectorAll("td").forEach((cell, idx) => {
+            if (idx === 0 || idx === scenarios.length + 1) return;
+            const scenarioId = scenarios[idx - 1];
+            cell.addEventListener("click", () => {
+              const evaluation = evals.find((e) => e.strategy_id === strategy && e.scenario_id === scenarioId);
+              renderWindDetail(evaluation);
+            });
           });
-          const config = await fetchConfig();
-          if (config && config.is_admin) {
-            const adminPanel = document.getElementById("adminPanel");
-            adminPanel.style.display = "block";
-            document.getElementById("configJson").value = JSON.stringify(
-              config.settings || {},
-              null,
-              2
-            );
-          }
+          table.appendChild(row);
+        });
+        matrix.appendChild(table);
 
-          const latest = await fetchLatest();
-          state.runId = latest.run_id;
-          if (runList.includes(latest.run_id)) {
-            runSelect.value = latest.run_id;
-          }
-          const viewModel = await fetchArtifact(latest.run_id, "view_model.json");
-          state.viewModel = viewModel || {};
-          renderHero(state.viewModel, latest.run_id);
-          renderOverview(state.viewModel);
-          renderNodeReference(state.viewModel);
-          renderForces(state.viewModel);
-          renderScenarios(state.viewModel);
-          renderStrategies(state.viewModel);
-          renderScorecard(state.viewModel);
-          renderRecommendations(state.viewModel);
-          const events = await fetchNodeEvents(latest.run_id);
-          const norms = await fetchNormalization(latest.run_id);
-          renderRunSteps(events);
-          renderLogs(events, norms);
-        } catch (err) {
-          document.getElementById("heroTitle").textContent = "No runs available.";
-          document.getElementById("heroSubtitle").textContent = "Check your API access.";
+        const insights = document.getElementById("insights");
+        insights.innerHTML = "";
+        const rec = state.viewModel?.wind_tunnel_evaluations_v2?.recommendations || {};
+        const overall = (rankings.overall || [])[0];
+        const fragile = (rankings.overall || []).slice(-1)[0];
+        const card = document.createElement("div");
+        card.className = "glass card";
+        card.innerHTML = `
+          <h4>Recommended Strategy Now</h4>
+          <p>${rec.primary_recommended_strategy?.strategy_name || ""}</p>
+          <p class="helper">${rec.primary_recommended_strategy?.rationale || ""}</p>
+          <div class="helper">Best overall: ${overall?.strategy_name || "--"}</div>
+          <div class="helper">Most fragile: ${fragile?.strategy_name || "--"}</div>
+          <div class="helper">Triggers to watch: ${(rec.triggers_to_watch || []).map((t) => t.description).join("; ") || "None"}</div>
+        `;
+        insights.appendChild(card);
+
+        const rankingTable = document.getElementById("rankingTable");
+        rankingTable.innerHTML = "";
+        if (rankings.overall && rankings.overall.length) {
+          const rTable = document.createElement("table");
+          rTable.innerHTML = `
+            <tr>
+              <th>Rank</th><th>Strategy</th><th>Overall</th><th>Min</th><th>Variance</th><th>Robustness</th>
+            </tr>
+            ${rankings.overall
+              .map(
+                (entry) =>
+                  `<tr><td>${entry.rank}</td><td>${entry.strategy_name}</td><td>${entry.overall_score}</td><td>${entry.min_score}</td><td>${entry.variance}</td><td>${entry.robustness_index}</td></tr>`
+              )
+              .join("")}
+          `;
+          rankingTable.appendChild(rTable);
         }
       }
 
-      document.getElementById("refreshBtn").addEventListener("click", load);
-      document.getElementById("loadRunBtn").addEventListener("click", async () => {
-        const runSelect = document.getElementById("runSelect");
-        const status = document.getElementById("runSelectStatus");
-        if (!runSelect.value) {
-          status.textContent = "Select a run id.";
-          return;
-        }
-        status.textContent = "Loading...";
-        try {
-          const viewModel = await fetchArtifact(runSelect.value, "view_model.json");
-          state.viewModel = viewModel || {};
-          state.runId = runSelect.value;
-          renderHero(state.viewModel, runSelect.value);
-          renderOverview(state.viewModel);
-          renderNodeReference(state.viewModel);
-          renderForces(state.viewModel);
-          renderScenarios(state.viewModel);
-          renderStrategies(state.viewModel);
-          renderScorecard(state.viewModel);
-          renderRecommendations(state.viewModel);
-          const events = await fetchNodeEvents(runSelect.value);
-          const norms = await fetchNormalization(runSelect.value);
-          renderRunSteps(events);
-          renderLogs(events, norms);
-          status.textContent = "Loaded.";
-        } catch (err) {
-          status.textContent = "Failed to load run.";
-        }
-      });
-      document.getElementById("accessBtn").addEventListener("click", () => {
-        const key = prompt("Enter access key (stored locally)");
-        if (key) {
-          localStorage.setItem("scenarioops_api_key", key);
-          load();
-        }
-      });
+      function renderActionConsole() {
+        const board = document.getElementById("actionBoard");
+        board.innerHTML = "";
+        const rec = state.viewModel?.wind_tunnel_evaluations_v2?.recommendations || {};
+        const hardening = rec.hardening_actions || [];
+        const hedges = rec.hedge_actions || [];
+        ["P0", "P1", "P2"].forEach((bucket, idx) => {
+          const card = document.createElement("div");
+          card.className = "glass card";
+          const action = hardening[idx] || hedges[idx] || "Define actions";
+          card.innerHTML = `<h4>${bucket} Actions</h4><p>${action}</p>`;
+          board.appendChild(card);
+        });
+      }
 
-      document.getElementById("runSubmit").addEventListener("click", async () => {
-        const status = document.getElementById("runStatus");
-        status.textContent = "Submitting...";
-        let uploadedDocs = [];
-        const uploadInput = document.getElementById("runUploads");
-        if (uploadInput.files && uploadInput.files.length) {
-          const formData = new FormData();
-          Array.from(uploadInput.files).forEach((file) => formData.append("files", file));
-          const uploadRes = await fetch("/upload", {
-            method: "POST",
-            headers: getHeaders(),
-            body: formData,
-          });
-          if (uploadRes.ok) {
-            const data = await uploadRes.json();
-            uploadedDocs = data.files || [];
-          }
+      function renderRunPage() {
+        renderCompanyCards();
+        renderKPIs();
+        renderBriefing();
+        renderWorkflow();
+        renderRunSteps();
+        renderArtifacts();
+      }
+
+      function syncRunControls() {
+        const scope = state.viewModel?.focal_issue?.scope || {};
+        document.getElementById("controlCompany").value = state.viewModel?.company_profile?.company_name || "";
+        if (scope.time_horizon_months) {
+          document.getElementById("controlHorizon").value = scope.time_horizon_months;
         }
-        let overrides = {};
+      }
+
+      function normalizeRoute(route) {
+        if (!route || route === "/") return "/runs";
+        if (route.startsWith("/runs/")) return "/runs";
+        return route;
+      }
+
+      function setRoute(route) {
+        const normalized = normalizeRoute(route);
+        document.querySelectorAll("[data-view]").forEach((section) => {
+          section.classList.toggle("hidden", section.dataset.view !== normalized);
+        });
+        document.querySelectorAll(".nav-link").forEach((link) => {
+          link.classList.toggle("active", normalizeRoute(link.dataset.route) === normalized);
+        });
+      }
+
+      function getRunIdFromPath() {
+        const match = window.location.pathname.match(/^\/(?:runs)\/(.+)$/);
+        return match ? match[1] : null;
+      }
+
+      async function loadData(runIdOverride) {
         try {
-          overrides = JSON.parse(document.getElementById("runOverrides").value || "{}");
+          showEmptyState(false);
+          state.lastEventAt = new Date();
+          setStatus(true, "LIVE", `Connected to ${apiBase() || "local API"}`);
+          let runId = runIdOverride || getRunIdFromPath() || state.runId;
+          if (runId) {
+            state.latestLinks = [];
+          }
+          let latest = null;
+          if (!runId) {
+            latest = await fetchLatest();
+            runId = latest.run_id;
+            state.latestLinks = latest.links || [];
+          }
+          state.runId = runId;
+          state.viewModel = await fetchArtifact(runId, "view_model.json");
+          updateContext(state.viewModel, state.runId);
+          state.nodeEvents = await fetchNodeEvents(runId);
+          state.normalization = await fetchNormalization(runId);
+          const logs = buildLogLines();
+          state.logs = logs;
+          renderTerminal(logs);
+          syncRunControls();
+          renderRunPage();
+          renderSignalFeed();
+          renderScenarioMatrix();
+          renderScenarioCards();
+          renderWindTunnel();
+          renderActionConsole();
+          refreshAdvancedPreview();
+          refreshRuns();
+          return true;
         } catch (err) {
-          overrides = {};
+          showEmptyState(true);
+          const status = err?.status;
+          const message = status === 401 || status === 403 ? "UNAUTHORIZED" : "RECONNECTING...";
+          const detail =
+            status === 401 || status === 403
+              ? "Access denied. Open Access and enter a valid API key."
+              : `Unable to reach API at ${apiBase() || "local API"}.`;
+          setStatus(false, message, detail);
+          return false;
         }
-        const payload = {
-          scope: document.getElementById("runScope").value,
-          value: document.getElementById("runValue").value || "United States",
-          horizon: parseInt(document.getElementById("runHorizon").value || "60", 10),
-          company: document.getElementById("runCompany").value || null,
-          mock: document.getElementById("runMode").value === "true",
-          resume_from: document.getElementById("resumeFrom").value || null,
-          run_id: document.getElementById("resumeRunId").value || null,
-          generate_strategies: document.getElementById("generateStrategies").value === "true",
-          input_docs: uploadedDocs,
-          settings_overrides: overrides,
+      }
+
+      async function refreshRuns() {
+        try {
+          state.runs = await fetchRuns();
+        } catch (err) {
+          state.runs = [];
+        }
+        const select = document.getElementById("runSelect");
+        select.innerHTML = state.runs.map((run) => `<option value="${run}">${run}</option>`).join("");
+        if (state.runId) {
+          select.value = state.runId;
+        }
+        const runList = document.getElementById("runList");
+        runList.innerHTML = "";
+        state.runs.slice(0, 8).forEach((run) => {
+          const div = document.createElement("div");
+          div.className = "run-item";
+          div.innerHTML = `<span>${run}</span><span class="badge">Load</span>`;
+          div.addEventListener("click", () => {
+            history.pushState({}, "", `/runs/${run}`);
+            setRoute("/runs");
+            loadData(run);
+          });
+          runList.appendChild(div);
+        });
+      }
+
+      const draftKey = "scenarioops_run_draft";
+      const draft = JSON.parse(localStorage.getItem(draftKey) || "{}");
+      const advKey = "scenarioops_adv_overrides";
+      const advDraft = JSON.parse(localStorage.getItem(advKey) || "{}");
+
+      function updateDraft(patch) {
+        Object.assign(draft, patch);
+        localStorage.setItem(draftKey, JSON.stringify(draft));
+        refreshAdvancedPreview();
+      }
+
+      function updateAdvDraft(patch) {
+        Object.assign(advDraft, patch);
+        localStorage.setItem(advKey, JSON.stringify(advDraft));
+        refreshAdvancedPreview();
+      }
+
+      function collectAdvancedOverrides() {
+        const overrides = {};
+        const setIf = (key, value) => {
+          if (value === undefined || value === null) return;
+          if (typeof value === "string" && value.trim() === "") return;
+          overrides[key] = value;
         };
+        setIf("llm_model", document.getElementById("advLlmModel")?.value || "");
+        setIf("gemini_model", document.getElementById("advLlmModel")?.value || "");
+        setIf("search_model", document.getElementById("advSearchModel")?.value || "");
+        setIf("summarizer_model", document.getElementById("advSummarizerModel")?.value || "");
+        setIf("embed_model", document.getElementById("advEmbedModel")?.value || "");
+        setIf("image_model", document.getElementById("advImageModel")?.value || "");
+        const tempRaw = document.getElementById("advTemperature")?.value;
+        if (tempRaw) setIf("temperature", parseFloat(tempRaw));
+        const seedRaw = document.getElementById("advSeed")?.value;
+        if (seedRaw) setIf("seed", parseInt(seedRaw, 10));
+        setIf("sources_policy", document.getElementById("advSourcesPolicy")?.value || "");
+        const allowWeb = document.getElementById("advAllowWeb")?.value;
+        if (allowWeb) setIf("allow_web", allowWeb === "true");
+        const simulate = document.getElementById("advSimulateEvidence")?.value;
+        if (simulate) setIf("simulate_evidence", simulate === "true");
+        const minSources = document.getElementById("advMinSourcesDomain")?.value;
+        if (minSources) setIf("min_sources_per_domain", parseInt(minSources, 10));
+        const minCitations = document.getElementById("advMinCitations")?.value;
+        if (minCitations) setIf("min_citations_per_driver", parseInt(minCitations, 10));
+        const minForces = document.getElementById("advMinForces")?.value;
+        if (minForces) setIf("min_forces", parseInt(minForces, 10));
+        const minForcesDomain = document.getElementById("advMinForcesDomain")?.value;
+        if (minForcesDomain) setIf("min_forces_per_domain", parseInt(minForcesDomain, 10));
+        const minEvidenceOk = document.getElementById("advMinEvidenceOk")?.value;
+        if (minEvidenceOk) setIf("min_evidence_ok", parseInt(minEvidenceOk, 10));
+        const minEvidenceTotal = document.getElementById("advMinEvidenceTotal")?.value;
+        if (minEvidenceTotal) setIf("min_evidence_total", parseInt(minEvidenceTotal, 10));
+        const maxFailed = document.getElementById("advMaxFailedRatio")?.value;
+        if (maxFailed) setIf("max_failed_ratio", parseFloat(maxFailed));
+        return overrides;
+      }
+
+      function buildSettingsOverrides() {
+        const overrides = collectAdvancedOverrides();
+        if (draft.model) {
+          overrides.llm_model = draft.model;
+          overrides.gemini_model = draft.model;
+        }
+        const forceWeb = draft.web === "true";
+        const useCache = draft.cache !== "false";
+        if (forceWeb) {
+          overrides.allow_web = true;
+        } else if (overrides.allow_web === undefined) {
+          overrides.allow_web = false;
+        }
+        if (overrides.simulate_evidence === undefined) {
+          overrides.simulate_evidence = useCache;
+        }
+        return overrides;
+      }
+
+      function refreshAdvancedPreview() {
+        const preview = document.getElementById("advancedPreview");
+        if (!preview) return;
+        preview.value = JSON.stringify(buildSettingsOverrides(), null, 2);
+      }
+
+      function applyAdvancedDraft() {
+        const setValue = (id, value) => {
+          const el = document.getElementById(id);
+          if (!el || value === undefined || value === null) return;
+          el.value = value;
+        };
+        setValue("advLlmModel", advDraft.llm_model || "");
+        setValue("advSearchModel", advDraft.search_model || "");
+        setValue("advSummarizerModel", advDraft.summarizer_model || "");
+        setValue("advEmbedModel", advDraft.embed_model || "");
+        setValue("advImageModel", advDraft.image_model || "");
+        setValue("advTemperature", advDraft.temperature || "");
+        setValue("advSeed", advDraft.seed || "");
+        setValue("advSourcesPolicy", advDraft.sources_policy || "");
+        setValue("advAllowWeb", typeof advDraft.allow_web === "boolean" ? String(advDraft.allow_web) : "");
+        setValue("advSimulateEvidence", typeof advDraft.simulate_evidence === "boolean" ? String(advDraft.simulate_evidence) : "");
+        setValue("advMinSourcesDomain", advDraft.min_sources_per_domain || "");
+        setValue("advMinCitations", advDraft.min_citations_per_driver || "");
+        setValue("advMinForces", advDraft.min_forces || "");
+        setValue("advMinForcesDomain", advDraft.min_forces_per_domain || "");
+        setValue("advMinEvidenceOk", advDraft.min_evidence_ok || "");
+        setValue("advMinEvidenceTotal", advDraft.min_evidence_total || "");
+        setValue("advMaxFailedRatio", advDraft.max_failed_ratio || "");
+      }
+
+      function attachAdvancedHandlers() {
+        const ids = [
+          "advLlmModel",
+          "advSearchModel",
+          "advSummarizerModel",
+          "advEmbedModel",
+          "advImageModel",
+          "advTemperature",
+          "advSeed",
+          "advSourcesPolicy",
+          "advAllowWeb",
+          "advSimulateEvidence",
+          "advMinSourcesDomain",
+          "advMinCitations",
+          "advMinForces",
+          "advMinForcesDomain",
+          "advMinEvidenceOk",
+          "advMinEvidenceTotal",
+          "advMaxFailedRatio",
+        ];
+        ids.forEach((id) => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          el.addEventListener("change", () => {
+            updateAdvDraft(collectAdvancedOverrides());
+          });
+        });
+      }
+
+      const steps = [
+        {
+          title: "Scope",
+          content: `
+            <label>Company<input id="forgeCompany" placeholder="Microsoft" /></label>
+            <label>Scope<select id="forgeScope"><option value="country">Country</option><option value="region">Region</option><option value="world">World</option></select></label>
+            <label>Country<select id="forgeGeographySelect"></select></label>
+            <label id="forgeGeographyCustomWrap" class="hidden">Custom Country<input id="forgeGeographyCustom" placeholder="Enter country" /></label>
+            <label>Horizon (months)<input id="forgeHorizon" type="number" value="60" min="36" max="120" /></label>
+          `,
+        },
+        {
+          title: "Models",
+          content: `
+            <label>LLM Model<select id="forgeModel">
+              <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
+              <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+              <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+            </select></label>
+            <label>Agent Pack<select id="forgePack">
+              <option value="Analyst">Analyst</option>
+              <option value="Strategist">Strategist</option>
+              <option value="Critic">Critic</option>
+            </select></label>
+          `,
+        },
+        {
+          title: "Depth & Creativity",
+          content: `
+            <label>Creativity<input id="forgeCreativity" type="range" min="1" max="10" value="5" /></label>
+            <label>Depth<input id="forgeDepth" type="range" min="1" max="10" value="6" /></label>
+            <label>Use cached intelligence<select id="forgeCache"><option value="true">Yes</option><option value="false">No</option></select></label>
+            <label>Force fresh web scan<select id="forgeWeb"><option value="false">No</option><option value="true">Yes</option></select></label>
+          `,
+        },
+        {
+          title: "Run Preview",
+          content: `<div id="forgePreview" class="glass" style="padding:12px;">Review run summary here.</div>`,
+        },
+      ];
+
+      let currentStep = 0;
+      const wizardSteps = document.getElementById("wizardSteps");
+
+      function attachWizardHandlers() {
+        const company = document.getElementById("forgeCompany");
+        const scope = document.getElementById("forgeScope");
+        const geographySelect = document.getElementById("forgeGeographySelect");
+        const geographyCustom = document.getElementById("forgeGeographyCustom");
+        const geographyCustomWrap = document.getElementById("forgeGeographyCustomWrap");
+        const horizon = document.getElementById("forgeHorizon");
+        const model = document.getElementById("forgeModel");
+        const pack = document.getElementById("forgePack");
+        const creativity = document.getElementById("forgeCreativity");
+        const depth = document.getElementById("forgeDepth");
+        const cache = document.getElementById("forgeCache");
+        const web = document.getElementById("forgeWeb");
+
+        if (company) company.value = draft.company || "";
+        if (scope) scope.value = draft.scope || "country";
+        if (geographySelect) {
+          if (!geographySelect.options.length) {
+            const countries = [
+              "United States",
+              "Canada",
+              "United Kingdom",
+              "Germany",
+              "France",
+              "Netherlands",
+              "Spain",
+              "Italy",
+              "Sweden",
+              "Japan",
+              "South Korea",
+              "India",
+              "Singapore",
+              "Australia",
+              "United Arab Emirates",
+              "Brazil",
+              "Mexico",
+              "Other",
+            ];
+            geographySelect.innerHTML = countries
+              .map((country) => `<option value="${country}">${country}</option>`)
+              .join("");
+          }
+          const draftGeo = draft.geography || "United States";
+          const hasOption = Array.from(geographySelect.options).some((opt) => opt.value === draftGeo);
+          geographySelect.value = hasOption ? draftGeo : "Other";
+          if (!hasOption && geographyCustom) {
+            geographyCustom.value = draftGeo;
+          }
+        }
+        const updateGeoScope = () => {
+          if (!geographySelect) return;
+          if (scope?.value === "world") {
+            geographySelect.disabled = true;
+            if (geographyCustom) geographyCustom.disabled = true;
+            if (geographyCustomWrap) geographyCustomWrap.classList.remove("hidden");
+            if (geographyCustom) geographyCustom.value = "Global";
+            geographySelect.value = "Other";
+            return;
+          }
+          geographySelect.disabled = false;
+          if (geographyCustom) geographyCustom.disabled = false;
+          if (geographyCustomWrap) {
+            geographyCustomWrap.classList.toggle("hidden", geographySelect.value !== "Other");
+          }
+        };
+        updateGeoScope();
+        if (horizon) horizon.value = draft.horizon || 60;
+        if (model) model.value = draft.model || "gemini-3-flash-preview";
+        if (pack) pack.value = draft.pack || "Analyst";
+        if (creativity) creativity.value = draft.creativity || 5;
+        if (depth) depth.value = draft.depth || 6;
+        if (cache) cache.value = draft.cache || "true";
+        if (web) web.value = draft.web || "false";
+
+        [company, scope, geographySelect, geographyCustom, horizon, model, pack, creativity, depth, cache, web].forEach((input) => {
+          if (!input) return;
+          input.addEventListener("change", () => {
+            updateGeoScope();
+            const geoValue =
+              geographySelect?.value === "Other"
+                ? geographyCustom?.value || "Other"
+                : geographySelect?.value;
+            updateDraft({
+              company: company?.value,
+              scope: scope?.value,
+              geography: geoValue,
+              horizon: parseInt(horizon?.value || "60", 10),
+              model: model?.value,
+              pack: pack?.value,
+              creativity: parseInt(creativity?.value || "5", 10),
+              depth: parseInt(depth?.value || "6", 10),
+              cache: cache?.value,
+              web: web?.value,
+            });
+          });
+        });
+        const geoValue =
+          geographySelect?.value === "Other"
+            ? geographyCustom?.value || "Other"
+            : geographySelect?.value;
+        updateDraft({
+          company: company?.value,
+          scope: scope?.value,
+          geography: geoValue,
+          horizon: parseInt(horizon?.value || "60", 10),
+          model: model?.value,
+          pack: pack?.value,
+          creativity: parseInt(creativity?.value || "5", 10),
+          depth: parseInt(depth?.value || "6", 10),
+          cache: cache?.value,
+          web: web?.value,
+        });
+      }
+
+      function renderWizard() {
+        wizardSteps.innerHTML = `<div class="section-title">${steps[currentStep].title}</div>${steps[currentStep].content}`;
+        document.getElementById("prevStep").disabled = currentStep === 0;
+        document.getElementById("nextStep").disabled = currentStep === steps.length - 1;
+        document.getElementById("launchRun").style.display = currentStep === steps.length - 1 ? "inline-flex" : "none";
+        attachWizardHandlers();
+      }
+
+      document.getElementById("prevStep").addEventListener("click", () => {
+        currentStep = Math.max(0, currentStep - 1);
+        renderWizard();
+      });
+
+      document.getElementById("nextStep").addEventListener("click", () => {
+        currentStep = Math.min(steps.length - 1, currentStep + 1);
+        renderWizard();
+        if (currentStep === steps.length - 1) {
+          const preview = document.getElementById("forgePreview");
+          if (preview) {
+            preview.innerHTML = `Company: ${draft.company || "Company"} | Geography: ${draft.geography || "Global"} | Horizon: ${draft.horizon || 60} months`;
+          }
+        }
+      });
+
+      document.getElementById("launchRun").addEventListener("click", async () => {
+        const runStatus = document.getElementById("runStatus");
+        const launchBtn = document.getElementById("launchRun");
+        runStatus.textContent = "Launching run...";
+        launchBtn.disabled = true;
+        const resumeFrom = document.getElementById("resumeNode").value || null;
+        const resumeLast = document.getElementById("resumeLast").checked;
+        const manualRunId = document.getElementById("resumeRunId").value.trim();
+        const selectedRunId = document.getElementById("runSelect").value;
+        const generateStrategies = document.getElementById("generateStrategies").value === "true";
+        const latest = resumeLast ? await fetchLatest().catch(() => null) : null;
+        const runId = manualRunId || (resumeFrom ? (resumeLast ? latest?.run_id : selectedRunId) : null);
+        const settingsOverrides = buildSettingsOverrides();
+        const forceWeb = draft.web === "true";
+        const useCache = draft.cache !== "false";
+        const mockMode = forceWeb ? false : settingsOverrides.allow_web ? false : true;
+        const payload = {
+          scope: draft.scope || "country",
+          value: draft.geography || draft.company || "Global",
+          company: draft.company || "",
+          geography: draft.geography || "",
+          horizon: draft.horizon || 60,
+          mock: mockMode,
+          run_id: runId,
+          resume_from: resumeFrom || null,
+          input_docs: state.uploadedDocs,
+          generate_strategies: generateStrategies,
+          settings_overrides: settingsOverrides,
+        };
+        if (resumeFrom && !runId) {
+          runStatus.textContent = "Run ID required to resume from a node.";
+          launchBtn.disabled = false;
+          return;
+        }
         try {
-          const res = await fetch("/build", {
+          const response = await fetchJson("/build", {
             method: "POST",
-            headers: { "Content-Type": "application/json", ...getHeaders() },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
           });
-          if (!res.ok) {
-            const text = await res.text();
-            throw new Error(text);
+          const newRunId = response?.run_id || runId;
+          runStatus.textContent = newRunId ? `Run launched: ${newRunId}` : "Run launched.";
+          if (newRunId) {
+            history.pushState({}, "", `/runs/${newRunId}`);
+            setRoute("/runs");
+            await loadData(newRunId);
+          } else {
+            await loadData();
           }
-          status.textContent = "Run created.";
-          await load();
         } catch (err) {
-          status.textContent = "Run failed. Check access.";
+          runStatus.textContent = `Launch failed: ${err.message || "unknown error"}`;
+          setStatus(false, "RECONNECTING...", "Launch failed. Check Access settings.");
+        } finally {
+          launchBtn.disabled = false;
         }
       });
 
-      document.getElementById("configSave").addEventListener("click", async () => {
-        const status = document.getElementById("configStatus");
-        status.textContent = "Saving...";
+      document.getElementById("newRunBtn").addEventListener("click", () => {
+        document.getElementById("wizard").scrollIntoView({ behavior: "smooth" });
+      });
+
+      document.getElementById("openLatestBtn").addEventListener("click", async () => {
         try {
-          const raw = document.getElementById("configJson").value || "{}";
-          const settings = JSON.parse(raw);
-          await saveConfig(settings);
-          status.textContent = "Saved.";
+          const latest = await fetchLatest();
+          if (latest?.run_id) {
+            history.pushState({}, "", `/runs/${latest.run_id}`);
+            setRoute("/runs");
+            loadData(latest.run_id);
+          }
         } catch (err) {
-          status.textContent = "Invalid JSON or save failed.";
+          setStatus(false, "NO RUNS", "No runs available yet. Launch a new run.");
+          showEmptyState(true);
         }
       });
 
-      load();
+      document.getElementById("loadRunBtn").addEventListener("click", () => {
+        const runId = document.getElementById("runSelect").value;
+        if (!runId) return;
+        history.pushState({}, "", `/runs/${runId}`);
+        setRoute("/runs");
+        loadData(runId);
+      });
+
+      document.getElementById("latestRunBtn").addEventListener("click", async () => {
+        try {
+          const latest = await fetchLatest();
+          if (latest?.run_id) {
+            document.getElementById("runSelect").value = latest.run_id;
+            history.pushState({}, "", `/runs/${latest.run_id}`);
+            setRoute("/runs");
+            loadData(latest.run_id);
+          }
+        } catch (err) {
+          setStatus(false, "NO RUNS", "No runs available yet. Launch a new run.");
+          showEmptyState(true);
+        }
+      });
+
+      document.getElementById("uploadInput").addEventListener("change", async (event) => {
+        const files = event.target.files || [];
+        if (!files.length) return;
+        const status = document.getElementById("uploadStatus");
+        status.textContent = "Uploading...";
+        try {
+          const result = await uploadFiles(files);
+          state.uploadedDocs = result.files || [];
+          status.textContent = `Uploaded ${state.uploadedDocs.length} file(s).`;
+        } catch (err) {
+          status.textContent = "Upload failed. python-multipart may be missing.";
+        }
+      });
+
+      document.getElementById("toggleRawLogs").addEventListener("change", () => {
+        renderTerminal(buildLogLines());
+      });
+
+      document.querySelectorAll(".nav-link").forEach((link) => {
+        link.addEventListener("click", (event) => {
+          event.preventDefault();
+          const route = link.dataset.route;
+          history.pushState({}, "", route);
+          setRoute(route);
+        });
+      });
+
+      window.addEventListener("popstate", () => setRoute(window.location.pathname));
+
+      const resumeNode = document.getElementById("resumeNode");
+      resumeNode.innerHTML = `<option value="">Start</option>${resumeSteps
+        .map((step) => `<option value="${step}">${step.replace(/_/g, " ")}</option>`)
+        .join("")}`;
+
+      document.getElementById("accessBtn").addEventListener("click", () => {
+        document.getElementById("accessModal").classList.remove("hidden");
+        document.getElementById("apiBaseInput").value = apiBase() || window.location.origin;
+        document.getElementById("apiKeyInput").value = localStorage.getItem("scenarioops_api_key") || "";
+      });
+
+      document.getElementById("closeAccess").addEventListener("click", () => {
+        document.getElementById("accessModal").classList.add("hidden");
+      });
+
+      document.getElementById("saveAccess").addEventListener("click", () => {
+        localStorage.setItem("scenarioops_api_base", document.getElementById("apiBaseInput").value.trim());
+        localStorage.setItem("scenarioops_api_key", document.getElementById("apiKeyInput").value.trim());
+        document.getElementById("accessModal").classList.add("hidden");
+        loadData();
+      });
+
+      document.getElementById("configBtn").addEventListener("click", async () => {
+        document.getElementById("configModal").classList.remove("hidden");
+        const editor = document.getElementById("configEditor");
+        const status = document.getElementById("configStatus");
+        status.textContent = "Loading...";
+        try {
+          const payload = await fetchConfig();
+          editor.value = JSON.stringify(payload.settings || {}, null, 2);
+          editor.readOnly = !payload.is_admin;
+          status.textContent = payload.is_admin ? "Admin access granted." : "Read-only access.";
+        } catch (err) {
+          status.textContent = "Unable to load config. Check API key.";
+          editor.value = "";
+        }
+      });
+
+      document.getElementById("closeConfig").addEventListener("click", () => {
+        document.getElementById("configModal").classList.add("hidden");
+      });
+
+      document.getElementById("saveConfig").addEventListener("click", async () => {
+        const status = document.getElementById("configStatus");
+        try {
+          const settings = JSON.parse(document.getElementById("configEditor").value || "{}");
+          await saveConfig(settings);
+          status.textContent = "Config saved.";
+        } catch (err) {
+          status.textContent = "Config save failed.";
+        }
+      });
+
+      applyAdvancedDraft();
+      updateAdvDraft(advDraft);
+      attachAdvancedHandlers();
+
+      let activeLogTab = "all";
+      document.querySelectorAll("#logTabs .tab").forEach((tab) => {
+        tab.addEventListener("click", () => {
+          document.querySelectorAll("#logTabs .tab").forEach((t) => t.classList.remove("active"));
+          tab.classList.add("active");
+          activeLogTab = tab.dataset.log;
+          if (activeLogTab === "all") {
+            renderTerminal(buildLogLines());
+            return;
+          }
+          const filtered = buildLogLines().filter((line) => line.text.toLowerCase().includes(activeLogTab));
+          renderTerminal(filtered);
+        });
+      });
+
+      function startPolling() {
+        let delay = 8000;
+        const maxDelay = 60000;
+        async function poll() {
+          const success = await loadData();
+          delay = success ? 8000 : Math.min(maxDelay, Math.round(delay * 1.5));
+          setTimeout(poll, delay);
+        }
+        poll();
+      }
+
+      renderWizard();
+      setRoute(window.location.pathname);
+      refreshRuns();
+      loadData();
+      startPolling();
     </script>
+
   </body>
 </html>

@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
-from fastapi import Depends, FastAPI, File, Header, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 
@@ -37,6 +37,12 @@ from scenarioops.graph.nodes import (
 
 
 ensure_default_user()
+try:
+    import multipart  # type: ignore
+    _MULTIPART_AVAILABLE = True
+except Exception:
+    _MULTIPART_AVAILABLE = False
+
 app = FastAPI(title="ScenarioOps API")
 
 
@@ -210,16 +216,45 @@ def build(
     )
 
 
-@app.get("/")
-def index() -> FileResponse:
+def _commercial_ui() -> FileResponse:
     ui_path = Path(__file__).with_name("commercial_ui.html")
     return FileResponse(ui_path)
+
+
+@app.get("/")
+def index() -> FileResponse:
+    return _commercial_ui()
 
 
 @app.get("/ops")
 def ops_ui() -> FileResponse:
     ui_path = Path(__file__).with_name("ui.html")
     return FileResponse(ui_path)
+
+
+@app.get("/intelligence")
+def intelligence_ui() -> FileResponse:
+    return _commercial_ui()
+
+
+@app.get("/scenarios")
+def scenarios_ui() -> FileResponse:
+    return _commercial_ui()
+
+
+@app.get("/wind-tunnel")
+def wind_tunnel_ui() -> FileResponse:
+    return _commercial_ui()
+
+
+@app.get("/actions")
+def actions_ui() -> FileResponse:
+    return _commercial_ui()
+
+
+@app.get("/runs/{run_id}")
+def run_ui(run_id: str) -> FileResponse:
+    return _commercial_ui()
 
 
 @app.get("/artifact/{run_id}/{artifact_name}")
@@ -401,24 +436,37 @@ def latest(tenant: TenantContext = Depends(_tenant_context)) -> LatestResponse:
     )
 
 
-@app.post("/upload")
-async def upload_files(
-    files: list[UploadFile] = File(...),
-    tenant: TenantContext = Depends(_tenant_context),
-):
-    uploaded_paths: list[str] = []
-    inputs_dir = tenant.base_dir / "uploads"
-    inputs_dir.mkdir(parents=True, exist_ok=True)
-    for file in files:
-        if not file.filename:
-            continue
-        safe_name = Path(file.filename).name
-        target = inputs_dir / safe_name
-        counter = 1
-        while target.exists():
-            target = inputs_dir / f\"{target.stem}-{counter}{target.suffix}\"
-            counter += 1
-        content = await file.read()
-        target.write_bytes(content)
-        uploaded_paths.append(str(target))
-    return {"files": uploaded_paths}
+if _MULTIPART_AVAILABLE:
+    from fastapi import File, UploadFile
+
+    @app.post("/upload")
+    async def upload_files(
+        files: list[UploadFile] = File(...),
+        tenant: TenantContext = Depends(_tenant_context),
+    ):
+        uploaded_paths: list[str] = []
+        inputs_dir = tenant.base_dir / "uploads"
+        inputs_dir.mkdir(parents=True, exist_ok=True)
+        for file in files:
+            if not file.filename:
+                continue
+            safe_name = Path(file.filename).name
+            target = inputs_dir / safe_name
+            counter = 1
+            while target.exists():
+                target = inputs_dir / f"{target.stem}-{counter}{target.suffix}"
+                counter += 1
+            content = await file.read()
+            target.write_bytes(content)
+            uploaded_paths.append(str(target))
+        return {"files": uploaded_paths}
+else:
+
+    @app.post("/upload")
+    async def upload_files_unavailable(
+        tenant: TenantContext = Depends(_tenant_context),
+    ):
+        raise HTTPException(
+            status_code=503,
+            detail="Upload requires python-multipart. Ask your admin to install it.",
+        )
