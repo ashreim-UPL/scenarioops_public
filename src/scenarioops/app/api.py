@@ -156,6 +156,12 @@ def build(
 
 @app.get("/")
 def index() -> FileResponse:
+    ui_path = Path(__file__).with_name("commercial_ui.html")
+    return FileResponse(ui_path)
+
+
+@app.get("/ops")
+def ops_ui() -> FileResponse:
     ui_path = Path(__file__).with_name("ui.html")
     return FileResponse(ui_path)
 

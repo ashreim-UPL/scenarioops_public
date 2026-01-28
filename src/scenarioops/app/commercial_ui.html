@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ScenarioOps Strategic Dashboard</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Serif:wght@400;500;600&display=swap");
+
+      :root {
+        --bg: #f3f6fb;
+        --panel: #ffffff;
+        --ink: #0e1b2c;
+        --muted: #5c6b82;
+        --accent: #1f4fd1;
+        --accent-soft: #e3edff;
+        --edge: #e5e9f2;
+        --shadow: 0 20px 40px rgba(16, 29, 47, 0.08);
+        --font-head: "IBM Plex Serif", "Georgia", serif;
+        --font-body: "IBM Plex Sans", "Segoe UI", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: var(--font-body);
+        color: var(--ink);
+        background:
+          radial-gradient(900px 500px at 85% -10%, rgba(31, 79, 209, 0.12), transparent 70%),
+          linear-gradient(120deg, #f3f6fb 0%, #eef2f8 40%, #f6f8fc 100%);
+        min-height: 100vh;
+      }
+
+      .page {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 28px 24px 80px;
+      }
+
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 20px;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.95);
+        border: 1px solid var(--edge);
+        box-shadow: var(--shadow);
+      }
+
+      .brand {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .brand span {
+        font-size: 12px;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+        color: var(--muted);
+        font-weight: 600;
+      }
+
+      .brand h1 {
+        margin: 0;
+        font-family: var(--font-head);
+        font-size: 24px;
+      }
+
+      .header-actions {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .pill {
+        border-radius: 999px;
+        padding: 8px 16px;
+        font-weight: 600;
+        background: var(--ink);
+        color: #fff;
+        border: none;
+        cursor: pointer;
+      }
+
+      .ghost {
+        border-radius: 999px;
+        padding: 8px 16px;
+        background: #fff;
+        border: 1px solid var(--edge);
+        font-weight: 600;
+        color: var(--ink);
+        cursor: pointer;
+      }
+
+      .hero {
+        margin-top: 28px;
+        padding: 28px;
+        border-radius: 20px;
+        background: var(--panel);
+        border: 1px solid var(--edge);
+        box-shadow: var(--shadow);
+        display: grid;
+        gap: 12px;
+      }
+
+      .hero h2 {
+        margin: 0;
+        font-size: clamp(28px, 4vw, 42px);
+        font-family: var(--font-head);
+      }
+
+      .hero p {
+        margin: 0;
+        color: var(--muted);
+        max-width: 720px;
+      }
+
+      .hero-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .grid {
+        display: grid;
+        gap: 18px;
+        margin-top: 24px;
+      }
+
+      .grid.cols-3 {
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--edge);
+        border-radius: 16px;
+        padding: 18px;
+        box-shadow: var(--shadow);
+      }
+
+      .panel h3 {
+        margin: 0 0 10px;
+        font-size: 16px;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--muted);
+      }
+
+      .panel p {
+        margin: 0;
+        color: var(--ink);
+        line-height: 1.5;
+      }
+
+      .node-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .node-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: #f6f8fd;
+        border: 1px solid var(--edge);
+        font-size: 13px;
+      }
+
+      .node-item span {
+        color: var(--muted);
+      }
+
+      .node-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-weight: 600;
+      }
+
+      .node-status::before {
+        content: "";
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #cbd4e6;
+      }
+
+      .node-status.ready::before {
+        background: #2ecc71;
+      }
+
+      .section-title {
+        margin: 28px 0 12px;
+        font-family: var(--font-head);
+        font-size: 22px;
+      }
+
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 16px;
+      }
+
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--edge);
+        border-radius: 16px;
+        padding: 16px;
+        box-shadow: var(--shadow);
+      }
+
+      .card h4 {
+        margin: 0 0 8px;
+        font-size: 16px;
+      }
+
+      .card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .scorecard {
+        overflow-x: auto;
+      }
+
+      .scorecard table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 640px;
+      }
+
+      .scorecard th,
+      .scorecard td {
+        padding: 10px;
+        border: 1px solid var(--edge);
+        text-align: center;
+        font-size: 13px;
+      }
+
+      .scorecard th {
+        background: #f6f8fd;
+        font-weight: 600;
+      }
+
+      .grade {
+        font-size: 18px;
+        font-weight: 700;
+      }
+
+      .recommendations {
+        display: grid;
+        gap: 12px;
+      }
+
+      .chip {
+        display: inline-flex;
+        gap: 6px;
+        align-items: center;
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: var(--accent-soft);
+        color: var(--accent);
+        font-weight: 600;
+        font-size: 12px;
+      }
+
+      .footer {
+        margin-top: 40px;
+        font-size: 12px;
+        color: var(--muted);
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header>
+        <div class="brand">
+          <span>ScenarioOps</span>
+          <h1>Strategic Dashboard</h1>
+        </div>
+        <div class="header-actions">
+          <button class="ghost" id="refreshBtn">Refresh</button>
+          <button class="pill" id="accessBtn">Access</button>
+        </div>
+      </header>
+
+      <section class="hero">
+        <h2 id="heroTitle">Loading run...</h2>
+        <p id="heroSubtitle">Preparing strategic intelligence.</p>
+        <div class="hero-meta" id="heroMeta"></div>
+      </section>
+
+      <section class="grid cols-3">
+        <div class="panel">
+          <h3>Company Overview</h3>
+          <p id="companyOverview">Awaiting data.</p>
+        </div>
+        <div class="panel">
+          <h3>Strategic Focus</h3>
+          <p id="strategicFocus">Awaiting data.</p>
+        </div>
+        <div class="panel">
+          <h3>Node Reference</h3>
+          <div class="node-list" id="nodeReference"></div>
+        </div>
+      </section>
+
+      <h3 class="section-title">Strategic Drivers</h3>
+      <section class="cards" id="forceCards"></section>
+
+      <h3 class="section-title">Scenario Outlook</h3>
+      <section class="cards" id="scenarioCards"></section>
+
+      <h3 class="section-title">Strategy Options</h3>
+      <section class="cards" id="strategyCards"></section>
+
+      <h3 class="section-title">Wind Tunnel Scorecard</h3>
+      <section class="panel scorecard" id="scorecardPanel"></section>
+
+      <h3 class="section-title">Recommendations & Triggers</h3>
+      <section class="panel recommendations" id="recommendationPanel"></section>
+
+      <div class="footer">ScenarioOps · Enterprise Preview</div>
+    </div>
+
+    <script>
+      const state = {
+        runId: null,
+        viewModel: null,
+      };
+
+      function getHeaders() {
+        const apiKey = localStorage.getItem("scenarioops_api_key");
+        if (!apiKey) return {};
+        return { "X-Api-Key": apiKey };
+      }
+
+      async function fetchLatest() {
+        const res = await fetch("/latest", { headers: getHeaders() });
+        if (!res.ok) {
+          throw new Error("No runs available.");
+        }
+        return res.json();
+      }
+
+      async function fetchArtifact(runId, name) {
+        const res = await fetch(`/artifact/${runId}/${name}`, { headers: getHeaders() });
+        if (!res.ok) {
+          return null;
+        }
+        return res.json();
+      }
+
+      function renderHero(viewModel, runId) {
+        const company = viewModel?.company_profile?.company_name || "ScenarioOps";
+        document.getElementById("heroTitle").textContent = `${company} Strategic Outlook`;
+        document.getElementById("heroSubtitle").textContent =
+          viewModel?.focal_issue?.focal_issue || "Strategic situation overview.";
+        document.getElementById("heroMeta").textContent = `Run ${runId}`;
+      }
+
+      function renderOverview(viewModel) {
+        document.getElementById("companyOverview").textContent =
+          viewModel?.company_profile?.summary ||
+          viewModel?.company_profile?.description ||
+          "Company profile pending.";
+        const charter = viewModel?.charter || {};
+        document.getElementById("strategicFocus").textContent =
+          charter?.purpose || viewModel?.focal_issue?.focal_issue || "Strategic focus pending.";
+      }
+
+      function renderNodeReference(viewModel) {
+        const nodes = [
+          { key: "charter", label: "Charter" },
+          { key: "focal_issue", label: "Focal Issue" },
+          { key: "company_profile", label: "Company Profile" },
+          { key: "evidence_units", label: "Evidence" },
+          { key: "forces", label: "Forces" },
+          { key: "clusters", label: "Clusters" },
+          { key: "uncertainty_axes", label: "Uncertainty Axes" },
+          { key: "scenarios", label: "Scenarios" },
+          { key: "strategies", label: "Strategies" },
+          { key: "wind_tunnel_evaluations_v2", label: "Wind Tunnel V2" },
+        ];
+        const container = document.getElementById("nodeReference");
+        container.innerHTML = "";
+        nodes.forEach((node) => {
+          const item = document.createElement("div");
+          item.className = "node-item";
+          const label = document.createElement("strong");
+          label.textContent = node.label;
+          const status = document.createElement("span");
+          const hasData = Boolean(viewModel?.[node.key]);
+          status.className = `node-status ${hasData ? "ready" : ""}`;
+          status.textContent = hasData ? "ready" : "pending";
+          item.append(label, status);
+          container.appendChild(item);
+        });
+      }
+
+      function renderForces(viewModel) {
+        const cards = document.getElementById("forceCards");
+        cards.innerHTML = "";
+        const forces = viewModel?.forces_ranked?.forces || viewModel?.forces || [];
+        const top = forces.slice(0, 6);
+        if (!top.length) {
+          cards.innerHTML = "<div class='card'>Forces pending.</div>";
+          return;
+        }
+        top.forEach((force) => {
+          const card = document.createElement("div");
+          card.className = "card";
+          const title = document.createElement("h4");
+          title.textContent = force.label || force.name || "Force";
+          const desc = document.createElement("p");
+          desc.textContent = force.mechanism || force.rationale || "Impact assessment pending.";
+          card.append(title, desc);
+          cards.appendChild(card);
+        });
+      }
+
+      function renderScenarios(viewModel) {
+        const cards = document.getElementById("scenarioCards");
+        cards.innerHTML = "";
+        const scenarios = viewModel?.scenarios || [];
+        if (!scenarios.length) {
+          cards.innerHTML = "<div class='card'>Scenarios pending.</div>";
+          return;
+        }
+        scenarios.slice(0, 6).forEach((scenario) => {
+          const card = document.createElement("div");
+          card.className = "card";
+          const title = document.createElement("h4");
+          title.textContent = scenario.name || scenario.id || "Scenario";
+          const desc = document.createElement("p");
+          desc.textContent = scenario.narrative || scenario.summary || "Narrative pending.";
+          card.append(title, desc);
+          cards.appendChild(card);
+        });
+      }
+
+      function renderStrategies(viewModel) {
+        const cards = document.getElementById("strategyCards");
+        cards.innerHTML = "";
+        const strategies = viewModel?.strategies || [];
+        if (!strategies.length) {
+          cards.innerHTML = "<div class='card'>Strategies pending.</div>";
+          return;
+        }
+        strategies.slice(0, 6).forEach((strategy) => {
+          const card = document.createElement("div");
+          card.className = "card";
+          const title = document.createElement("h4");
+          title.textContent = strategy.name || strategy.id || "Strategy";
+          const desc = document.createElement("p");
+          desc.textContent = strategy.objective || "Objective pending.";
+          card.append(title, desc);
+          cards.appendChild(card);
+        });
+      }
+
+      function buildScorecard(evaluations) {
+        const scenarioIds = [];
+        const strategyIds = [];
+        evaluations.forEach((evalItem) => {
+          if (evalItem.scenario_id && !scenarioIds.includes(evalItem.scenario_id)) {
+            scenarioIds.push(evalItem.scenario_id);
+          }
+          if (evalItem.strategy_id && !strategyIds.includes(evalItem.strategy_id)) {
+            strategyIds.push(evalItem.strategy_id);
+          }
+        });
+        const rows = [];
+        const header = ["Strategy", ...scenarioIds];
+        rows.push(header);
+        strategyIds.forEach((strategyId) => {
+          const name = evaluations.find((e) => e.strategy_id === strategyId)?.strategy_name || strategyId;
+          const row = [name];
+          scenarioIds.forEach((scenarioId) => {
+            const cell = evaluations.find(
+              (e) => e.strategy_id === strategyId && e.scenario_id === scenarioId
+            );
+            if (!cell) {
+              row.push("-");
+            } else {
+              row.push(`${cell.grade_letter} ${cell.score_0_100}`);
+            }
+          });
+          rows.push(row);
+        });
+        return rows;
+      }
+
+      function renderScorecard(viewModel) {
+        const panel = document.getElementById("scorecardPanel");
+        panel.innerHTML = "";
+        const evaluations = viewModel?.wind_tunnel_evaluations_v2?.evaluations || [];
+        if (!evaluations.length) {
+          panel.textContent = "Scorecard pending.";
+          return;
+        }
+        const rows = buildScorecard(evaluations);
+        const table = document.createElement("table");
+        rows.forEach((row, idx) => {
+          const tr = document.createElement("tr");
+          row.forEach((cell) => {
+            const el = document.createElement(idx === 0 ? "th" : "td");
+            el.textContent = cell;
+            tr.appendChild(el);
+          });
+          table.appendChild(tr);
+        });
+        panel.appendChild(table);
+      }
+
+      function renderRecommendations(viewModel) {
+        const panel = document.getElementById("recommendationPanel");
+        panel.innerHTML = "";
+        const rec = viewModel?.wind_tunnel_evaluations_v2?.recommendations || null;
+        if (!rec) {
+          panel.textContent = "Recommendations pending.";
+          return;
+        }
+        const primary = rec.primary_recommended_strategy || {};
+        const headline = document.createElement("div");
+        headline.innerHTML = `<strong>Recommended Strategy:</strong> ${
+          primary.strategy_name || primary.strategy_id || "TBD"
+        }`;
+        panel.appendChild(headline);
+        if (primary.rationale) {
+          const rationale = document.createElement("p");
+          rationale.textContent = primary.rationale;
+          panel.appendChild(rationale);
+        }
+        const hardening = document.createElement("div");
+        hardening.className = "chip";
+        hardening.textContent = "Hardening actions";
+        panel.appendChild(hardening);
+        const hardList = document.createElement("p");
+        hardList.textContent = (rec.hardening_actions || []).slice(0, 5).join("; ");
+        panel.appendChild(hardList);
+        const trigger = document.createElement("div");
+        trigger.className = "chip";
+        trigger.textContent = "Triggers to watch";
+        panel.appendChild(trigger);
+        const trigList = document.createElement("p");
+        trigList.textContent = (rec.triggers_to_watch || [])
+          .slice(0, 5)
+          .map((t) => t.description || "")
+          .join("; ");
+        panel.appendChild(trigList);
+      }
+
+      async function load() {
+        try {
+          const latest = await fetchLatest();
+          state.runId = latest.run_id;
+          const viewModel = await fetchArtifact(latest.run_id, "view_model.json");
+          state.viewModel = viewModel || {};
+          renderHero(state.viewModel, latest.run_id);
+          renderOverview(state.viewModel);
+          renderNodeReference(state.viewModel);
+          renderForces(state.viewModel);
+          renderScenarios(state.viewModel);
+          renderStrategies(state.viewModel);
+          renderScorecard(state.viewModel);
+          renderRecommendations(state.viewModel);
+        } catch (err) {
+          document.getElementById("heroTitle").textContent = "No runs available.";
+          document.getElementById("heroSubtitle").textContent = "Check your API access.";
+        }
+      }
+
+      document.getElementById("refreshBtn").addEventListener("click", load);
+      document.getElementById("accessBtn").addEventListener("click", () => {
+        const key = prompt("Enter access key (stored locally)");
+        if (key) {
+          localStorage.setItem("scenarioops_api_key", key);
+          load();
+        }
+      });
+
+      load();
+    </script>
+  </body>
+</html>

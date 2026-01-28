@@ -41,6 +41,9 @@ Run the UI:
 streamlit run src/scenarioops/ui/streamlit_app.py
 ```
 
+The FastAPI app serves the commercial dashboard at `/` and the legacy
+operations UI at `/ops`.
+
 ## Configuration
 
 ScenarioOps reads settings from `config/scenarioops.yaml`. UI and CLI overrides apply on top
