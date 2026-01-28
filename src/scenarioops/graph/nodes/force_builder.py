@@ -357,6 +357,53 @@ def _domain_counts(forces: Iterable[Mapping[str, Any]]) -> dict[str, int]:
     return counts
 
 
+def _fallback_forces_from_evidence(
+    evidence_units: list[Mapping[str, Any]],
+    *,
+    run_id: str,
+    limit: int = 6,
+) -> list[dict[str, Any]]:
+    fallback: list[dict[str, Any]] = []
+    domains = list(_PESTEL_DOMAINS)
+    for idx, unit in enumerate(evidence_units[:limit], start=1):
+        ev_id = str(unit.get("id") or unit.get("evidence_unit_id") or f"ev-{idx}")
+        title = str(unit.get("title") or unit.get("summary") or "Force signal")
+        summary = str(unit.get("summary") or unit.get("excerpt") or "Evidence-derived signal.")
+        domain = domains[(idx - 1) % len(domains)]
+        fallback.append(
+            {
+                "force_id": f"{run_id}-fallback-{idx}",
+                "layer": "primary",
+                "domain": domain,
+                "label": title[:120],
+                "mechanism": summary[:280],
+                "directionality": "increases uncertainty",
+                "affected_dimensions": ["market", "operations"],
+                "evidence_unit_ids": [ev_id],
+                "confidence": 0.4,
+                "confidence_rationale": "Fallback force generated from available evidence.",
+                "unlinked": False,
+            }
+        )
+    if not fallback:
+        fallback.append(
+            {
+                "force_id": f"{run_id}-fallback-1",
+                "layer": "primary",
+                "domain": "economic",
+                "label": "Insufficient evidence for force generation",
+                "mechanism": "Fallback force created because force builder returned no valid forces.",
+                "directionality": "uncertain",
+                "affected_dimensions": ["market"],
+                "evidence_unit_ids": [],
+                "confidence": 0.2,
+                "confidence_rationale": "Fallback force created without evidence linkage.",
+                "unlinked": True,
+            }
+        )
+    return fallback
+
+
 def _deficits(
     targets: Mapping[str, int], counts: Mapping[str, int]
 ) -> dict[str, int]:
@@ -745,6 +792,8 @@ def _validate_distribution(
     forces: list[dict[str, Any]], min_forces: int, min_per_domain: int
 ) -> list[str]:
     warnings: list[str] = []
+    if any(str(force.get("force_id", "")).startswith(f"{run_id}-fallback") for force in normalized_forces):
+        warnings.append("fallback_forces_generated")
     if len(forces) < min_forces:
         warnings.append(
             f"force_count_below_min: {len(forces)} < {min_forces}"
@@ -915,6 +964,10 @@ def run_force_builder_node(
             _write_manifest(manifest_path, manifest)
 
     normalized_forces = _dedupe_forces(raw_forces)
+    if not normalized_forces:
+        normalized_forces = _fallback_forces_from_evidence(
+            evidence_units, run_id=run_id, limit=min(6, len(evidence_units) or 1)
+        )
 
     deficit_attempts = 0
     deficits = _deficits(domain_targets, _domain_counts(normalized_forces))

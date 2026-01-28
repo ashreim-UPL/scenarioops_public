@@ -217,12 +217,59 @@
 
       .layout-grid {
         display: grid;
-        grid-template-columns: 280px 1.2fr 360px;
+        grid-template-columns: 320px 1.2fr 360px;
         gap: 16px;
       }
 
       .sidebar {
         padding: 16px;
+      }
+
+      .company-card {
+        padding: 14px;
+        margin-bottom: 14px;
+      }
+
+      .company-header {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+
+      .company-logo {
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+        background: linear-gradient(135deg, rgba(58, 164, 255, 0.6), rgba(40, 240, 200, 0.5));
+        color: #051022;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+      }
+
+      .company-meta {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .kpi-list {
+        display: grid;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .kpi-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 10px;
+        border-radius: 10px;
+        border: 1px solid rgba(110, 140, 200, 0.25);
+        background: rgba(15, 24, 44, 0.45);
+        font-size: 12px;
       }
 
       .sidebar label,
@@ -590,19 +637,78 @@
           <div class="helper">Check your API access or create a new run.</div>
         </div>
 
-        <div class="glass kpi-row">
-          <div class="glass kpi-card">
-            <h3>Market Volatility</h3>
-            <p id="kpiVolatility">--</p>
+        <div class="glass" style="padding: 18px; margin-bottom: 18px;">
+          <div class="section-title">Strategic Forge</div>
+          <div class="form" id="wizard">
+            <div id="wizardSteps"></div>
+            <div style="margin-top: 12px; display:flex; gap:10px;">
+              <button id="prevStep">Back</button>
+              <button class="primary" id="nextStep">Next</button>
+              <button class="primary" id="launchRun">Launch Run</button>
+            </div>
+            <div id="runStatus" class="helper" style="margin-top: 10px;"></div>
           </div>
-          <div class="glass kpi-card">
-            <h3>Strategy Confidence</h3>
-            <p id="kpiConfidence">--</p>
-          </div>
-          <div class="glass kpi-card">
-            <h3>ROI Projection</h3>
-            <p id="kpiROI">--</p>
-          </div>
+          <details style="margin-top:12px;" id="advancedPanel">
+            <summary style="cursor:pointer;">Developer Overrides (advanced)</summary>
+            <div class="helper" style="margin: 8px 0 12px;">
+              Configure precise model + data settings. These map to runtime settings overrides.
+            </div>
+            <div class="card-grid">
+              <label>LLM Model<select id="advLlmModel">
+                <option value="">Default</option>
+                <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
+                <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+              </select></label>
+              <label>Search Model<select id="advSearchModel">
+                <option value="">Default</option>
+                <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
+                <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+              </select></label>
+              <label>Summarizer Model<select id="advSummarizerModel">
+                <option value="">Default</option>
+                <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
+                <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+              </select></label>
+              <label>Image Model<select id="advImageModel">
+                <option value="">Default</option>
+                <option value="gemini-2.5-flash-image">Gemini 2.5 Flash Image</option>
+                <option value="imagen-3.0-generate-002">Imagen 3</option>
+              </select></label>
+              <label>Embedding Model<input id="advEmbedModel" placeholder="local-hash-256" /></label>
+              <label>Temperature<input id="advTemperature" type="number" step="0.1" min="0" max="2" placeholder="0.2" /></label>
+              <label>Seed<input id="advSeed" type="number" placeholder="Optional" /></label>
+              <label>Sources Policy<select id="advSourcesPolicy">
+                <option value="">Default</option>
+                <option value="fixtures">Fixtures</option>
+                <option value="academic_only">Academic Only</option>
+                <option value="mixed_reputable">Mixed Reputable</option>
+              </select></label>
+              <label>Allow Web<select id="advAllowWeb">
+                <option value="">Default</option>
+                <option value="true">True</option>
+                <option value="false">False</option>
+              </select></label>
+              <label>Simulate Evidence<select id="advSimulateEvidence">
+                <option value="">Default</option>
+                <option value="true">True</option>
+                <option value="false">False</option>
+              </select></label>
+              <label>Min Sources / Domain<input id="advMinSourcesDomain" type="number" placeholder="8" /></label>
+              <label>Min Citations / Driver<input id="advMinCitations" type="number" placeholder="2" /></label>
+              <label>Min Forces<input id="advMinForces" type="number" placeholder="60" /></label>
+              <label>Min Forces / Domain<input id="advMinForcesDomain" type="number" placeholder="10" /></label>
+              <label>Min Evidence OK<input id="advMinEvidenceOk" type="number" placeholder="10" /></label>
+              <label>Min Evidence Total<input id="advMinEvidenceTotal" type="number" placeholder="15" /></label>
+              <label>Max Failed Ratio<input id="advMaxFailedRatio" type="number" step="0.05" placeholder="Optional" /></label>
+            </div>
+            <details style="margin-top: 12px;">
+              <summary style="cursor:pointer;">Preview (read-only)</summary>
+              <textarea id="advancedPreview" rows="6" style="width:100%; font-family: var(--font-mono);" readonly></textarea>
+            </details>
+          </details>
         </div>
 
         <div class="section">
@@ -632,6 +738,21 @@
         <div class="section layout-grid">
           <aside class="glass sidebar">
             <div class="section-title">Run Controls</div>
+            <div class="glass company-card">
+              <div class="company-header">
+                <div class="company-logo" id="companyLogo">SO</div>
+                <div>
+                  <div id="companyName" style="font-weight: 600;">Company</div>
+                  <div id="companyMarket" class="company-meta">Market • Region</div>
+                </div>
+              </div>
+              <div id="companySummary" class="company-meta">Awaiting profile data.</div>
+              <div class="kpi-list">
+                <div class="kpi-item"><span>Market Volatility</span><strong id="kpiVolatility">--</strong></div>
+                <div class="kpi-item"><span>Strategy Confidence</span><strong id="kpiConfidence">--</strong></div>
+                <div class="kpi-item"><span>ROI Projection</span><strong id="kpiROI">--</strong></div>
+              </div>
+            </div>
             <label>Run Library<select id="runSelect"></select></label>
             <div style="display:flex; gap:8px; margin-bottom: 10px;">
               <button id="loadRunBtn">Load Run</button>
@@ -733,81 +854,6 @@
         </div>
       </section>
 
-      <section class="section">
-        <div class="glass" style="padding: 18px;">
-          <div class="section-title">Strategic Forge</div>
-          <div class="form" id="wizard">
-            <div id="wizardSteps"></div>
-            <div style="margin-top: 12px; display:flex; gap:10px;">
-              <button id="prevStep">Back</button>
-              <button class="primary" id="nextStep">Next</button>
-              <button class="primary" id="launchRun">Launch Run</button>
-            </div>
-            <div id="runStatus" class="helper" style="margin-top: 10px;"></div>
-          </div>
-          <details style="margin-top:12px;" id="advancedPanel">
-            <summary style="cursor:pointer;">Developer Overrides (advanced)</summary>
-            <div class="helper" style="margin: 8px 0 12px;">
-              Configure precise model + data settings. These map to runtime settings overrides.
-            </div>
-            <div class="card-grid">
-              <label>LLM Model<select id="advLlmModel">
-                <option value="">Default</option>
-                <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
-                <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
-                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-              </select></label>
-              <label>Search Model<select id="advSearchModel">
-                <option value="">Default</option>
-                <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
-                <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
-                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-              </select></label>
-              <label>Summarizer Model<select id="advSummarizerModel">
-                <option value="">Default</option>
-                <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
-                <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
-                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-              </select></label>
-              <label>Image Model<select id="advImageModel">
-                <option value="">Default</option>
-                <option value="gemini-2.5-flash-image">Gemini 2.5 Flash Image</option>
-                <option value="imagen-3.0-generate-002">Imagen 3</option>
-              </select></label>
-              <label>Embedding Model<input id="advEmbedModel" placeholder="local-hash-256" /></label>
-              <label>Temperature<input id="advTemperature" type="number" step="0.1" min="0" max="2" placeholder="0.2" /></label>
-              <label>Seed<input id="advSeed" type="number" placeholder="Optional" /></label>
-              <label>Sources Policy<select id="advSourcesPolicy">
-                <option value="">Default</option>
-                <option value="fixtures">Fixtures</option>
-                <option value="academic_only">Academic Only</option>
-                <option value="mixed_reputable">Mixed Reputable</option>
-              </select></label>
-              <label>Allow Web<select id="advAllowWeb">
-                <option value="">Default</option>
-                <option value="true">True</option>
-                <option value="false">False</option>
-              </select></label>
-              <label>Simulate Evidence<select id="advSimulateEvidence">
-                <option value="">Default</option>
-                <option value="true">True</option>
-                <option value="false">False</option>
-              </select></label>
-              <label>Min Sources / Domain<input id="advMinSourcesDomain" type="number" placeholder="8" /></label>
-              <label>Min Citations / Driver<input id="advMinCitations" type="number" placeholder="2" /></label>
-              <label>Min Forces<input id="advMinForces" type="number" placeholder="60" /></label>
-              <label>Min Forces / Domain<input id="advMinForcesDomain" type="number" placeholder="10" /></label>
-              <label>Min Evidence OK<input id="advMinEvidenceOk" type="number" placeholder="10" /></label>
-              <label>Min Evidence Total<input id="advMinEvidenceTotal" type="number" placeholder="15" /></label>
-              <label>Max Failed Ratio<input id="advMaxFailedRatio" type="number" step="0.05" placeholder="Optional" /></label>
-            </div>
-            <details style="margin-top: 12px;">
-              <summary style="cursor:pointer;">Preview (read-only)</summary>
-              <textarea id="advancedPreview" rows="6" style="width:100%; font-family: var(--font-mono);" readonly></textarea>
-            </details>
-          </details>
-        </div>
-      </section>
     </div>
 
     <div class="modal hidden" id="accessModal">
@@ -988,6 +1034,29 @@
         const focusText = focus.focal_issue || focus.purpose || state.viewModel?.charter?.purpose || "Awaiting data.";
         document.getElementById("companyOverview").textContent = companyText;
         document.getElementById("strategicFocus").textContent = focusText;
+        const name = company.company_name || state.viewModel?.charter?.title || "Company";
+        const market =
+          company.industry ||
+          company.market ||
+          company.sector ||
+          (Array.isArray(company.tags) ? company.tags.join(", ") : "") ||
+          "Market";
+        const region =
+          focus?.scope?.geography || focus?.geography || "Global";
+        const initials = name
+          .split(" ")
+          .filter(Boolean)
+          .slice(0, 2)
+          .map((word) => word[0].toUpperCase())
+          .join("");
+        const logo = document.getElementById("companyLogo");
+        const nameEl = document.getElementById("companyName");
+        const marketEl = document.getElementById("companyMarket");
+        const summaryEl = document.getElementById("companySummary");
+        if (logo) logo.textContent = initials || "SO";
+        if (nameEl) nameEl.textContent = name;
+        if (marketEl) marketEl.textContent = `${market} • ${region}`;
+        if (summaryEl) summaryEl.textContent = company.summary || company.description || "Awaiting profile data.";
       }
 
       function renderKPIs() {
