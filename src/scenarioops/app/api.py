@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, File, Header, HTTPException, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 
@@ -16,6 +16,7 @@ from scenarioops.app.workflow import (
     ensure_signals,
     latest_run_id,
     list_artifacts,
+    list_run_ids,
     state_for_daily,
     state_for_strategies,
 )
@@ -48,6 +49,10 @@ class BuildRequest(BaseModel):
     sources: list[str] | None = None
     run_id: str | None = None
     mock: bool = True
+    resume_from: str | None = None
+    input_docs: list[str] | None = None
+    generate_strategies: bool = True
+    settings_overrides: dict[str, Any] | None = None
 
 
 class StrategiesRequest(BaseModel):
@@ -71,6 +76,14 @@ class LatestResponse(BaseModel):
     run_id: str
     daily_brief: dict[str, Any]
     links: list[str]
+
+
+class RunsResponse(BaseModel):
+    runs: list[str]
+
+
+class LogResponse(BaseModel):
+    entries: list[dict[str, Any]]
 
 
 def _load_daily_brief(run_id: str, base_dir: Path) -> dict[str, Any]:
@@ -97,6 +110,13 @@ def _artifact_path(run_id: str, artifact_name: str, base_dir: Path) -> Path:
     if "/" in artifact_name or "\\" in artifact_name:
         raise ValueError("Invalid artifact name.")
     return base_dir / run_id / "artifacts" / artifact_name
+
+
+def _safe_log_path(run_id: str, log_name: str, base_dir: Path) -> Path:
+    if "/" in log_name or "\\" in log_name:
+        raise ValueError("Invalid log name.")
+    logs_dir = base_dir / run_id / "logs"
+    return logs_dir / log_name
 
 
 def _tenant_context(
@@ -145,6 +165,8 @@ def build(
     payload: BuildRequest, tenant: TenantContext = Depends(_tenant_context)
 ) -> RunResponse:
     run_id = payload.run_id or datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+    if payload.resume_from and not payload.run_id:
+        raise HTTPException(status_code=400, detail="run_id required when resuming.")
     user_params = {"scope": payload.scope, "value": payload.value, "horizon": payload.horizon}
     if payload.company:
         user_params["company"] = payload.company
@@ -156,7 +178,9 @@ def build(
         overrides["sources_policy"] = "fixtures"
         overrides["llm_provider"] = "mock"
     tenant_overrides = get_tenant_config(tenant.tenant_id)
-    settings = load_settings({**tenant_overrides, **overrides})
+    settings = load_settings(
+        {**tenant_overrides, **overrides, **(payload.settings_overrides or {})}
+    )
     use_fixtures = settings.sources_policy == "fixtures"
     if not sources and use_fixtures:
         sources = default_sources()
@@ -165,7 +189,7 @@ def build(
         user_params=user_params,
         sources=sources,
         signals=[],
-        input_docs=[],
+        input_docs=payload.input_docs or [],
     )
     try:
         run_graph(
@@ -173,9 +197,10 @@ def build(
             run_id=run_id,
             mock_mode=use_fixtures,
             settings=settings,
-            generate_strategies=False,
+            generate_strategies=payload.generate_strategies,
             retriever=retrieve_url,
             base_dir=tenant.base_dir,
+            resume_from=payload.resume_from,
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
@@ -215,6 +240,47 @@ def artifact(
     if path.suffix == ".jsonl":
         return PlainTextResponse(path.read_text(encoding="utf-8"))
     return PlainTextResponse(path.read_text(encoding="utf-8"))
+
+
+@app.get("/runs", response_model=RunsResponse)
+def runs(tenant: TenantContext = Depends(_tenant_context)) -> RunsResponse:
+    return RunsResponse(runs=list_run_ids(base_dir=tenant.base_dir))
+
+
+@app.get("/run/{run_id}/node_events", response_model=LogResponse)
+def node_events(
+    run_id: str, tenant: TenantContext = Depends(_tenant_context)
+) -> LogResponse:
+    try:
+        path = _safe_log_path(run_id, "node_events.jsonl", tenant.base_dir)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if not path.exists():
+        return LogResponse(entries=[])
+    lines = [
+        json.loads(line)
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    return LogResponse(entries=[item for item in lines if isinstance(item, dict)])
+
+
+@app.get("/run/{run_id}/normalization", response_model=LogResponse)
+def normalization_logs(
+    run_id: str, tenant: TenantContext = Depends(_tenant_context)
+) -> LogResponse:
+    try:
+        path = _safe_log_path(run_id, "normalization.jsonl", tenant.base_dir)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if not path.exists():
+        return LogResponse(entries=[])
+    lines = [
+        json.loads(line)
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    return LogResponse(entries=[item for item in lines if isinstance(item, dict)])
 
 
 @app.post("/strategies", response_model=RunResponse)
@@ -333,3 +399,26 @@ def latest(tenant: TenantContext = Depends(_tenant_context)) -> LatestResponse:
         daily_brief=daily_brief,
         links=list_artifacts(run_id, base_dir=tenant.base_dir),
     )
+
+
+@app.post("/upload")
+async def upload_files(
+    files: list[UploadFile] = File(...),
+    tenant: TenantContext = Depends(_tenant_context),
+):
+    uploaded_paths: list[str] = []
+    inputs_dir = tenant.base_dir / "uploads"
+    inputs_dir.mkdir(parents=True, exist_ok=True)
+    for file in files:
+        if not file.filename:
+            continue
+        safe_name = Path(file.filename).name
+        target = inputs_dir / safe_name
+        counter = 1
+        while target.exists():
+            target = inputs_dir / f\"{target.stem}-{counter}{target.suffix}\"
+            counter += 1
+        content = await file.read()
+        target.write_bytes(content)
+        uploaded_paths.append(str(target))
+    return {"files": uploaded_paths}

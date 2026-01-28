@@ -317,6 +317,15 @@
         </div>
       </section>
 
+      <h3 class="section-title">Run Selector</h3>
+      <section class="panel">
+        <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
+          <select id="runSelect"></select>
+          <button class="ghost" id="loadRunBtn">Load run</button>
+          <span id="runSelectStatus" style="font-size:12px; color:var(--muted);"></span>
+        </div>
+      </section>
+
       <h3 class="section-title">Run Builder</h3>
       <section class="panel" id="runBuilder">
         <div class="grid cols-3">
@@ -347,11 +356,52 @@
               <option value="false">Live</option>
             </select>
           </label>
+          <label>
+            Resume from node
+            <select id="resumeFrom">
+              <option value="">Start new run</option>
+              <option value="charter">Charter</option>
+              <option value="focal_issue">Focal Issue</option>
+              <option value="company_profile">Company Profile</option>
+              <option value="retrieval_real">Retrieval</option>
+              <option value="forces">Forces</option>
+              <option value="clusters">Clusters</option>
+              <option value="uncertainty_axes">Uncertainty Axes</option>
+              <option value="scenarios">Scenarios</option>
+              <option value="scenario_media">Scenario Media</option>
+              <option value="strategies">Strategies</option>
+              <option value="wind_tunnel">Wind Tunnel</option>
+              <option value="auditor">Auditor</option>
+            </select>
+          </label>
+          <label>
+            Resume run id
+            <input id="resumeRunId" placeholder="Leave blank for new run" />
+          </label>
+          <label>
+            Generate strategies
+            <select id="generateStrategies">
+              <option value="true">Yes</option>
+              <option value="false">No</option>
+            </select>
+          </label>
+          <label>
+            Upload documents
+            <input id="runUploads" type="file" multiple />
+          </label>
           <div style="display:flex; align-items:end; gap:8px;">
             <button class="pill" id="runSubmit">Create Run</button>
             <span id="runStatus" style="font-size:12px; color:var(--muted);"></span>
           </div>
         </div>
+        <details style="margin-top:16px;">
+          <summary style="font-weight:600; cursor:pointer;">Advanced overrides (optional)</summary>
+          <p style="color:var(--muted); font-size:13px;">
+            JSON overrides applied to this run only. Examples: allow_web, seed, llm_model, search_model,
+            summarizer_model, embed_model, image_model, min_evidence_ok, min_evidence_total, max_failed_ratio.
+          </p>
+          <textarea id="runOverrides" style="width:100%; min-height:120px; font-family:monospace;">{}</textarea>
+        </details>
       </section>
 
       <details class="panel" id="adminPanel" style="margin-top:24px; display:none;">
@@ -380,6 +430,12 @@
 
       <h3 class="section-title">Recommendations & Triggers</h3>
       <section class="panel recommendations" id="recommendationPanel"></section>
+
+      <h3 class="section-title">Run Steps</h3>
+      <section class="panel" id="runStepsPanel"></section>
+
+      <h3 class="section-title">Recent Logs</h3>
+      <section class="panel" id="logsPanel"></section>
 
       <div class="footer">ScenarioOps · Enterprise Preview</div>
     </div>
@@ -410,6 +466,27 @@
           return null;
         }
         return res.json();
+      }
+
+      async function fetchRuns() {
+        const res = await fetch("/runs", { headers: getHeaders() });
+        if (!res.ok) return [];
+        const data = await res.json();
+        return data.runs || [];
+      }
+
+      async function fetchNodeEvents(runId) {
+        const res = await fetch(`/run/${runId}/node_events`, { headers: getHeaders() });
+        if (!res.ok) return [];
+        const data = await res.json();
+        return data.entries || [];
+      }
+
+      async function fetchNormalization(runId) {
+        const res = await fetch(`/run/${runId}/normalization`, { headers: getHeaders() });
+        if (!res.ok) return [];
+        const data = await res.json();
+        return data.entries || [];
       }
 
       async function fetchConfig() {
@@ -632,8 +709,68 @@
         panel.appendChild(trigList);
       }
 
+      function renderRunSteps(events) {
+        const panel = document.getElementById("runStepsPanel");
+        panel.innerHTML = "";
+        if (!events.length) {
+          panel.textContent = "No run steps logged yet.";
+          return;
+        }
+        const grouped = {};
+        events.forEach((event) => {
+          const name = event.node || "unknown";
+          grouped[name] = event;
+        });
+        Object.entries(grouped).forEach(([node, event]) => {
+          const item = document.createElement("div");
+          item.className = "node-item";
+          const label = document.createElement("strong");
+          label.textContent = node;
+          const status = document.createElement("span");
+          const normalized = (event.status || "").toUpperCase();
+          status.className = `node-status ${normalized === "OK" ? "ready" : ""}`;
+          status.textContent = normalized || (event.error ? "FAIL" : "OK");
+          item.append(label, status);
+          panel.appendChild(item);
+        });
+      }
+
+      function renderLogs(events, norms) {
+        const panel = document.getElementById("logsPanel");
+        panel.innerHTML = "";
+        const lines = [];
+        events.slice(-8).forEach((event) => {
+          lines.push(`${event.node || "node"} · ${event.status || "done"} · ${event.duration_seconds || 0}s`);
+        });
+        norms.slice(-5).forEach((item) => {
+          lines.push(`normalize: ${item.node || ""} ${item.operation || ""}`);
+        });
+        if (!lines.length) {
+          panel.textContent = "No logs yet.";
+          return;
+        }
+        const list = document.createElement("ul");
+        list.style.margin = "0";
+        list.style.paddingLeft = "16px";
+        lines.forEach((line) => {
+          const li = document.createElement("li");
+          li.textContent = line;
+          list.appendChild(li);
+        });
+        panel.appendChild(list);
+      }
+
       async function load() {
         try {
+          const runList = await fetchRuns();
+          const runSelect = document.getElementById("runSelect");
+          runSelect.innerHTML = "";
+          runList.forEach((runId) => {
+            const opt = document.createElement("option");
+            opt.value = runId;
+            opt.textContent = runId;
+            runSelect.appendChild(opt);
+          });
           const config = await fetchConfig();
           if (config && config.is_admin) {
             const adminPanel = document.getElementById("adminPanel");
@@ -647,6 +784,9 @@
 
           const latest = await fetchLatest();
           state.runId = latest.run_id;
+          if (runList.includes(latest.run_id)) {
+            runSelect.value = latest.run_id;
+          }
           const viewModel = await fetchArtifact(latest.run_id, "view_model.json");
           state.viewModel = viewModel || {};
           renderHero(state.viewModel, latest.run_id);
@@ -657,6 +797,10 @@
           renderStrategies(state.viewModel);
           renderScorecard(state.viewModel);
           renderRecommendations(state.viewModel);
+          const events = await fetchNodeEvents(latest.run_id);
+          const norms = await fetchNormalization(latest.run_id);
+          renderRunSteps(events);
+          renderLogs(events, norms);
         } catch (err) {
           document.getElementById("heroTitle").textContent = "No runs available.";
           document.getElementById("heroSubtitle").textContent = "Check your API access.";
@@ -664,6 +808,35 @@
       }
 
       document.getElementById("refreshBtn").addEventListener("click", load);
+      document.getElementById("loadRunBtn").addEventListener("click", async () => {
+        const runSelect = document.getElementById("runSelect");
+        const status = document.getElementById("runSelectStatus");
+        if (!runSelect.value) {
+          status.textContent = "Select a run id.";
+          return;
+        }
+        status.textContent = "Loading...";
+        try {
+          const viewModel = await fetchArtifact(runSelect.value, "view_model.json");
+          state.viewModel = viewModel || {};
+          state.runId = runSelect.value;
+          renderHero(state.viewModel, runSelect.value);
+          renderOverview(state.viewModel);
+          renderNodeReference(state.viewModel);
+          renderForces(state.viewModel);
+          renderScenarios(state.viewModel);
+          renderStrategies(state.viewModel);
+          renderScorecard(state.viewModel);
+          renderRecommendations(state.viewModel);
+          const events = await fetchNodeEvents(runSelect.value);
+          const norms = await fetchNormalization(runSelect.value);
+          renderRunSteps(events);
+          renderLogs(events, norms);
+          status.textContent = "Loaded.";
+        } catch (err) {
+          status.textContent = "Failed to load run.";
+        }
+      });
       document.getElementById("accessBtn").addEventListener("click", () => {
         const key = prompt("Enter access key (stored locally)");
         if (key) {
@@ -675,12 +848,38 @@
       document.getElementById("runSubmit").addEventListener("click", async () => {
         const status = document.getElementById("runStatus");
         status.textContent = "Submitting...";
+        let uploadedDocs = [];
+        const uploadInput = document.getElementById("runUploads");
+        if (uploadInput.files && uploadInput.files.length) {
+          const formData = new FormData();
+          Array.from(uploadInput.files).forEach((file) => formData.append("files", file));
+          const uploadRes = await fetch("/upload", {
+            method: "POST",
+            headers: getHeaders(),
+            body: formData,
+          });
+          if (uploadRes.ok) {
+            const data = await uploadRes.json();
+            uploadedDocs = data.files || [];
+          }
+        }
+        let overrides = {};
+        try {
+          overrides = JSON.parse(document.getElementById("runOverrides").value || "{}");
+        } catch (err) {
+          overrides = {};
+        }
         const payload = {
           scope: document.getElementById("runScope").value,
           value: document.getElementById("runValue").value || "United States",
           horizon: parseInt(document.getElementById("runHorizon").value || "60", 10),
           company: document.getElementById("runCompany").value || null,
           mock: document.getElementById("runMode").value === "true",
+          resume_from: document.getElementById("resumeFrom").value || null,
+          run_id: document.getElementById("resumeRunId").value || null,
+          generate_strategies: document.getElementById("generateStrategies").value === "true",
+          input_docs: uploadedDocs,
+          settings_overrides: overrides,
         };
         try {
           const res = await fetch("/build", {
