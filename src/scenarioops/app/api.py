@@ -5,11 +5,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 
 from scenarioops.app.config import llm_config_from_settings, load_settings
+from scenarioops.app.auth import TenantContext, ensure_default_user, resolve_tenant
 from scenarioops.app.workflow import (
     ensure_signals,
     latest_run_id,
@@ -33,6 +34,7 @@ from scenarioops.graph.nodes import (
 )
 
 
+ensure_default_user()
 app = FastAPI(title="ScenarioOps API")
 
 
@@ -70,16 +72,16 @@ class LatestResponse(BaseModel):
     links: list[str]
 
 
-def _load_daily_brief(run_id: str) -> dict[str, Any]:
-    artifacts_dir = Path("storage") / "runs" / run_id / "artifacts"
+def _load_daily_brief(run_id: str, base_dir: Path) -> dict[str, Any]:
+    artifacts_dir = base_dir / run_id / "artifacts"
     path = artifacts_dir / "daily_brief.json"
     if not path.exists():
         raise FileNotFoundError("daily_brief.json not found.")
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def _latest_run_with_daily() -> str | None:
-    runs_dir = Path("storage") / "runs"
+def _latest_run_with_daily(base_dir: Path) -> str | None:
+    runs_dir = base_dir
     if not runs_dir.exists():
         return None
     runs = [path for path in runs_dir.iterdir() if path.is_dir()]
@@ -90,14 +92,28 @@ def _latest_run_with_daily() -> str | None:
     return None
 
 
-def _artifact_path(run_id: str, artifact_name: str) -> Path:
+def _artifact_path(run_id: str, artifact_name: str, base_dir: Path) -> Path:
     if "/" in artifact_name or "\\" in artifact_name:
         raise ValueError("Invalid artifact name.")
-    return Path("storage") / "runs" / run_id / "artifacts" / artifact_name
+    return base_dir / run_id / "artifacts" / artifact_name
+
+
+def _tenant_context(
+    x_api_key: str | None = Header(default=None, alias="X-Api-Key"),
+    authorization: str | None = Header(default=None),
+) -> TenantContext:
+    api_key = x_api_key
+    if not api_key and authorization:
+        parts = authorization.split()
+        if len(parts) == 2 and parts[0].lower() == "bearer":
+            api_key = parts[1]
+    return resolve_tenant(api_key)
 
 
 @app.post("/build", response_model=RunResponse)
-def build(payload: BuildRequest) -> RunResponse:
+def build(
+    payload: BuildRequest, tenant: TenantContext = Depends(_tenant_context)
+) -> RunResponse:
     run_id = payload.run_id or datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
     user_params = {"scope": payload.scope, "value": payload.value, "horizon": payload.horizon}
     if payload.company:
@@ -128,11 +144,14 @@ def build(payload: BuildRequest) -> RunResponse:
             settings=settings,
             generate_strategies=False,
             retriever=retrieve_url,
+            base_dir=tenant.base_dir,
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
-    return RunResponse(run_id=run_id, artifacts=list_artifacts(run_id))
+    return RunResponse(
+        run_id=run_id, artifacts=list_artifacts(run_id, base_dir=tenant.base_dir)
+    )
 
 
 @app.get("/")
@@ -142,9 +161,13 @@ def index() -> FileResponse:
 
 
 @app.get("/artifact/{run_id}/{artifact_name}")
-def artifact(run_id: str, artifact_name: str):
+def artifact(
+    run_id: str,
+    artifact_name: str,
+    tenant: TenantContext = Depends(_tenant_context),
+):
     try:
-        path = _artifact_path(run_id, artifact_name)
+        path = _artifact_path(run_id, artifact_name, tenant.base_dir)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     if not path.exists():
@@ -158,8 +181,10 @@ def artifact(run_id: str, artifact_name: str):
 
 
 @app.post("/strategies", response_model=RunResponse)
-def strategies(payload: StrategiesRequest) -> RunResponse:
-    run_id = payload.run_id or latest_run_id()
+def strategies(
+    payload: StrategiesRequest, tenant: TenantContext = Depends(_tenant_context)
+) -> RunResponse:
+    run_id = payload.run_id or latest_run_id(base_dir=tenant.base_dir)
     if not run_id:
         raise HTTPException(status_code=404, detail="No runs available.")
 
@@ -173,32 +198,44 @@ def strategies(payload: StrategiesRequest) -> RunResponse:
         mock_payloads_for_sources(default_sources()) if payload.mock else None
     )
     try:
-        state = state_for_strategies(run_id)
+        state = state_for_strategies(run_id, base_dir=tenant.base_dir)
         state = run_strategies_node(
             run_id=run_id,
             state=state,
             strategy_notes=payload.strategies_text or "",
             llm_client=client_for_node("strategies", mock_payloads=mock_payloads),
             config=config,
+            base_dir=tenant.base_dir,
         )
         state = run_wind_tunnel_node(
             run_id=run_id,
             state=state,
             llm_client=client_for_node("wind_tunnel", mock_payloads=mock_payloads),
             config=config,
+            base_dir=tenant.base_dir,
         )
-        run_auditor_node(run_id=run_id, state=state, settings=settings, config=config)
+        run_auditor_node(
+            run_id=run_id,
+            state=state,
+            settings=settings,
+            config=config,
+            base_dir=tenant.base_dir,
+        )
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
-    return RunResponse(run_id=run_id, artifacts=list_artifacts(run_id))
+    return RunResponse(
+        run_id=run_id, artifacts=list_artifacts(run_id, base_dir=tenant.base_dir)
+    )
 
 
 @app.post("/daily", response_model=RunResponse)
-def daily(payload: DailyRequest) -> RunResponse:
-    run_id = payload.run_id or latest_run_id()
+def daily(
+    payload: DailyRequest, tenant: TenantContext = Depends(_tenant_context)
+) -> RunResponse:
+    run_id = payload.run_id or latest_run_id(base_dir=tenant.base_dir)
     if not run_id:
         raise HTTPException(status_code=404, detail="No runs available.")
 
@@ -212,7 +249,7 @@ def daily(payload: DailyRequest) -> RunResponse:
         mock_payloads_for_sources(default_sources()) if payload.mock else None
     )
     try:
-        state = state_for_daily(run_id)
+        state = state_for_daily(run_id, base_dir=tenant.base_dir)
         signals = payload.signals or []
         if not signals and payload.mock:
             signals = ensure_signals(state.ewi.indicators)
@@ -222,27 +259,38 @@ def daily(payload: DailyRequest) -> RunResponse:
             state=state,
             llm_client=client_for_node("daily_runner", mock_payloads=mock_payloads),
             config=config,
+            base_dir=tenant.base_dir,
         )
-        run_auditor_node(run_id=run_id, state=state, settings=settings, config=config)
+        run_auditor_node(
+            run_id=run_id,
+            state=state,
+            settings=settings,
+            config=config,
+            base_dir=tenant.base_dir,
+        )
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
-    return RunResponse(run_id=run_id, artifacts=list_artifacts(run_id))
+    return RunResponse(
+        run_id=run_id, artifacts=list_artifacts(run_id, base_dir=tenant.base_dir)
+    )
 
 
 @app.get("/latest", response_model=LatestResponse)
-def latest() -> LatestResponse:
-    run_id = _latest_run_with_daily() or latest_run_id()
+def latest(tenant: TenantContext = Depends(_tenant_context)) -> LatestResponse:
+    run_id = _latest_run_with_daily(tenant.base_dir) or latest_run_id(
+        base_dir=tenant.base_dir
+    )
     if not run_id:
         raise HTTPException(status_code=404, detail="No runs available.")
     try:
-        daily_brief = _load_daily_brief(run_id)
+        daily_brief = _load_daily_brief(run_id, tenant.base_dir)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return LatestResponse(
         run_id=run_id,
         daily_brief=daily_brief,
-        links=list_artifacts(run_id),
+        links=list_artifacts(run_id, base_dir=tenant.base_dir),
     )

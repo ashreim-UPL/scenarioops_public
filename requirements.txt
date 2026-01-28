@@ -7,6 +7,8 @@ jsonschema       # Codex C2 Schema Validation
 # --- LLM & Intelligence ---
 google-genai     # Gemini 3 Pro SDK for Squad Intelligence
 requests         # External Retrieval
+boto3            # S3 storage
+psycopg[binary]  # Postgres connectivity
 
 # --- UI & Visualization ---
 streamlit        # Dashboard UI

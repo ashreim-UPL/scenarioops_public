@@ -2,12 +2,274 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
+import hashlib
+import os
 from pathlib import Path
 from typing import Any, Mapping
 
 from .provenance import ArtifactProvenance, build_provenance
 
 _RUN_CREATED_AT: dict[str, str] = {}
+_DB_READY = False
+_S3_CLIENT = None
+
+
+def _sha256_bytes(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def _sha256_file(path: Path) -> str:
+    return _sha256_bytes(path.read_bytes())
+
+
+def _db_enabled() -> bool:
+    return bool(os.environ.get("DATABASE_URL"))
+
+
+def _db_required() -> bool:
+    return os.environ.get("SCENARIOOPS_DB_REQUIRED", "").lower() in {"1", "true", "yes"}
+
+
+def _s3_enabled() -> bool:
+    return bool(os.environ.get("S3_BUCKET"))
+
+
+def _s3_required() -> bool:
+    return os.environ.get("SCENARIOOPS_S3_REQUIRED", "").lower() in {"1", "true", "yes"}
+
+
+def _s3_prefix() -> str:
+    prefix = os.environ.get("S3_PREFIX", "scenarioops")
+    return prefix.strip().strip("/")
+
+
+def _s3_key(*parts: str) -> str:
+    prefix = _s3_prefix()
+    clean = [part.strip("/").replace("\\", "/") for part in parts if part]
+    if prefix:
+        return "/".join([prefix, *clean])
+    return "/".join(clean)
+
+
+def _s3_client():
+    global _S3_CLIENT
+    if _S3_CLIENT is not None:
+        return _S3_CLIENT
+    try:
+        import boto3  # type: ignore
+    except Exception as exc:
+        if _s3_required():
+            raise RuntimeError("boto3 is required for S3 storage.") from exc
+        return None
+    kwargs: dict[str, Any] = {}
+    endpoint = os.environ.get("S3_ENDPOINT")
+    if endpoint:
+        kwargs["endpoint_url"] = endpoint
+    region = os.environ.get("S3_REGION")
+    if region:
+        kwargs["region_name"] = region
+    _S3_CLIENT = boto3.client("s3", **kwargs)
+    return _S3_CLIENT
+
+
+def _s3_put_bytes(key: str, data: bytes, content_type: str | None = None) -> None:
+    bucket = os.environ.get("S3_BUCKET")
+    if not bucket:
+        return
+    client = _s3_client()
+    if client is None:
+        return
+    kwargs: dict[str, Any] = {"Bucket": bucket, "Key": key, "Body": data}
+    if content_type:
+        kwargs["ContentType"] = content_type
+    client.put_object(**kwargs)
+
+
+def _s3_put_file(key: str, path: Path, content_type: str | None = None) -> None:
+    _s3_put_bytes(key, path.read_bytes(), content_type=content_type)
+
+
+def _s3_uri(key: str) -> str:
+    bucket = os.environ.get("S3_BUCKET", "")
+    return f"s3://{bucket}/{key}"
+
+
+def _db_connect():
+    try:
+        import psycopg  # type: ignore
+    except Exception as exc:
+        if _db_required():
+            raise RuntimeError("psycopg is required for Postgres storage.") from exc
+        return None
+    return psycopg.connect(os.environ["DATABASE_URL"])
+
+
+def _db_init(conn) -> None:
+    global _DB_READY
+    if _DB_READY:
+        return
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            create table if not exists scenarioops_runs (
+                run_id text primary key,
+                created_at timestamptz,
+                updated_at timestamptz,
+                status text,
+                command text,
+                error_summary text,
+                run_config jsonb
+            );
+            """
+        )
+        cur.execute(
+            """
+            create table if not exists scenarioops_artifacts (
+                run_id text,
+                artifact_name text,
+                artifact_path text,
+                ext text,
+                sha256 text,
+                size_bytes bigint,
+                created_at timestamptz,
+                storage_uri text,
+                meta_json jsonb,
+                primary key (run_id, artifact_name, artifact_path)
+            );
+            """
+        )
+        cur.execute(
+            """
+            create table if not exists scenarioops_events (
+                run_id text,
+                event_type text,
+                payload jsonb,
+                created_at timestamptz
+            );
+            """
+        )
+    conn.commit()
+    _DB_READY = True
+
+
+def _db_upsert_run(
+    *,
+    run_id: str,
+    created_at: str | None = None,
+    updated_at: str | None = None,
+    status: str | None = None,
+    command: str | None = None,
+    error_summary: str | None = None,
+    run_config: Mapping[str, Any] | None = None,
+) -> None:
+    if not _db_enabled():
+        return
+    conn = _db_connect()
+    if conn is None:
+        return
+    try:
+        _db_init(conn)
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                insert into scenarioops_runs (run_id, created_at, updated_at, status, command, error_summary, run_config)
+                values (%s, %s, %s, %s, %s, %s, %s)
+                on conflict (run_id) do update set
+                    created_at = coalesce(excluded.created_at, scenarioops_runs.created_at),
+                    updated_at = coalesce(excluded.updated_at, scenarioops_runs.updated_at),
+                    status = coalesce(excluded.status, scenarioops_runs.status),
+                    command = coalesce(excluded.command, scenarioops_runs.command),
+                    error_summary = coalesce(excluded.error_summary, scenarioops_runs.error_summary),
+                    run_config = coalesce(excluded.run_config, scenarioops_runs.run_config);
+                """,
+                (
+                    run_id,
+                    created_at,
+                    updated_at,
+                    status,
+                    command,
+                    error_summary,
+                    dict(run_config) if run_config else None,
+                ),
+            )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _db_insert_event(run_id: str, event_type: str, payload: Mapping[str, Any]) -> None:
+    if not _db_enabled():
+        return
+    conn = _db_connect()
+    if conn is None:
+        return
+    try:
+        _db_init(conn)
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                insert into scenarioops_events (run_id, event_type, payload, created_at)
+                values (%s, %s, %s, %s);
+                """,
+                (
+                    run_id,
+                    event_type,
+                    dict(payload),
+                    datetime.now(timezone.utc).isoformat(),
+                ),
+            )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _db_upsert_artifact(
+    *,
+    run_id: str,
+    artifact_name: str,
+    artifact_path: str,
+    ext: str,
+    sha256: str,
+    size_bytes: int,
+    created_at: str | None,
+    storage_uri: str | None,
+    meta_json: Mapping[str, Any] | None,
+) -> None:
+    if not _db_enabled():
+        return
+    conn = _db_connect()
+    if conn is None:
+        return
+    try:
+        _db_init(conn)
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                insert into scenarioops_artifacts
+                (run_id, artifact_name, artifact_path, ext, sha256, size_bytes, created_at, storage_uri, meta_json)
+                values (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                on conflict (run_id, artifact_name, artifact_path) do update set
+                    sha256 = excluded.sha256,
+                    size_bytes = excluded.size_bytes,
+                    created_at = coalesce(excluded.created_at, scenarioops_artifacts.created_at),
+                    storage_uri = coalesce(excluded.storage_uri, scenarioops_artifacts.storage_uri),
+                    meta_json = coalesce(excluded.meta_json, scenarioops_artifacts.meta_json);
+                """,
+                (
+                    run_id,
+                    artifact_name,
+                    artifact_path,
+                    ext,
+                    sha256,
+                    size_bytes,
+                    created_at,
+                    storage_uri,
+                    dict(meta_json) if meta_json else None,
+                ),
+            )
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def _find_repo_root(start: Path) -> Path:
@@ -33,6 +295,34 @@ def latest_pointer_path(base_dir: Path | None = None) -> Path:
 def read_latest_status(base_dir: Path | None = None) -> dict[str, Any] | None:
     path = latest_pointer_path(base_dir)
     if not path.exists():
+        if _db_enabled():
+            conn = _db_connect()
+            if conn is None:
+                return None
+            try:
+                _db_init(conn)
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        select run_id, updated_at, status, command, error_summary, run_config
+                        from scenarioops_runs
+                        where updated_at is not null
+                        order by updated_at desc
+                        limit 1;
+                        """
+                    )
+                    row = cur.fetchone()
+                if row:
+                    return {
+                        "run_id": row[0],
+                        "updated_at": row[1].isoformat() if row[1] else None,
+                        "status": row[2],
+                        "command": row[3],
+                        "error_summary": row[4],
+                        "run_config": row[5],
+                    }
+            finally:
+                conn.close()
         return None
     try:
         return json.loads(path.read_text(encoding="utf-8"))
@@ -65,6 +355,21 @@ def write_latest_status(
         payload["run_config"] = dict(run_config)
     path = latest_pointer_path(base_dir)
     _write_json(path, payload)
+    _db_upsert_run(
+        run_id=run_id,
+        updated_at=payload["updated_at"],
+        status=status,
+        command=command_name,
+        error_summary=error_summary,
+        run_config=run_config,
+    )
+    if _s3_enabled():
+        key = _s3_key("runs", run_id, "latest.json")
+        _s3_put_bytes(
+            key,
+            json.dumps(payload, indent=2, sort_keys=True).encode("utf-8"),
+            content_type="application/json",
+        )
     return path
 
 
@@ -116,6 +421,14 @@ def write_run_config(
     dirs = ensure_run_dirs(run_id, base_dir=base_dir)
     path = dirs["run_dir"] / "run_config.json"
     _write_json(path, dict(run_config))
+    _db_upsert_run(
+        run_id=run_id,
+        created_at=run_config.get("created_at"),
+        run_config=run_config,
+    )
+    if _s3_enabled():
+        key = _s3_key("runs", run_id, "run_config.json")
+        _s3_put_file(key, path, content_type="application/json")
     return path
 
 
@@ -136,6 +449,16 @@ def _write_jsonl(path: Path, payload: Any) -> None:
         json.dumps(item, sort_keys=True, separators=(",", ":")) for item in payload
     ]
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def _content_type(ext: str) -> str:
+    if ext == "json":
+        return "application/json"
+    if ext == "jsonl":
+        return "application/json"
+    if ext == "md":
+        return "text/markdown"
+    return "application/octet-stream"
 
 
 def write_artifact(
@@ -178,6 +501,26 @@ def write_artifact(
 
     meta_path = artifacts_dir / f"{artifact_name}.meta.json"
     _write_json(meta_path, provenance.to_dict())
+    sha256 = _sha256_file(artifact_path)
+    size_bytes = artifact_path.stat().st_size
+    storage_uri = None
+    if _s3_enabled():
+        key = _s3_key("runs", run_id, "artifacts", artifact_filename)
+        _s3_put_file(key, artifact_path, content_type=_content_type(ext))
+        meta_key = _s3_key("runs", run_id, "artifacts", f"{artifact_name}.meta.json")
+        _s3_put_file(meta_key, meta_path, content_type="application/json")
+        storage_uri = _s3_uri(key)
+    _db_upsert_artifact(
+        run_id=run_id,
+        artifact_name=artifact_name,
+        artifact_path=artifact_filename,
+        ext=ext,
+        sha256=sha256,
+        size_bytes=size_bytes,
+        created_at=created_at,
+        storage_uri=storage_uri,
+        meta_json=provenance.to_dict(),
+    )
     return artifact_path, meta_path, provenance
 
 
@@ -210,6 +553,26 @@ def write_trace_artifact(
     )
     meta_path = trace_dir / f"{artifact_name}.meta.json"
     _write_json(meta_path, provenance.to_dict())
+    sha256 = _sha256_file(artifact_path)
+    size_bytes = artifact_path.stat().st_size
+    storage_uri = None
+    if _s3_enabled():
+        key = _s3_key("runs", run_id, "trace", artifact_filename)
+        _s3_put_file(key, artifact_path, content_type="application/json")
+        meta_key = _s3_key("runs", run_id, "trace", f"{artifact_name}.meta.json")
+        _s3_put_file(meta_key, meta_path, content_type="application/json")
+        storage_uri = _s3_uri(key)
+    _db_upsert_artifact(
+        run_id=run_id,
+        artifact_name=artifact_name,
+        artifact_path=str(Path("trace") / artifact_filename),
+        ext="json",
+        sha256=sha256,
+        size_bytes=size_bytes,
+        created_at=created_at,
+        storage_uri=storage_uri,
+        meta_json=provenance.to_dict(),
+    )
     return artifact_path, meta_path, provenance
 
 
@@ -252,6 +615,7 @@ def log_node_event(
     if status:
         payload["status"] = status
     _append_jsonl(log_path, payload)
+    _db_insert_event(run_id, "node_event", payload)
     return log_path
 
 
@@ -270,6 +634,7 @@ def log_normalization(
     if details:
         payload["details"] = dict(details)
     _append_jsonl(log_path, payload)
+    _db_insert_event(run_id, "normalization", payload)
     return log_path
 
 

@@ -62,6 +62,27 @@ Key settings:
 Gemini API keys are loaded from Streamlit secrets at runtime. Use
 `.streamlit/secrets.example.toml` as a template.
 
+## Storage & Auth (Postgres + S3)
+
+ScenarioOps can mirror run artifacts to S3 and persist metadata to Postgres.
+Local filesystem storage remains the primary cache for UI rendering.
+
+Environment variables:
+
+- `DATABASE_URL`: Postgres connection string (enables DB metadata + auth).
+- `S3_BUCKET`: bucket name for artifact mirroring.
+- `S3_REGION`: AWS region (optional).
+- `S3_ENDPOINT`: custom endpoint (e.g., Cloudflare R2).
+- `S3_PREFIX`: optional prefix for all artifacts (default `scenarioops`).
+- `SCENARIOOPS_DB_REQUIRED`: set to `true` to hard-fail if Postgres is unavailable.
+- `SCENARIOOPS_S3_REQUIRED`: set to `true` to hard-fail if S3 is unavailable.
+
+API authentication (optional):
+
+- `SCENARIOOPS_AUTH_REQUIRED=1` to enforce API keys.
+- `SCENARIOOPS_DEFAULT_API_KEY` and `SCENARIOOPS_DEFAULT_TENANT` seed a default user.
+- Pass the API key in `X-Api-Key` or `Authorization: Bearer <key>`.
+
 ## Data provenance
 
 Each run writes provenance artifacts into `storage/runs/<run_id>/`:
