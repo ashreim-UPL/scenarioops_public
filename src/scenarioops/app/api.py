@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 
 from scenarioops.app.config import llm_config_from_settings, load_settings
 from scenarioops.app.auth import TenantContext, ensure_default_user, resolve_tenant
+from scenarioops.app.tenant_config import get_tenant_config, update_tenant_config
 from scenarioops.app.workflow import (
     ensure_signals,
     latest_run_id,
@@ -110,6 +111,35 @@ def _tenant_context(
     return resolve_tenant(api_key)
 
 
+def _require_admin(tenant: TenantContext = Depends(_tenant_context)) -> TenantContext:
+    if not tenant.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required.")
+    return tenant
+
+
+class ConfigResponse(BaseModel):
+    settings: dict[str, Any]
+    is_admin: bool
+
+
+class ConfigUpdateRequest(BaseModel):
+    settings: dict[str, Any]
+
+
+@app.get("/config", response_model=ConfigResponse)
+def config_get(tenant: TenantContext = Depends(_tenant_context)) -> ConfigResponse:
+    settings = get_tenant_config(tenant.tenant_id)
+    return ConfigResponse(settings=settings, is_admin=tenant.is_admin)
+
+
+@app.post("/config", response_model=ConfigResponse)
+def config_update(
+    payload: ConfigUpdateRequest, tenant: TenantContext = Depends(_require_admin)
+) -> ConfigResponse:
+    update_tenant_config(tenant.tenant_id, payload.settings)
+    return ConfigResponse(settings=get_tenant_config(tenant.tenant_id), is_admin=True)
+
+
 @app.post("/build", response_model=RunResponse)
 def build(
     payload: BuildRequest, tenant: TenantContext = Depends(_tenant_context)
@@ -125,7 +155,8 @@ def build(
     if payload.mock:
         overrides["sources_policy"] = "fixtures"
         overrides["llm_provider"] = "mock"
-    settings = load_settings(overrides)
+    tenant_overrides = get_tenant_config(tenant.tenant_id)
+    settings = load_settings({**tenant_overrides, **overrides})
     use_fixtures = settings.sources_policy == "fixtures"
     if not sources and use_fixtures:
         sources = default_sources()
@@ -198,7 +229,8 @@ def strategies(
     if payload.mock:
         overrides["sources_policy"] = "fixtures"
         overrides["llm_provider"] = "mock"
-    settings = load_settings(overrides)
+    tenant_overrides = get_tenant_config(tenant.tenant_id)
+    settings = load_settings({**tenant_overrides, **overrides})
     config = llm_config_from_settings(settings)
     mock_payloads = (
         mock_payloads_for_sources(default_sources()) if payload.mock else None
@@ -249,7 +281,8 @@ def daily(
     if payload.mock:
         overrides["sources_policy"] = "fixtures"
         overrides["llm_provider"] = "mock"
-    settings = load_settings(overrides)
+    tenant_overrides = get_tenant_config(tenant.tenant_id)
+    settings = load_settings({**tenant_overrides, **overrides})
     config = llm_config_from_settings(settings)
     mock_payloads = (
         mock_payloads_for_sources(default_sources()) if payload.mock else None

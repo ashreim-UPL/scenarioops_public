@@ -13,6 +13,7 @@ class TenantContext:
     tenant_id: str
     user_id: str | None = None
     email: str | None = None
+    is_admin: bool = False
 
     @property
     def base_dir(self) -> Path:
@@ -39,11 +40,13 @@ def _db_init(conn) -> None:
                 user_id text primary key,
                 tenant_id text not null,
                 email text,
+                role text,
                 api_key_hash text not null,
                 created_at timestamptz
             );
             """
         )
+        cur.execute("alter table scenarioops_users add column if not exists role text;")
     conn.commit()
 
 
@@ -56,7 +59,7 @@ def _lookup_user(api_key: str) -> TenantContext | None:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                select user_id, tenant_id, email
+                select user_id, tenant_id, email, role
                 from scenarioops_users
                 where api_key_hash = %s
                 limit 1;
@@ -66,7 +69,8 @@ def _lookup_user(api_key: str) -> TenantContext | None:
             row = cur.fetchone()
         if not row:
             return None
-        return TenantContext(tenant_id=row[1], user_id=row[0], email=row[2])
+        is_admin = str(row[3] or "").lower() in {"admin", "owner"}
+        return TenantContext(tenant_id=row[1], user_id=row[0], email=row[2], is_admin=is_admin)
     finally:
         conn.close()
 
@@ -84,14 +88,15 @@ def ensure_default_user() -> None:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                insert into scenarioops_users (user_id, tenant_id, email, api_key_hash, created_at)
-                values (%s, %s, %s, %s, %s)
+                insert into scenarioops_users (user_id, tenant_id, email, role, api_key_hash, created_at)
+                values (%s, %s, %s, %s, %s, %s)
                 on conflict (user_id) do nothing;
                 """,
                 (
                     f"{default_tenant}-owner",
                     default_tenant,
                     None,
+                    "owner",
                     _hash_key(default_key),
                     datetime.now(timezone.utc).isoformat(),
                 ),
@@ -101,10 +106,19 @@ def ensure_default_user() -> None:
         conn.close()
 
 
+def _admin_keys() -> set[str]:
+    raw = os.environ.get("SCENARIOOPS_ADMIN_KEYS", "")
+    return {item.strip() for item in raw.split(",") if item.strip()}
+
+
 def resolve_tenant(api_key: str | None) -> TenantContext:
     if not os.environ.get("SCENARIOOPS_AUTH_REQUIRED"):
+        is_admin = True
+        if api_key and _admin_keys():
+            is_admin = api_key in _admin_keys()
         return TenantContext(
-            tenant_id=os.environ.get("SCENARIOOPS_DEFAULT_TENANT", "public")
+            tenant_id=os.environ.get("SCENARIOOPS_DEFAULT_TENANT", "public"),
+            is_admin=is_admin,
         )
     if not os.environ.get("DATABASE_URL"):
         raise RuntimeError("Auth required but DATABASE_URL not configured.")
@@ -113,6 +127,13 @@ def resolve_tenant(api_key: str | None) -> TenantContext:
     user = _lookup_user(api_key)
     if user is None:
         raise PermissionError("Invalid API key.")
+    if _admin_keys() and api_key in _admin_keys():
+        return TenantContext(
+            tenant_id=user.tenant_id,
+            user_id=user.user_id,
+            email=user.email,
+            is_admin=True,
+        )
     return user
 
 

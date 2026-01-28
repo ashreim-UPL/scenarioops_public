@@ -317,6 +317,55 @@
         </div>
       </section>
 
+      <h3 class="section-title">Run Builder</h3>
+      <section class="panel" id="runBuilder">
+        <div class="grid cols-3">
+          <label>
+            Scope
+            <select id="runScope">
+              <option value="country">Country</option>
+              <option value="region">Region</option>
+              <option value="world">World</option>
+            </select>
+          </label>
+          <label>
+            Value
+            <input id="runValue" placeholder="United States" />
+          </label>
+          <label>
+            Horizon (months)
+            <input id="runHorizon" type="number" min="36" max="120" value="60" />
+          </label>
+          <label>
+            Company (optional)
+            <input id="runCompany" placeholder="Microsoft" />
+          </label>
+          <label>
+            Mode
+            <select id="runMode">
+              <option value="true">Demo / Mock</option>
+              <option value="false">Live</option>
+            </select>
+          </label>
+          <div style="display:flex; align-items:end; gap:8px;">
+            <button class="pill" id="runSubmit">Create Run</button>
+            <span id="runStatus" style="font-size:12px; color:var(--muted);"></span>
+          </div>
+        </div>
+      </section>
+
+      <details class="panel" id="adminPanel" style="margin-top:24px; display:none;">
+        <summary style="font-weight:600; cursor:pointer;">Admin Configuration</summary>
+        <p style="color:var(--muted); font-size:13px;">
+          Advanced settings for models, retrieval thresholds, and seed. Changes apply to new runs.
+        </p>
+        <textarea id="configJson" style="width:100%; min-height:220px; font-family:monospace;"></textarea>
+        <div style="margin-top:12px; display:flex; gap:10px; align-items:center;">
+          <button class="pill" id="configSave">Save Config</button>
+          <span id="configStatus" style="font-size:12px; color:var(--muted);"></span>
+        </div>
+      </details>
+
       <h3 class="section-title">Strategic Drivers</h3>
       <section class="cards" id="forceCards"></section>
 
@@ -359,6 +408,26 @@
         const res = await fetch(`/artifact/${runId}/${name}`, { headers: getHeaders() });
         if (!res.ok) {
           return null;
+        }
+        return res.json();
+      }
+
+      async function fetchConfig() {
+        const res = await fetch("/config", { headers: getHeaders() });
+        if (!res.ok) {
+          return null;
+        }
+        return res.json();
+      }
+
+      async function saveConfig(settings) {
+        const res = await fetch("/config", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...getHeaders() },
+          body: JSON.stringify({ settings }),
+        });
+        if (!res.ok) {
+          throw new Error("Failed to save config.");
         }
         return res.json();
       }
@@ -565,6 +634,17 @@
 
       async function load() {
         try {
+          const config = await fetchConfig();
+          if (config && config.is_admin) {
+            const adminPanel = document.getElementById("adminPanel");
+            adminPanel.style.display = "block";
+            document.getElementById("configJson").value = JSON.stringify(
+              config.settings || {},
+              null,
+              2
+            );
+          }
+
           const latest = await fetchLatest();
           state.runId = latest.run_id;
           const viewModel = await fetchArtifact(latest.run_id, "view_model.json");
@@ -589,6 +669,46 @@
         if (key) {
           localStorage.setItem("scenarioops_api_key", key);
           load();
+        }
+      });
+
+      document.getElementById("runSubmit").addEventListener("click", async () => {
+        const status = document.getElementById("runStatus");
+        status.textContent = "Submitting...";
+        const payload = {
+          scope: document.getElementById("runScope").value,
+          value: document.getElementById("runValue").value || "United States",
+          horizon: parseInt(document.getElementById("runHorizon").value || "60", 10),
+          company: document.getElementById("runCompany").value || null,
+          mock: document.getElementById("runMode").value === "true",
+        };
+        try {
+          const res = await fetch("/build", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", ...getHeaders() },
+            body: JSON.stringify(payload),
+          });
+          if (!res.ok) {
+            const text = await res.text();
+            throw new Error(text);
+          }
+          status.textContent = "Run created.";
+          await load();
+        } catch (err) {
+          status.textContent = "Run failed. Check access.";
+        }
+      });
+
+      document.getElementById("configSave").addEventListener("click", async () => {
+        const status = document.getElementById("configStatus");
+        status.textContent = "Saving...";
+        try {
+          const raw = document.getElementById("configJson").value || "{}";
+          const settings = JSON.parse(raw);
+          await saveConfig(settings);
+          status.textContent = "Saved.";
+        } catch (err) {
+          status.textContent = "Invalid JSON or save failed.";
         }
       });
 
