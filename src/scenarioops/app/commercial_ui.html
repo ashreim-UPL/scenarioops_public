@@ -1626,7 +1626,7 @@
             <label>Creativity<input id="forgeCreativity" type="range" min="1" max="10" value="5" /></label>
             <label>Depth<input id="forgeDepth" type="range" min="1" max="10" value="6" /></label>
             <label>Use cached intelligence<select id="forgeCache"><option value="true">Yes</option><option value="false">No</option></select></label>
-            <label>Force fresh web scan<select id="forgeWeb"><option value="false">No</option><option value="true">Yes</option></select></label>
+            <label>Force fresh web scan<select id="forgeWeb"><option value="true">Yes</option><option value="false">No</option></select></label>
           `,
         },
         {
@@ -1710,7 +1710,7 @@
         if (creativity) creativity.value = draft.creativity || 5;
         if (depth) depth.value = draft.depth || 6;
         if (cache) cache.value = draft.cache || "true";
-        if (web) web.value = draft.web || "false";
+        if (web) web.value = draft.web || "true";
 
         [company, scope, geographySelect, geographyCustom, horizon, model, pack, creativity, depth, cache, web].forEach((input) => {
           if (!input) return;

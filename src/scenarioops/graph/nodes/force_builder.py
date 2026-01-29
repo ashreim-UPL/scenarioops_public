@@ -357,6 +357,26 @@ def _domain_counts(forces: Iterable[Mapping[str, Any]]) -> dict[str, int]:
     return counts
 
 
+def _align_evidence_ids(
+    forces: list[dict[str, Any]], evidence_ids: set[str]
+) -> list[dict[str, Any]]:
+    if not evidence_ids:
+        return forces
+    ordered = sorted(evidence_ids)
+    fallback_id = ordered[0]
+    for force in forces:
+        evidence_list = force.get("evidence_unit_ids", [])
+        if not isinstance(evidence_list, list) or not evidence_list:
+            force["evidence_unit_ids"] = [fallback_id]
+            continue
+        valid = [str(item) for item in evidence_list if str(item) in evidence_ids]
+        if not valid:
+            force["evidence_unit_ids"] = [fallback_id]
+        else:
+            force["evidence_unit_ids"] = valid
+    return forces
+
+
 def _fallback_forces_from_evidence(
     evidence_units: list[Mapping[str, Any]],
     *,
@@ -866,6 +886,7 @@ def run_force_builder_node(
     chunk_plan = _plan_chunks(domain_targets, _chunk_size())
     raw_forces: list[dict[str, Any]] = []
     evidence_ids = _evidence_ids(state)
+    mock_mode = getattr(config, "mode", "") == "mock" if config is not None else False
     part_index = 0
     evidence_used: set[str] = set()
 
@@ -894,6 +915,8 @@ def run_force_builder_node(
             if not isinstance(batch_forces, list):
                 batch_forces = []
             batch_forces = _normalize_force_fields(batch_forces)
+            if mock_mode:
+                batch_forces = _align_evidence_ids(batch_forces, evidence_ids)
             batch_forces = _normalize_force_ids(
                 run_id=run_id, forces=batch_forces, base_dir=base_dir
             )
@@ -997,6 +1020,8 @@ def run_force_builder_node(
                 if not isinstance(extra_forces, list):
                     extra_forces = []
                 extra_forces = _normalize_force_fields(extra_forces)
+                if mock_mode:
+                    extra_forces = _align_evidence_ids(extra_forces, evidence_ids)
                 extra_forces = _normalize_force_ids(
                     run_id=run_id, forces=extra_forces, base_dir=base_dir
                 )
