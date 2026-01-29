@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import mimetypes
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
@@ -28,6 +29,10 @@ from scenarioops.graph.setup import (
 )
 from scenarioops.graph.build_graph import run_graph
 from scenarioops.graph.tools.web_retriever import retrieve_url
+from scenarioops.graph.tools.injection_defense import strip_instruction_patterns
+from scenarioops.graph.tools.vectordb import open_run_vector_store
+from scenarioops.llm.client import get_llm_client
+from scenarioops.graph.tools.view_model import build_view_model
 from scenarioops.graph.nodes import (
     run_auditor_node,
     run_daily_runner_node,
@@ -86,6 +91,20 @@ class LatestResponse(BaseModel):
 
 class RunsResponse(BaseModel):
     runs: list[str]
+    labels: dict[str, str] = Field(default_factory=dict)
+
+
+class ChatRequest(BaseModel):
+    run_id: str | None = None
+    question: str = Field(..., min_length=3)
+    top_k: int = Field(default=6, ge=1, le=15)
+
+
+class ChatResponse(BaseModel):
+    run_id: str
+    label: str
+    answer: str
+    sources: list[dict[str, Any]]
 
 
 class LogResponse(BaseModel):
@@ -116,6 +135,158 @@ def _artifact_path(run_id: str, artifact_name: str, base_dir: Path) -> Path:
     if "/" in artifact_name or "\\" in artifact_name:
         raise ValueError("Invalid artifact name.")
     return base_dir / run_id / "artifacts" / artifact_name
+
+
+def _safe_image_path(run_id: str, image_name: str, base_dir: Path) -> Path:
+    if "/" in image_name or "\\" in image_name or ".." in image_name:
+        raise ValueError("Invalid image name.")
+    return base_dir / run_id / "artifacts" / "images" / image_name
+
+
+def _safe_load_json(path: Path) -> dict[str, Any] | None:
+    if not path.exists():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def _run_label(run_id: str, base_dir: Path) -> str:
+    artifacts_dir = base_dir / run_id / "artifacts"
+    prompt = _safe_load_json(artifacts_dir / "prompt_manifest.json") or {}
+    company_profile = _safe_load_json(artifacts_dir / "company_profile.json") or {}
+    focal_issue = _safe_load_json(artifacts_dir / "focal_issue.json") or {}
+    scope = focal_issue.get("scope") if isinstance(focal_issue.get("scope"), dict) else {}
+
+    company = (
+        company_profile.get("company_name")
+        or prompt.get("company_name")
+        or focal_issue.get("company_name")
+        or prompt.get("value")
+        or run_id
+    )
+    geography = (
+        scope.get("geography")
+        or focal_issue.get("geography")
+        or prompt.get("geography")
+        or company_profile.get("geography")
+        or "Global"
+    )
+    horizon = (
+        scope.get("time_horizon_months")
+        or focal_issue.get("time_horizon_months")
+        or prompt.get("horizon_months")
+        or 60
+    )
+    try:
+        horizon_value = int(horizon)
+    except (TypeError, ValueError):
+        horizon_value = 60
+    return f"{company} | SP{horizon_value} | {geography}"
+
+
+def _truncate_text(value: str, limit: int) -> str:
+    if not value:
+        return ""
+    return value if len(value) <= limit else f"{value[: max(0, limit - 1)].strip()}…"
+
+
+def _compact_forces(forces: list[dict[str, Any]], limit: int = 10) -> list[dict[str, Any]]:
+    compacted: list[dict[str, Any]] = []
+    for force in forces[:limit]:
+        if not isinstance(force, dict):
+            continue
+        compacted.append(
+            {
+                "label": force.get("label") or force.get("name") or force.get("force"),
+                "domain": force.get("domain"),
+                "layer": force.get("layer"),
+                "mechanism": _truncate_text(str(force.get("mechanism") or force.get("description") or ""), 220),
+                "confidence": force.get("confidence"),
+            }
+        )
+    return compacted
+
+
+def _compact_scenarios(scenarios: list[dict[str, Any]], limit: int = 6) -> list[dict[str, Any]]:
+    compacted: list[dict[str, Any]] = []
+    for scenario in scenarios[:limit]:
+        if not isinstance(scenario, dict):
+            continue
+        compacted.append(
+            {
+                "name": scenario.get("name") or scenario.get("scenario_name") or scenario.get("scenario_id"),
+                "summary": _truncate_text(
+                    str(scenario.get("summary") or scenario.get("narrative") or scenario.get("story_text") or ""),
+                    280,
+                ),
+                "axis_states": scenario.get("axis_states") or {},
+            }
+        )
+    return compacted
+
+
+def _build_chat_context(run_id: str, base_dir: Path) -> dict[str, Any]:
+    artifacts_dir = base_dir / run_id / "artifacts"
+    view_model = _safe_load_json(artifacts_dir / "view_model.json") or {}
+    prompt_manifest = view_model.get("prompt_manifest") or _safe_load_json(artifacts_dir / "prompt_manifest.json") or {}
+    focal_issue = view_model.get("focal_issue") or _safe_load_json(artifacts_dir / "focal_issue.json") or {}
+    company_profile = view_model.get("company_profile") or _safe_load_json(artifacts_dir / "company_profile.json") or {}
+    forces = view_model.get("forces") or []
+    if not isinstance(forces, list):
+        forces = []
+    driving_forces = view_model.get("driving_forces") or []
+    if not isinstance(driving_forces, list):
+        driving_forces = []
+    scenarios = view_model.get("scenarios") or []
+    if not isinstance(scenarios, list):
+        scenarios = []
+    strategies_payload = view_model.get("strategies") or []
+    if not isinstance(strategies_payload, list):
+        strategies_payload = []
+    wind_tunnel = view_model.get("wind_tunnel_evaluations_v2") or {}
+    if not isinstance(wind_tunnel, dict):
+        wind_tunnel = {}
+    scope = focal_issue.get("scope") if isinstance(focal_issue.get("scope"), dict) else {}
+
+    context = {
+        "run_id": run_id,
+        "run_label": _run_label(run_id, base_dir),
+        "company": {
+            "name": company_profile.get("company_name") or prompt_manifest.get("company_name"),
+            "industry": company_profile.get("industry"),
+            "summary": _truncate_text(
+                str(company_profile.get("summary") or company_profile.get("description") or ""), 360
+            ),
+            "geography": company_profile.get("geography") or prompt_manifest.get("geography"),
+        },
+        "focal_issue": {
+            "focal_issue": focal_issue.get("focal_issue"),
+            "purpose": focal_issue.get("purpose"),
+            "scope": {
+                "geography": scope.get("geography"),
+                "time_horizon_months": scope.get("time_horizon_months"),
+            },
+        },
+        "forces": _compact_forces(forces),
+        "driving_forces": _compact_forces(driving_forces),
+        "scenarios": _compact_scenarios(scenarios),
+        "strategies": [
+            {
+                "name": item.get("strategy_name") or item.get("name") or item.get("strategy_id"),
+                "summary": _truncate_text(str(item.get("summary") or item.get("description") or ""), 220),
+            }
+            for item in strategies_payload[:6]
+            if isinstance(item, dict)
+        ],
+        "wind_tunnel": {
+            "recommendation": (wind_tunnel.get("recommendations") or {}).get("primary_recommended_strategy"),
+            "rankings": (wind_tunnel.get("rankings") or {}).get("overall", [])[:3],
+        },
+    }
+    return context
 
 
 def _safe_log_path(run_id: str, log_name: str, base_dir: Path) -> Path:
@@ -252,6 +423,11 @@ def actions_ui() -> FileResponse:
     return _commercial_ui()
 
 
+@app.get("/chat")
+def chat_ui() -> FileResponse:
+    return _commercial_ui()
+
+
 @app.get("/runs/{run_id}")
 def run_ui(run_id: str) -> FileResponse:
     return _commercial_ui()
@@ -268,6 +444,14 @@ def artifact(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     if not path.exists():
+        if artifact_name == "view_model.json":
+            run_dir = tenant.base_dir / run_id
+            if run_dir.exists():
+                try:
+                    view_model = build_view_model(run_dir)
+                except Exception as exc:
+                    raise HTTPException(status_code=500, detail=str(exc)) from exc
+                return JSONResponse(view_model)
         raise HTTPException(status_code=404, detail="Artifact not found.")
 
     if path.suffix == ".json":
@@ -277,9 +461,104 @@ def artifact(
     return PlainTextResponse(path.read_text(encoding="utf-8"))
 
 
+@app.get("/artifact/{run_id}/image/{image_name}")
+def artifact_image(
+    run_id: str,
+    image_name: str,
+    tenant: TenantContext = Depends(_tenant_context),
+) -> FileResponse:
+    try:
+        path = _safe_image_path(run_id, image_name, tenant.base_dir)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Image not found.")
+    media_type, _ = mimetypes.guess_type(str(path))
+    return FileResponse(path, media_type=media_type or "application/octet-stream")
+
+
 @app.get("/runs", response_model=RunsResponse)
 def runs(tenant: TenantContext = Depends(_tenant_context)) -> RunsResponse:
-    return RunsResponse(runs=list_run_ids(base_dir=tenant.base_dir))
+    run_ids = list_run_ids(base_dir=tenant.base_dir)
+    labels: dict[str, str] = {}
+    for run_id in run_ids:
+        try:
+            labels[run_id] = _run_label(run_id, tenant.base_dir)
+        except Exception:
+            labels[run_id] = run_id
+    return RunsResponse(runs=run_ids, labels=labels)
+
+
+@app.post("/chat", response_model=ChatResponse)
+def chat(
+    payload: ChatRequest, tenant: TenantContext = Depends(_tenant_context)
+) -> ChatResponse:
+    run_id = payload.run_id or latest_run_id(base_dir=tenant.base_dir)
+    if not run_id:
+        raise HTTPException(status_code=404, detail="No runs available.")
+    question = strip_instruction_patterns(payload.question or "").strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="Question is required.")
+
+    tenant_overrides = get_tenant_config(tenant.tenant_id)
+    settings = load_settings(tenant_overrides)
+    config = llm_config_from_settings(settings)
+    try:
+        client = get_llm_client(config)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    context = _build_chat_context(run_id, tenant.base_dir)
+    sources: list[dict[str, Any]] = []
+
+    vector_text = ""
+    try:
+        vector_store = open_run_vector_store(
+            run_id, base_dir=tenant.base_dir, embed_model=settings.embed_model, seed=int(settings.seed or 0)
+        )
+        matches = vector_store.query(question, top_k=payload.top_k)
+        filtered: list[dict[str, Any]] = []
+        for match in matches:
+            metadata = match.metadata if isinstance(match.metadata, dict) else {}
+            run_match = metadata.get("run_id")
+            if run_match and str(run_match) != str(run_id):
+                continue
+            filtered.append(
+                {
+                    "doc_id": match.doc_id,
+                    "score": round(float(match.score), 4),
+                    "text": _truncate_text(str(match.text), 600),
+                    "metadata": metadata,
+                }
+            )
+        if filtered:
+            vector_text = "\n".join(
+                f"[vectordb:{item['doc_id']}] score={item['score']} text={item['text']} meta={item['metadata']}"
+                for item in filtered
+            )
+            sources.extend(
+                {
+                    "type": "vectordb",
+                    "id": item["doc_id"],
+                    "score": item["score"],
+                    "metadata": item["metadata"],
+                }
+                for item in filtered
+            )
+    except Exception as exc:
+        sources.append({"type": "vectordb_error", "detail": str(exc)})
+
+    prompt = (
+        "You are ScenarioOps Chat. Use ONLY the provided context (Artifacts + Vector Evidence). "
+        "If the answer is not available in the context, say so explicitly. "
+        "Cite sources using tags like [artifact:company_profile] or [vectordb:doc_id] after claims.\n\n"
+        f"Context (JSON):\n{json.dumps(context, indent=2)}\n\n"
+        f"Vector Evidence:\n{vector_text or 'None'}\n\n"
+        f"Question: {question}\n"
+    )
+
+    answer = client.generate_markdown(prompt)
+    return ChatResponse(run_id=run_id, label=context.get("run_label", run_id), answer=answer, sources=sources)
 
 
 @app.get("/run/{run_id}/node_events", response_model=LogResponse)

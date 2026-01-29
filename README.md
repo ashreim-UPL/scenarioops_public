@@ -18,31 +18,33 @@ sources into auditable scenarios, strategies, and wind-tunnel stress tests.
 
 ## Development
 
-Create a virtual environment and install dev tooling:
+Create a virtual environment and install dependencies:
 
 ```sh
 python -m venv venv
 venv\Scripts\activate
-pip install -e ".[dev]"
+pip install -r requirements.txt
+```
+
+Pinned installs are available via:
+
+```sh
+pip install -r requirements.lock
 ```
 
 ## UI
 
-The Streamlit UI is installed with the base package requirements. Optional network
-visualization support can be added with:
-
-```sh
-pip install -e ".[ui]"
-```
-
-Run the UI:
+Run the Streamlit UI:
 
 ```sh
 streamlit run src/scenarioops/ui/streamlit_app.py
 ```
 
-The FastAPI app serves the commercial dashboard at `/` and the legacy
-operations UI at `/ops`.
+Run the FastAPI app (commercial dashboard at `/`, legacy ops UI at `/ops`):
+
+```sh
+uvicorn scenarioops.app.api:app --host 0.0.0.0 --port 8502
+```
 
 ## Configuration
 

@@ -14,11 +14,6 @@ psycopg[binary]  # Postgres connectivity
 streamlit        # Dashboard UI
 pandas           # Data Manipulation
 plotly           # Strategic Visualization
-pyvis            # Network Graph UI
 numpy            # Numeric ops for embeddings/clustering
 scikit-learn     # Clustering + vectorization
-pyarrow          # Parquet cache support
 reportlab        # PDF report generation
-
-# --- Observability ---
-python-json-logger # Codex C3 Structured Logging

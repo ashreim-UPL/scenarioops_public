@@ -225,6 +225,15 @@
         padding: 16px;
       }
 
+      .sidebar-stack {
+        display: grid;
+        gap: 12px;
+      }
+
+      .sidebar-card {
+        padding: 12px;
+      }
+
       .company-card {
         padding: 14px;
         margin-bottom: 14px;
@@ -280,6 +289,7 @@
         text-transform: uppercase;
         letter-spacing: 0.08em;
         color: var(--muted);
+        width: 100%;
       }
 
       .sidebar input,
@@ -291,8 +301,29 @@
         border: 1px solid rgba(110, 140, 200, 0.3);
         border-radius: 10px;
         padding: 8px 10px;
-        color: var(--ink);
+        color: #f5f8ff;
+        font-weight: 600;
+        opacity: 1;
         font-family: var(--font-body);
+        width: 100%;
+      }
+
+      .sidebar select,
+      .form select {
+        text-align: left;
+        min-height: 38px;
+      }
+
+      .sidebar select option,
+      .form select option {
+        color: #0b1020;
+        background: #e7eefc;
+      }
+
+      .sidebar select:disabled,
+      .form select:disabled {
+        color: rgba(205, 216, 255, 0.45);
+        cursor: not-allowed;
       }
 
       .workflow-map {
@@ -348,6 +379,89 @@
         overflow: auto;
       }
 
+      .chat-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .chat-messages {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        max-height: 420px;
+        overflow: auto;
+        padding-right: 6px;
+      }
+
+      .chat-message {
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(110, 140, 200, 0.25);
+        background: rgba(15, 24, 44, 0.55);
+        font-size: 13px;
+        line-height: 1.4;
+      }
+
+      .chat-message.user {
+        align-self: flex-end;
+        background: rgba(58, 164, 255, 0.18);
+        border-color: rgba(58, 164, 255, 0.4);
+      }
+
+      .chat-message .meta {
+        font-size: 11px;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+
+      .chat-message .content {
+        white-space: pre-wrap;
+        font-family: var(--font-body);
+      }
+
+      .chat-message .content code {
+        font-family: var(--font-mono);
+        background: rgba(15, 24, 44, 0.65);
+        border: 1px solid rgba(110, 140, 200, 0.25);
+        border-radius: 6px;
+        padding: 2px 6px;
+      }
+
+      .chat-message .content ul {
+        margin: 6px 0 6px 18px;
+        padding: 0;
+      }
+
+      .chat-message .content li {
+        margin-bottom: 4px;
+      }
+
+      .chat-message .content .chat-heading {
+        font-weight: 700;
+        margin-top: 6px;
+      }
+
+      .chat-message .content .chat-paragraph {
+        margin: 4px 0;
+      }
+
+      .chat-message .content .chat-spacer {
+        height: 8px;
+      }
+
+      .chat-input {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .chat-input textarea {
+        flex: 1;
+        min-height: 54px;
+        resize: vertical;
+      }
+
       .ghost {
         background: linear-gradient(90deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04));
         background-size: 200% 100%;
@@ -367,6 +481,56 @@
 
       .card {
         padding: 14px;
+      }
+
+      .scenario-card {
+        display: flex;
+        flex-direction: column;
+        padding: 0;
+        overflow: hidden;
+      }
+
+      .scenario-card .scenario-media {
+        width: 100%;
+        height: 150px;
+        background: rgba(10, 16, 32, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        border-bottom: 1px solid rgba(110, 140, 200, 0.25);
+      }
+
+      .scenario-card .scenario-media img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+
+      .scenario-card .scenario-media.placeholder {
+        background: linear-gradient(135deg, rgba(58, 164, 255, 0.25), rgba(40, 240, 200, 0.15));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: rgba(230, 236, 255, 0.7);
+        font-size: 12px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .scenario-card .scenario-body {
+        padding: 12px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        flex: 1;
+      }
+
+      .scenario-card .scenario-meta {
+        margin-top: 6px;
+        font-size: 11px;
+        color: var(--muted);
       }
 
       .chip {
@@ -536,6 +700,19 @@
         box-shadow: 0 0 16px rgba(255, 92, 119, 0.5);
       }
 
+      .node.disabled {
+        opacity: 0.35;
+        filter: grayscale(0.8);
+        cursor: not-allowed;
+        box-shadow: none;
+        border-color: rgba(110, 140, 200, 0.2);
+      }
+
+      .node.disabled:hover {
+        transform: none;
+        box-shadow: none;
+      }
+
       .run-steps {
         margin-top: 10px;
         display: grid;
@@ -618,8 +795,6 @@
           <button id="configBtn">Config</button>
           <button id="newRunBtn">New Run</button>
           <button id="openLatestBtn">Open Latest</button>
-          <button>Export</button>
-          <button>Share</button>
         </div>
       </div>
 
@@ -629,6 +804,7 @@
         <a class="nav-link" data-route="/scenarios" href="/scenarios">Scenario Lab</a>
         <a class="nav-link" data-route="/wind-tunnel" href="/wind-tunnel">Wind Tunnel</a>
         <a class="nav-link" data-route="/actions" href="/actions">Action Console</a>
+        <a class="nav-link" data-route="/chat" href="/chat">Advisor</a>
       </nav>
 
       <section class="section" data-view="/runs">
@@ -712,23 +888,6 @@
         </div>
 
         <div class="section">
-          <div class="card-grid">
-            <div class="glass card">
-              <div class="section-title">Company Overview</div>
-              <p id="companyOverview" class="helper">Awaiting data.</p>
-            </div>
-            <div class="glass card">
-              <div class="section-title">Strategic Focus</div>
-              <p id="strategicFocus" class="helper">Awaiting data.</p>
-            </div>
-            <div class="glass card">
-              <div class="section-title">Node Reference</div>
-              <div id="nodeReference" class="helper">Sentinel, Analyst, Scenario Builder, Critic, Planner, Auditor.</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="section">
           <div class="glass" style="padding: 18px;">
             <div class="section-title">Executive Briefing</div>
             <div id="briefing" class="ghost" style="border-radius: 12px; padding: 14px; min-height: 80px;"></div>
@@ -737,6 +896,22 @@
 
         <div class="section layout-grid">
           <aside class="glass sidebar">
+            <div class="section-title">Company Detail</div>
+            <div class="sidebar-stack" style="margin-bottom: 16px;">
+              <div class="glass card sidebar-card">
+                <div class="section-title">Company Overview</div>
+                <p id="companyOverview" class="helper">Awaiting data.</p>
+              </div>
+              <div class="glass card sidebar-card">
+                <div class="section-title">Strategic Focus</div>
+                <p id="strategicFocus" class="helper">Awaiting data.</p>
+              </div>
+              <div class="glass card sidebar-card">
+                <div class="section-title">Node Reference</div>
+                <div id="nodeReference" class="helper">Sentinel, Analyst, Scenario Builder, Critic, Planner, Auditor.</div>
+              </div>
+            </div>
+
             <div class="section-title">Run Controls</div>
             <div class="glass company-card">
               <div class="company-header">
@@ -747,6 +922,7 @@
                 </div>
               </div>
               <div id="companySummary" class="company-meta">Awaiting profile data.</div>
+              <div id="runMeta" class="company-meta" style="margin-top: 8px;"></div>
               <div class="kpi-list">
                 <div class="kpi-item"><span>Market Volatility</span><strong id="kpiVolatility">--</strong></div>
                 <div class="kpi-item"><span>Strategy Confidence</span><strong id="kpiConfidence">--</strong></div>
@@ -783,6 +959,8 @@
           </div>
 
           <div class="glass detail-card" id="nodeDetail">
+            <div class="section-title">Run Progress</div>
+            <div id="runProgress" class="helper" style="margin-bottom: 12px;">No run loaded.</div>
             <div class="section-title">Node Detail</div>
             <div id="nodeDetailBody" class="ghost" style="padding: 12px; border-radius: 12px; min-height: 240px;"></div>
             <div class="section-title" style="margin-top: 14px;">Run Steps</div>
@@ -815,7 +993,8 @@
 
       <section class="section hidden" data-view="/intelligence">
         <div class="glass" style="padding: 18px;">
-          <div class="section-title">Sentinel Feed</div>
+          <div class="section-title">Intelligence Signals</div>
+          <div id="signalMeta" class="helper" style="margin-bottom: 10px;"></div>
           <div id="signalFeed" class="cards"></div>
         </div>
       </section>
@@ -845,11 +1024,22 @@
         <div class="glass" style="padding: 18px;">
           <div class="section-title">Action Console</div>
           <div class="cards" id="actionBoard"></div>
-          <div style="margin-top:16px; display:flex; gap:10px;">
-            <button>Export PDF</button>
-            <button>Export JSON</button>
-            <button>Send to Jira</button>
-            <button>Send to Slack</button>
+        </div>
+      </section>
+
+      <section class="section hidden" data-view="/chat">
+        <div class="glass" style="padding: 18px;">
+          <div class="section-title">Scenario Advisor</div>
+          <div class="helper" style="margin-bottom: 12px;">
+            Ask questions grounded in the run artifacts + vector database. The assistant will only use run data.
+          </div>
+          <div class="chat-panel">
+            <div id="chatMessages" class="chat-messages"></div>
+            <div class="chat-input">
+              <textarea id="chatInput" placeholder="Ask about scenarios, strategies, market signals, or risks..."></textarea>
+              <button id="chatSend" class="primary">Ask</button>
+            </div>
+            <div id="chatStatus" class="helper"></div>
           </div>
         </div>
       </section>
@@ -890,10 +1080,13 @@
         normalization: [],
         logs: [],
         runs: [],
+        runLabels: {},
         latestLinks: [],
         uploadedDocs: [],
+        chatMessages: [],
         connected: false,
         lastEventAt: null,
+        launchingRunId: null,
       };
 
       const defaultNodes = [
@@ -921,6 +1114,14 @@
         "wind_tunnel",
         "auditor",
       ];
+
+      const stageMap = {
+        sentinel: ["charter", "focal_issue", "company_profile", "ingest_docs", "retrieval_real"],
+        analyst: ["forces", "ebe_rank", "clusters"],
+        scenario_builder: ["uncertainty_axes", "scenarios", "scenario_media"],
+        critic: ["strategies", "wind_tunnel"],
+        planner: ["auditor"],
+      };
 
       function apiBase() {
         const base = localStorage.getItem("scenarioops_api_base") || "";
@@ -956,7 +1157,7 @@
       }
 
       async function fetchRuns() {
-        return fetchJson("/runs").then((data) => data.runs || []);
+        return fetchJson("/runs");
       }
 
       async function fetchArtifact(runId, name) {
@@ -989,15 +1190,39 @@
         return fetchJson("/upload", { method: "POST", body: form });
       }
 
+      function _statusLabel(connected) {
+        if (!connected) return "OFFLINE";
+        if (state.launchingRunId) return "LAUNCHING";
+        const runStatus = state.viewModel?.run_meta?.status;
+        if (runStatus) return String(runStatus).toUpperCase();
+        if (state.runId) return "LOADED";
+        return "CONNECTED";
+      }
+
+      function _statusDetail(connected) {
+        const baseLabel = apiBase() || window.location.origin;
+        if (!connected) {
+          return `Unable to reach API at ${baseLabel}.`;
+        }
+        if (state.launchingRunId) {
+          return `Run ${state.launchingRunId} is launching.`;
+        }
+        if (state.runId) {
+          const context = state.viewModel ? resolveContext(state.viewModel) : null;
+          const label = context ? formatRunLabel(context) : state.runId;
+          return `Run ${label}`;
+        }
+        return `Connected to ${baseLabel}.`;
+      }
+
       function setStatus(connected, message, detail) {
         state.connected = connected;
         const pulse = document.getElementById("pulseIndicator");
         pulse.classList.toggle("off", !connected);
-        document.getElementById("statusText").textContent = message;
-        const baseLabel = apiBase() || window.location.origin;
+        const label = message || _statusLabel(connected);
         const last = state.lastEventAt ? ` · Last update ${state.lastEventAt.toLocaleTimeString()}` : "";
-        document.getElementById("statusDetail").textContent =
-          detail || (connected ? `Connected to ${baseLabel}${last}` : `Open Access to connect to ${baseLabel}.`);
+        document.getElementById("statusText").textContent = label;
+        document.getElementById("statusDetail").textContent = detail || `${_statusDetail(connected)}${connected ? last : ""}`;
         if (connected) {
           state.lastEventAt = new Date();
         }
@@ -1008,14 +1233,129 @@
         emptyState.style.display = show ? "block" : "none";
       }
 
+      function _pad2(value) {
+        return String(value).padStart(2, "0");
+      }
+
+      function generateRunId() {
+        const now = new Date();
+        return [
+          now.getUTCFullYear(),
+          _pad2(now.getUTCMonth() + 1),
+          _pad2(now.getUTCDate()),
+          _pad2(now.getUTCHours()),
+          _pad2(now.getUTCMinutes()),
+          _pad2(now.getUTCSeconds()),
+        ].join("");
+      }
+
+      function truncateText(value, limit) {
+        if (!value) return "";
+        if (value.length <= limit) return value;
+        return `${value.slice(0, Math.max(0, limit - 1)).trim()}…`;
+      }
+
+      function escapeHtml(value) {
+        if (value === null || value === undefined) return "";
+        return String(value)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/\"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
+      function formatRunLabel(context) {
+        if (!context) return "Run";
+        const company = context.company || "Company";
+        const horizon = context.horizon || 60;
+        const geography = context.geography || "Global";
+        return `${company} • SP${horizon} • ${geography}`;
+      }
+
+      function formatAdvisorHtml(text) {
+        if (!text) return "";
+        const safe = escapeHtml(text);
+        const lines = safe.split("\n");
+        let html = "";
+        let inList = false;
+        const closeList = () => {
+          if (inList) {
+            html += "</ul>";
+            inList = false;
+          }
+        };
+        const inlineFormat = (value) =>
+          value
+            .replace(/\\*\\*(.+?)\\*\\*/g, "<strong>$1</strong>")
+            .replace(/`([^`]+)`/g, "<code>$1</code>")
+            .replace(/\\*(.+?)\\*/g, "<em>$1</em>");
+        lines.forEach((line) => {
+          if (/^\\s*[-*]\\s+/.test(line)) {
+            if (!inList) {
+              html += "<ul>";
+              inList = true;
+            }
+            const item = line.replace(/^\\s*[-*]\\s+/, "");
+            html += `<li>${inlineFormat(item)}</li>`;
+            return;
+          }
+          closeList();
+          if (/^\\s*#{1,3}\\s+/.test(line)) {
+            html += `<div class="chat-heading">${inlineFormat(line.replace(/^\\s*#{1,3}\\s+/, ""))}</div>`;
+            return;
+          }
+          if (!line.trim()) {
+            html += `<div class="chat-spacer"></div>`;
+            return;
+          }
+          html += `<div class="chat-paragraph">${inlineFormat(line)}</div>`;
+        });
+        closeList();
+        return html;
+      }
+
+      function resolveContext(viewModel) {
+        const prompt = viewModel?.prompt_manifest || {};
+        const scope = viewModel?.focal_issue?.scope || {};
+        const geography =
+          scope.geography ||
+          viewModel?.focal_issue?.geography ||
+          prompt.geography ||
+          viewModel?.company_profile?.geography ||
+          "Global";
+        const horizon =
+          scope.time_horizon_months ||
+          viewModel?.focal_issue?.time_horizon_months ||
+          prompt.horizon_months ||
+          60;
+        const company =
+          viewModel?.company_profile?.company_name ||
+          prompt.company_name ||
+          viewModel?.charter?.title ||
+          "Company";
+        return { company, geography, horizon };
+      }
+
       function updateContext(viewModel, runId) {
         const ribbon = document.getElementById("contextRibbon");
         ribbon.innerHTML = "";
-        const scope = viewModel?.focal_issue?.scope || {};
+        if (!viewModel || !runId) {
+          const emptyItems = ["No run loaded", "Select a run", "—"];
+          emptyItems.forEach((item) => {
+            const pill = document.createElement("div");
+            pill.className = "context-pill";
+            pill.textContent = item;
+            ribbon.appendChild(pill);
+          });
+          document.getElementById("runState").textContent = "Idle";
+          return;
+        }
+        const context = resolveContext(viewModel);
         const items = [
-          scope.geography || viewModel?.focal_issue?.geography || "Global",
-          `${scope.time_horizon_months || viewModel?.focal_issue?.time_horizon_months || 60} Months`,
-          viewModel?.company_profile?.company_name || viewModel?.charter?.title || "Company",
+          context.geography || "Global",
+          `${context.horizon || 60} Months`,
+          context.company || "Company",
         ];
         items.forEach((item) => {
           const pill = document.createElement("div");
@@ -1024,25 +1364,42 @@
           ribbon.appendChild(pill);
         });
         const status = viewModel?.run_meta?.status || "idle";
-        document.getElementById("runState").textContent = runId ? `${status.toUpperCase()} - ${runId}` : "Idle";
+        const runLabel = formatRunLabel(context);
+        document.getElementById("runState").textContent = runId ? `${status.toUpperCase()} - ${runLabel}` : "Idle";
+      }
+
+      function updateContextDraft(runId) {
+        const ribbon = document.getElementById("contextRibbon");
+        ribbon.innerHTML = "";
+        const geography = draft.geography || (draft.scope === "world" ? "Global" : "Global");
+        const horizon = draft.horizon || 60;
+        const company = draft.company || "Company";
+        const items = [geography, `${horizon} Months`, company];
+        items.forEach((item) => {
+          const pill = document.createElement("div");
+          pill.className = "context-pill";
+          pill.textContent = item;
+          ribbon.appendChild(pill);
+        });
+        document.getElementById("runState").textContent = runId ? `LAUNCHING - ${formatRunLabel({ company, geography, horizon })}` : "Launching";
       }
 
       function renderCompanyCards() {
-        const company = state.viewModel?.company_profile || {};
+        const companyProfile = state.viewModel?.company_profile || {};
         const focus = state.viewModel?.focal_issue || {};
-        const companyText = company.summary || company.company_name || "Awaiting data.";
+        const context = resolveContext(state.viewModel);
+        const companyText = companyProfile.summary || context.company || "Awaiting data.";
         const focusText = focus.focal_issue || focus.purpose || state.viewModel?.charter?.purpose || "Awaiting data.";
-        document.getElementById("companyOverview").textContent = companyText;
-        document.getElementById("strategicFocus").textContent = focusText;
-        const name = company.company_name || state.viewModel?.charter?.title || "Company";
+        document.getElementById("companyOverview").textContent = state.viewModel ? companyText : "Awaiting data.";
+        document.getElementById("strategicFocus").textContent = state.viewModel ? focusText : "Awaiting data.";
+        const name = context.company || "Company";
         const market =
-          company.industry ||
-          company.market ||
-          company.sector ||
-          (Array.isArray(company.tags) ? company.tags.join(", ") : "") ||
+          companyProfile.industry ||
+          companyProfile.market ||
+          companyProfile.sector ||
+          (Array.isArray(companyProfile.tags) ? companyProfile.tags.join(", ") : "") ||
           "Market";
-        const region =
-          focus?.scope?.geography || focus?.geography || "Global";
+        const region = context.geography || "Global";
         const initials = name
           .split(" ")
           .filter(Boolean)
@@ -1053,13 +1410,33 @@
         const nameEl = document.getElementById("companyName");
         const marketEl = document.getElementById("companyMarket");
         const summaryEl = document.getElementById("companySummary");
+        const metaEl = document.getElementById("runMeta");
         if (logo) logo.textContent = initials || "SO";
-        if (nameEl) nameEl.textContent = name;
-        if (marketEl) marketEl.textContent = `${market} • ${region}`;
-        if (summaryEl) summaryEl.textContent = company.summary || company.description || "Awaiting profile data.";
+        if (nameEl) nameEl.textContent = state.viewModel ? name : "Company";
+        if (marketEl) marketEl.textContent = state.viewModel ? `${market} • ${region}` : "Market • Region";
+        if (summaryEl) summaryEl.textContent = state.viewModel ? (companyProfile.summary || companyProfile.description || "Awaiting profile data.") : "Awaiting profile data.";
+        if (metaEl) {
+          if (!state.viewModel) {
+            metaEl.textContent = "No run loaded.";
+          } else {
+            const runConfig = state.viewModel?.run_meta?.run_config || {};
+            const settings = runConfig.settings || {};
+            const mode = settings.mode || "live";
+            const provider = settings.llm_provider || "gemini";
+            const allowWeb = settings.allow_web ? "web" : "no-web";
+            const simulated = settings.simulate_evidence ? "simulated" : "real";
+            metaEl.textContent = `Run ${state.runId} • ${mode}/${provider} • ${allowWeb} • ${simulated}`;
+          }
+        }
       }
 
       function renderKPIs() {
+        if (!state.viewModel) {
+          document.getElementById("kpiVolatility").textContent = "--";
+          document.getElementById("kpiConfidence").textContent = "--";
+          document.getElementById("kpiROI").textContent = "--";
+          return;
+        }
         const scenarios = state.viewModel?.scenarios || [];
         const rankings = state.viewModel?.wind_tunnel_evaluations_v2?.rankings || {};
         const overall = (rankings.overall || [])[0];
@@ -1075,6 +1452,10 @@
       function renderBriefing() {
         const el = document.getElementById("briefing");
         el.classList.remove("ghost");
+        if (!state.viewModel) {
+          el.innerHTML = "<div class=\"helper\">No run loaded. Launch or load a run to see briefing.</div>";
+          return;
+        }
         const daily = state.viewModel?.daily_brief_md;
         if (daily) {
           const lines = daily.split("\n").filter((line) => line.trim()).slice(0, 3);
@@ -1088,16 +1469,92 @@
       function renderWorkflow() {
         const map = document.getElementById("workflowNodes");
         map.innerHTML = "";
+        const packName =
+          state.viewModel?.run_meta?.run_config?.agent_pack ||
+          state.viewModel?.run_meta?.run_config?.pack ||
+          draft.pack ||
+          "Strategist";
+        const packNodes = {
+          Strategist: defaultNodes.map((node) => node.id),
+          Analyst: ["sentinel", "analyst", "scenario_builder"],
+          Critic: ["critic", "planner"],
+        };
+        const enabledByPack = new Set(packNodes[packName] || defaultNodes.map((node) => node.id));
+        const capabilityNodes = (state.viewModel?.run_meta?.capabilities?.nodes || [])
+          .map((node) => String(node).toLowerCase());
+        const enabledByCapability = new Set(capabilityNodes);
+        const runStatus = String(state.viewModel?.run_meta?.status || "").toUpperCase();
+        const runComplete = runStatus === "OK" || runStatus === "FAIL";
+        const enabledNodes = new Set(enabledByPack);
+        if (enabledByCapability.size) {
+          [...enabledNodes].forEach((node) => {
+            if (!enabledByCapability.has(node)) enabledNodes.delete(node);
+          });
+        } else if (state.viewModel && runComplete) {
+          const hasAnalystArtifacts =
+            (state.viewModel?.forces || []).length ||
+            (state.viewModel?.forces_ranked?.forces || []).length ||
+            (state.viewModel?.clusters || []).length;
+          const windTunnel = state.viewModel?.wind_tunnel || {};
+          const hasCriticArtifacts =
+            (state.viewModel?.wind_tunnel_evaluations_v2?.evaluations || []).length ||
+            (state.viewModel?.strategies || []).length ||
+            Object.keys(windTunnel).length > 0;
+          if (!hasAnalystArtifacts) enabledNodes.delete("analyst");
+          if (!hasCriticArtifacts) enabledNodes.delete("critic");
+        }
+        if (!state.viewModel) {
+          defaultNodes.forEach((node) => {
+            const div = document.createElement("div");
+            div.className = "node";
+            if (!enabledNodes.has(node.id)) div.classList.add("disabled");
+            div.textContent = node.label;
+            map.appendChild(div);
+          });
+          return;
+        }
         defaultNodes.forEach((node) => {
-          const entry = state.nodeEvents.find((e) => (e.node || "").toLowerCase().includes(node.id));
+          const steps = stageMap[node.id] || [];
+          const entries = state.nodeEvents.filter((e) => steps.includes((e.node || "").toLowerCase()));
+          const statuses = entries.map((e) => String(e.status || "").toUpperCase());
+          let stageStatus = "PENDING";
+          if (statuses.some((status) => status.includes("FAIL"))) {
+            stageStatus = "FAIL";
+          } else if (statuses.some((status) => status.includes("RUN"))) {
+            stageStatus = "RUNNING";
+          } else if (steps.length && entries.length === steps.length && statuses.every((status) => status.includes("OK") || status.includes("SKIPPED"))) {
+            stageStatus = "OK";
+          } else if (entries.length) {
+            stageStatus = runComplete ? "OK" : "RUNNING";
+          }
+          if (runComplete && entries.length === 0 && stageStatus === "PENDING") {
+            stageStatus = "SKIPPED";
+          }
           const div = document.createElement("div");
+          const isEnabled = enabledNodes.has(node.id);
           div.className = "node";
-          const status = String(entry?.status || "").toUpperCase();
-          if (status.includes("RUN")) div.classList.add("running");
-          if (status.includes("FAIL")) div.classList.add("error");
-          if (status.includes("OK") || status.includes("DONE")) div.classList.add("success");
+          if (!isEnabled) div.classList.add("disabled");
+          if (stageStatus === "RUNNING") div.classList.add("running");
+          if (stageStatus === "FAIL") div.classList.add("error");
+          if (stageStatus === "OK") div.classList.add("success");
           div.textContent = node.label;
-          div.addEventListener("click", () => renderNodeDetail(entry || { node: node.id, status: "PENDING" }));
+          if (isEnabled) {
+            const durationSeconds = entries.reduce(
+              (total, entry) => total + (entry.duration_seconds || 0),
+              0
+            );
+            const detailMessage = steps.length
+              ? `Steps: ${steps.join(", ")} (${entries.length}/${steps.length})`
+              : "No steps mapped.";
+            div.addEventListener("click", () =>
+              renderNodeDetail({
+                node: node.id,
+                status: stageStatus,
+                message: detailMessage,
+                duration_seconds: durationSeconds,
+              })
+            );
+          }
           map.appendChild(div);
         });
       }
@@ -1120,6 +1577,10 @@
       function renderRunSteps() {
         const container = document.getElementById("runSteps");
         container.innerHTML = "";
+        if (!state.viewModel) {
+          container.innerHTML = "<div class=\"helper\">No run loaded.</div>";
+          return;
+        }
         const steps = state.nodeEvents.length ? state.nodeEvents : defaultNodes.map((node) => ({ node: node.id, status: "PENDING" }));
         steps.slice(0, 12).forEach((step) => {
           const div = document.createElement("div");
@@ -1129,9 +1590,33 @@
         });
       }
 
+      function renderRunProgress() {
+        const el = document.getElementById("runProgress");
+        if (!el) return;
+        if (!state.viewModel) {
+          el.textContent = "No run loaded.";
+          return;
+        }
+        const events = state.nodeEvents || [];
+        const last = events.length ? events[events.length - 1] : null;
+        const completed = events.filter((e) => String(e.status || "").toUpperCase().includes("OK")).length;
+        const failed = events.filter((e) => String(e.status || "").toUpperCase().includes("FAIL")).length;
+        const status = _statusLabel(state.connected);
+        const current = state.launchingRunId
+          ? "Launching"
+          : last
+          ? `${last.node || "node"} (${last.status || "OK"})`
+          : "Pending";
+        el.textContent = `Status: ${status} • Current: ${current} • Completed: ${completed} • Failed: ${failed}`;
+      }
+
       function renderArtifacts() {
         const container = document.getElementById("artifactList");
         container.innerHTML = "";
+        if (!state.viewModel) {
+          container.innerHTML = "<div class=\"helper\">No run loaded.</div>";
+          return;
+        }
         if (!state.latestLinks.length) {
           container.innerHTML = `<div class="helper">Artifacts will appear after a run completes.</div>`;
           return;
@@ -1160,6 +1645,10 @@
 
       function renderTerminal(logs) {
         const terminal = document.getElementById("terminal");
+        if (!state.viewModel) {
+          terminal.innerHTML = "<div class=\"helper\">No run loaded.</div>";
+          return;
+        }
         if (!logs.length) {
           terminal.innerHTML = "<div class=\"helper\">No logs yet. Launch a run to see live activity.</div>";
           return;
@@ -1169,21 +1658,75 @@
 
       function renderSignalFeed() {
         const feed = document.getElementById("signalFeed");
+        const meta = document.getElementById("signalMeta");
         feed.innerHTML = "";
-        const forces = state.viewModel?.forces_ranked?.forces || state.viewModel?.driving_forces || [];
+        if (meta) meta.textContent = "";
+        if (!state.viewModel) {
+          feed.innerHTML = `<div class="helper">No run loaded.</div>`;
+          return;
+        }
+        const forces = state.viewModel?.forces || [];
+        const ranked = state.viewModel?.forces_ranked?.forces || [];
+        const driving = state.viewModel?.driving_forces || [];
         const drivers = state.viewModel?.drivers || [];
-        const items = forces.length ? forces : drivers;
+        let items = [];
+        let sourceLabel = "";
+        if (forces.length) {
+          items = forces;
+          sourceLabel = "Forces";
+        } else if (ranked.length) {
+          items = ranked;
+          sourceLabel = "Ranked forces";
+        } else if (driving.length) {
+          items = driving;
+          sourceLabel = "Driving forces";
+        } else {
+          items = drivers;
+          sourceLabel = "Signals";
+        }
         if (!items.length) {
           feed.innerHTML = `<div class="helper">No intelligence signals yet.</div>`;
           return;
         }
-        items.slice(0, 8).forEach((item) => {
+        if (meta) meta.textContent = `${sourceLabel} • ${items.length} items`;
+        const rankedByKey = new Map();
+        ranked.forEach((entry) => {
+          const key = entry.force_id || entry.id || entry.label || entry.name;
+          if (key) rankedByKey.set(String(key), entry);
+        });
+        items.forEach((item) => {
           const card = document.createElement("div");
           card.className = "glass card";
-          const label = item.label || item.force || item.title || "Signal";
-          const summary = item.rationale || item.mechanism || item.summary || "";
+          const label = item.label || item.name || item.force || item.title || "Signal";
           const domain = item.domain || item.category || "Signal";
-          card.innerHTML = `<div class="tag">${domain}</div><h4>${label}</h4><p>${summary}</p>`;
+          const summary = truncateText(
+            item.mechanism || item.description || item.why_it_matters || item.rationale || item.summary || "",
+            240
+          );
+          const evidenceCount = Array.isArray(item.evidence_unit_ids)
+            ? item.evidence_unit_ids.length
+            : Array.isArray(item.citations)
+            ? item.citations.length
+            : Array.isArray(item.signals)
+            ? item.signals.length
+            : 0;
+          const confidence =
+            typeof item.confidence === "number" ? `${Math.round(item.confidence * 100)}%` : "";
+          const key = item.force_id || item.id || item.label || item.name || "";
+          const rankedEntry = rankedByKey.get(String(key));
+          const ebeScore = rankedEntry?.ebe_score;
+          const metaParts = [];
+          if (item.layer) metaParts.push(item.layer);
+          if (confidence) metaParts.push(`confidence ${confidence}`);
+          if (ebeScore !== undefined) metaParts.push(`EBE ${ebeScore}`);
+          if (evidenceCount) metaParts.push(`${evidenceCount} signals`);
+          const metaLine = metaParts.join(" • ");
+          card.innerHTML = `
+            <div class="tag">${domain}</div>
+            <h4>${label}</h4>
+            <p>${summary || "Details pending."}</p>
+            ${metaLine ? `<div class="helper">${metaLine}</div>` : ""}
+          `;
           feed.appendChild(card);
         });
       }
@@ -1192,6 +1735,10 @@
         const matrix = document.getElementById("scenarioMatrix");
         const scenarios = state.viewModel?.scenarios || [];
         const axes = state.viewModel?.uncertainty_axes || [];
+        if (!state.viewModel) {
+          matrix.innerHTML = `<div class="helper">No run loaded.</div>`;
+          return;
+        }
         if (axes.length < 2 || scenarios.length < 4) {
           matrix.innerHTML = `<div class="helper">Scenario matrix will appear after axes are generated.</div>`;
           return;
@@ -1213,14 +1760,51 @@
         matrix.appendChild(table);
       }
 
+      function resolveScenarioImage(runId, scenario) {
+        const imagePath = scenario?.image_url || scenario?.image || scenario?.image_artifact_path || "";
+        if (!imagePath) return "";
+        if (imagePath.startsWith("http")) return imagePath;
+        const fileName = imagePath.split("/").pop();
+        if (!fileName) return "";
+        const base = apiBase();
+        const prefix = base ? base : "";
+        return `${prefix}/artifact/${runId}/image/${encodeURIComponent(fileName)}`;
+      }
+
       function renderScenarioCards() {
         const container = document.getElementById("scenarioCards");
         container.innerHTML = "";
+        if (!state.viewModel) {
+          container.innerHTML = `<div class="helper">No run loaded.</div>`;
+          return;
+        }
         const scenarios = state.viewModel?.scenarios || [];
+        if (!scenarios.length) {
+          container.innerHTML = `<div class="helper">No scenarios generated yet.</div>`;
+          return;
+        }
         scenarios.forEach((scenario) => {
           const card = document.createElement("div");
-          card.className = "glass card";
-          card.innerHTML = `<h4>${scenario.name || scenario.id}</h4><p>${scenario.narrative || scenario.summary || ""}</p>`;
+          card.className = "glass card scenario-card";
+          const imageUrl = resolveScenarioImage(state.runId, scenario);
+          const title = scenario.name || scenario.id || scenario.scenario_id || "Scenario";
+          const summary = truncateText(scenario.narrative || scenario.summary || scenario.story_text || "", 320);
+          const axisStates = scenario.axis_states
+            ? Object.entries(scenario.axis_states)
+                .map(([key, value]) => `${key}: ${value}`)
+                .join(" • ")
+            : "";
+          const imageHtml = imageUrl
+            ? `<div class="scenario-media"><img src="${imageUrl}" alt="${title}" /></div>`
+            : `<div class="scenario-media placeholder">No Image</div>`;
+          card.innerHTML = `
+            ${imageHtml}
+            <div class="scenario-body">
+              <h4>${title}</h4>
+              <p>${summary || "Narrative pending."}</p>
+              ${axisStates ? `<div class="scenario-meta">${axisStates}</div>` : ""}
+            </div>
+          `;
           container.appendChild(card);
         });
       }
@@ -1246,6 +1830,10 @@
       function renderWindTunnel() {
         const matrix = document.getElementById("scoreMatrix");
         matrix.innerHTML = "";
+        if (!state.viewModel) {
+          matrix.textContent = "No run loaded.";
+          return;
+        }
         const evals = state.viewModel?.wind_tunnel_evaluations_v2?.evaluations || [];
         const rankings = state.viewModel?.wind_tunnel_evaluations_v2?.rankings || {};
         if (!evals.length) {
@@ -1337,6 +1925,10 @@
       function renderActionConsole() {
         const board = document.getElementById("actionBoard");
         board.innerHTML = "";
+        if (!state.viewModel) {
+          board.innerHTML = `<div class="helper">No run loaded.</div>`;
+          return;
+        }
         const rec = state.viewModel?.wind_tunnel_evaluations_v2?.recommendations || {};
         const hardening = rec.hardening_actions || [];
         const hedges = rec.hedge_actions || [];
@@ -1349,20 +1941,113 @@
         });
       }
 
+      function renderChat() {
+        const container = document.getElementById("chatMessages");
+        if (!container) return;
+        const wasAtBottom =
+          container.scrollTop + container.clientHeight >= container.scrollHeight - 12;
+        container.innerHTML = "";
+        if (!Array.isArray(state.chatMessages)) {
+          state.chatMessages = [];
+        }
+        if (!state.chatMessages.length) {
+          container.innerHTML = `<div class="helper">No questions yet. Ask about the current run.</div>`;
+          return;
+        }
+        state.chatMessages.forEach((message) => {
+          const div = document.createElement("div");
+          div.className = `chat-message ${message.role || "assistant"}`;
+          const meta = message.role === "user" ? "You" : "Advisor";
+          const sources = message.sources && message.sources.length
+            ? `<div class="helper">Sources: ${message.sources.slice(0, 4).map((s) => s.id || s.type || "source").join(", ")}</div>`
+            : "";
+          div.innerHTML = `<div class="meta">${meta}</div><div class="content"></div>${sources}`;
+          const contentEl = div.querySelector(".content");
+          if (contentEl) {
+            if (message.role === "assistant") {
+              contentEl.innerHTML = formatAdvisorHtml(message.content || "");
+            } else {
+              contentEl.textContent = message.content || "";
+            }
+          }
+          container.appendChild(div);
+        });
+        if (wasAtBottom) {
+          container.scrollTop = container.scrollHeight;
+        }
+      }
+
+      async function sendChat() {
+        const input = document.getElementById("chatInput");
+        const status = document.getElementById("chatStatus");
+        if (!input || !status) return;
+        const question = input.value.trim();
+        if (!question) {
+          status.textContent = "Enter a question.";
+          return;
+        }
+        if (!state.runId) {
+          status.textContent = "Load a run first.";
+          return;
+        }
+        status.textContent = "Thinking...";
+        state.chatMessages.push({ role: "user", content: question });
+        renderChat();
+        input.value = "";
+        try {
+          const response = await fetchJson("/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ run_id: state.runId, question }),
+          });
+          state.chatMessages.push({
+            role: "assistant",
+            content: response?.answer || "No response.",
+            sources: response?.sources || [],
+          });
+          status.textContent = "";
+          renderChat();
+        } catch (err) {
+          status.textContent = "Unable to reach chat service.";
+        }
+      }
+
       function renderRunPage() {
         renderCompanyCards();
         renderKPIs();
         renderBriefing();
         renderWorkflow();
+        renderRunProgress();
         renderRunSteps();
         renderArtifacts();
+        renderChat();
+      }
+
+      function clearView(reason) {
+        state.viewModel = null;
+        state.nodeEvents = [];
+        state.normalization = [];
+        state.latestLinks = [];
+        state.logs = [];
+        updateContext(null, null);
+        renderRunPage();
+        renderSignalFeed();
+        renderScenarioMatrix();
+        renderScenarioCards();
+        renderWindTunnel();
+        renderActionConsole();
+        renderTerminal([]);
+        const runStatus = document.getElementById("runStatus");
+        if (runStatus && reason) {
+          runStatus.textContent = reason;
+        }
       }
 
       function syncRunControls() {
-        const scope = state.viewModel?.focal_issue?.scope || {};
-        document.getElementById("controlCompany").value = state.viewModel?.company_profile?.company_name || "";
-        if (scope.time_horizon_months) {
-          document.getElementById("controlHorizon").value = scope.time_horizon_months;
+        const context = resolveContext(state.viewModel);
+        document.getElementById("controlCompany").value = context.company || "";
+        if (context.horizon) {
+          document.getElementById("controlHorizon").value = context.horizon;
         }
       }
 
@@ -1391,7 +2076,8 @@
         try {
           showEmptyState(false);
           state.lastEventAt = new Date();
-          setStatus(true, "LIVE", `Connected to ${apiBase() || "local API"}`);
+          setStatus(true, "CONNECTING", "Fetching run data...");
+          const scrollY = window.scrollY;
           let runId = runIdOverride || getRunIdFromPath() || state.runId;
           if (runId) {
             state.latestLinks = [];
@@ -1402,8 +2088,16 @@
             runId = latest.run_id;
             state.latestLinks = latest.links || [];
           }
+          if (!runId) {
+            showEmptyState(true);
+            clearView("No run loaded. Launch or load a run.");
+            return false;
+          }
           state.runId = runId;
           state.viewModel = await fetchArtifact(runId, "view_model.json");
+          if (state.launchingRunId === runId) {
+            state.launchingRunId = null;
+          }
           updateContext(state.viewModel, state.runId);
           state.nodeEvents = await fetchNodeEvents(runId);
           state.normalization = await fetchNormalization(runId);
@@ -1419,15 +2113,18 @@
           renderActionConsole();
           refreshAdvancedPreview();
           refreshRuns();
+          window.scrollTo(0, scrollY);
+          setStatus(true);
           return true;
         } catch (err) {
           showEmptyState(true);
+          clearView("No run loaded. Launch or load a run.");
           const status = err?.status;
-          const message = status === 401 || status === 403 ? "UNAUTHORIZED" : "RECONNECTING...";
+          const message = status === 401 || status === 403 ? "UNAUTHORIZED" : "OFFLINE";
           const detail =
             status === 401 || status === 403
               ? "Access denied. Open Access and enter a valid API key."
-              : `Unable to reach API at ${apiBase() || "local API"}.`;
+              : undefined;
           setStatus(false, message, detail);
           return false;
         }
@@ -1435,12 +2132,25 @@
 
       async function refreshRuns() {
         try {
-          state.runs = await fetchRuns();
+          const payload = await fetchRuns();
+          if (Array.isArray(payload)) {
+            state.runs = payload;
+            state.runLabels = {};
+          } else {
+            state.runs = payload.runs || [];
+            state.runLabels = payload.labels || {};
+          }
         } catch (err) {
           state.runs = [];
+          state.runLabels = {};
         }
         const select = document.getElementById("runSelect");
-        select.innerHTML = state.runs.map((run) => `<option value="${run}">${run}</option>`).join("");
+        select.innerHTML = state.runs
+          .map((run) => {
+            const label = escapeHtml(state.runLabels[run] || run);
+            return `<option value="${run}">${label}</option>`;
+          })
+          .join("");
         if (state.runId) {
           select.value = state.runId;
         }
@@ -1449,7 +2159,8 @@
         state.runs.slice(0, 8).forEach((run) => {
           const div = document.createElement("div");
           div.className = "run-item";
-          div.innerHTML = `<span>${run}</span><span class="badge">Load</span>`;
+          const label = escapeHtml(state.runLabels[run] || run);
+          div.innerHTML = `<span title="${run}">${label}</span><span class="badge">Load</span>`;
           div.addEventListener("click", () => {
             history.pushState({}, "", `/runs/${run}`);
             setRoute("/runs");
@@ -1632,9 +2343,9 @@
               <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
             </select></label>
             <label>Agent Pack<select id="forgePack">
-              <option value="Analyst">Analyst</option>
-              <option value="Strategist">Strategist</option>
-              <option value="Critic">Critic</option>
+                <option value="Strategist">Strategist [end-to-end pipeline → full run artifacts]</option>
+                <option value="Analyst" disabled>Analyst [forces + clusters → ranked forces] (coming soon)</option>
+                <option value="Critic" disabled>Critic [strategy scoring → wind tunnel outputs] (coming soon)</option>
             </select></label>
           `,
         },
@@ -1654,8 +2365,9 @@
         },
       ];
 
-      let currentStep = 0;
-      const wizardSteps = document.getElementById("wizardSteps");
+        let currentStep = 0;
+        let syncWizardDraft = null;
+        const wizardSteps = document.getElementById("wizardSteps");
 
       function attachWizardHandlers() {
         const company = document.getElementById("forgeCompany");
@@ -1726,54 +2438,52 @@
         updateGeoScope();
         if (horizon) horizon.value = draft.horizon || 60;
         if (model) model.value = draft.model || "gemini-3-flash-preview";
-        if (pack) pack.value = draft.pack || "Analyst";
+        if (pack) {
+          const desiredPack = draft.pack || "Strategist";
+          const option = Array.from(pack.options).find((opt) => opt.value === desiredPack);
+          if (option && !option.disabled) {
+            pack.value = desiredPack;
+          } else {
+            pack.value = "Strategist";
+            updateDraft({ pack: "Strategist" });
+          }
+        }
         if (creativity) creativity.value = draft.creativity || 5;
         if (depth) depth.value = draft.depth || 6;
         if (cache) cache.value = draft.cache || "true";
         if (mode) mode.value = draft.mode || "live";
         if (web) web.value = draft.web || "true";
 
-        [company, scope, geographySelect, geographyCustom, horizon, model, pack, creativity, depth, cache, mode, web].forEach((input) => {
-          if (!input) return;
-          input.addEventListener("change", () => {
+          const syncDraft = () => {
             updateGeoScope();
             const geoValue =
               geographySelect?.value === "Other"
                 ? geographyCustom?.value || "Other"
                 : geographySelect?.value;
-            updateDraft({
-              company: company?.value,
-              scope: scope?.value,
-              geography: geoValue,
-              horizon: parseInt(horizon?.value || "60", 10),
-              model: model?.value,
-              pack: pack?.value,
-              creativity: parseInt(creativity?.value || "5", 10),
-              depth: parseInt(depth?.value || "6", 10),
-              cache: cache?.value,
-              mode: mode?.value,
-              web: web?.value,
-            });
+            const patch = {};
+            if (company) patch.company = company.value;
+            if (scope) patch.scope = scope.value;
+            if (geographySelect || geographyCustom) patch.geography = geoValue;
+            if (horizon) patch.horizon = parseInt(horizon.value || "60", 10);
+            if (model) patch.model = model.value;
+            if (pack) patch.pack = pack.value;
+            if (creativity) patch.creativity = parseInt(creativity.value || "5", 10);
+            if (depth) patch.depth = parseInt(depth.value || "6", 10);
+            if (cache) patch.cache = cache.value;
+            if (mode) patch.mode = mode.value;
+            if (web) patch.web = web.value;
+            updateDraft(patch);
+          };
+
+          syncWizardDraft = syncDraft;
+          [company, scope, geographySelect, geographyCustom, horizon, model, pack, creativity, depth, cache, mode, web].forEach((input) => {
+            if (!input) return;
+            input.addEventListener("change", syncDraft);
+            input.addEventListener("input", syncDraft);
           });
-        });
-        const geoValue =
-          geographySelect?.value === "Other"
-            ? geographyCustom?.value || "Other"
-            : geographySelect?.value;
-        updateDraft({
-          company: company?.value,
-          scope: scope?.value,
-          geography: geoValue,
-          horizon: parseInt(horizon?.value || "60", 10),
-          model: model?.value,
-          pack: pack?.value,
-          creativity: parseInt(creativity?.value || "5", 10),
-          depth: parseInt(depth?.value || "6", 10),
-          cache: cache?.value,
-          mode: mode?.value,
-          web: web?.value,
-        });
-      }
+
+          syncDraft();
+        }
 
       function renderWizard() {
         wizardSteps.innerHTML = `<div class="section-title">${steps[currentStep].title}</div>${steps[currentStep].content}`;
@@ -1783,25 +2493,31 @@
         attachWizardHandlers();
       }
 
-      document.getElementById("prevStep").addEventListener("click", () => {
-        currentStep = Math.max(0, currentStep - 1);
-        renderWizard();
-      });
+        document.getElementById("prevStep").addEventListener("click", () => {
+          if (typeof syncWizardDraft === "function") syncWizardDraft();
+          currentStep = Math.max(0, currentStep - 1);
+          renderWizard();
+        });
 
-      document.getElementById("nextStep").addEventListener("click", () => {
-        currentStep = Math.min(steps.length - 1, currentStep + 1);
-        renderWizard();
-        if (currentStep === steps.length - 1) {
-          const preview = document.getElementById("forgePreview");
-          if (preview) {
-            preview.innerHTML = `Company: ${draft.company || "Company"} | Geography: ${draft.geography || "Global"} | Horizon: ${draft.horizon || 60} months | Mode: ${draft.mode || "live"}`;
-          }
+        document.getElementById("nextStep").addEventListener("click", () => {
+          if (typeof syncWizardDraft === "function") syncWizardDraft();
+          currentStep = Math.min(steps.length - 1, currentStep + 1);
+          renderWizard();
+          if (currentStep === steps.length - 1) {
+        const preview = document.getElementById("forgePreview");
+        if (preview) {
+            preview.innerHTML = `Company: ${draft.company || "Company"} | Geography: ${draft.geography || "Global"} | Horizon: ${draft.horizon || 60} months | Mode: ${draft.mode || "live"} | Pack: ${draft.pack || "Strategist"}`;
+        }
         }
       });
 
       document.getElementById("launchRun").addEventListener("click", async () => {
         const runStatus = document.getElementById("runStatus");
         const launchBtn = document.getElementById("launchRun");
+        if (!draft.company || !draft.company.trim()) {
+          runStatus.textContent = "Company is required. Please enter a company name.";
+          return;
+        }
         runStatus.textContent = "Launching run...";
         launchBtn.disabled = true;
         const resumeFrom = document.getElementById("resumeNode").value || null;
@@ -1811,6 +2527,14 @@
         const generateStrategies = document.getElementById("generateStrategies").value === "true";
         const latest = resumeLast ? await fetchLatest().catch(() => null) : null;
         const runId = manualRunId || (resumeFrom ? (resumeLast ? latest?.run_id : selectedRunId) : null);
+        const plannedRunId = runId || (!resumeFrom ? generateRunId() : null);
+        if (!resumeFrom) {
+          state.runId = plannedRunId;
+          state.launchingRunId = plannedRunId;
+          clearView("Launching run...");
+          updateContextDraft(plannedRunId);
+          setStatus(true, "LAUNCHING", plannedRunId ? `Run ${plannedRunId} is launching.` : "Launching run...");
+        }
         const settingsOverrides = buildSettingsOverrides();
         const runMode = draft.mode || "live";
         const mockMode = runMode === "mock";
@@ -1821,7 +2545,7 @@
           geography: draft.geography || "",
           horizon: draft.horizon || 60,
           mock: mockMode,
-          run_id: runId,
+          run_id: plannedRunId,
           resume_from: resumeFrom || null,
           input_docs: state.uploadedDocs,
           generate_strategies: generateStrategies,
@@ -1838,7 +2562,7 @@
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
           });
-          const newRunId = response?.run_id || runId;
+          const newRunId = response?.run_id || plannedRunId || runId;
           runStatus.textContent = newRunId ? `Run launched: ${newRunId}` : "Run launched.";
           if (newRunId) {
             history.pushState({}, "", `/runs/${newRunId}`);
@@ -1849,7 +2573,8 @@
           }
         } catch (err) {
           runStatus.textContent = `Launch failed: ${err.message || "unknown error"}`;
-          setStatus(false, "RECONNECTING...", "Launch failed. Check Access settings.");
+          setStatus(false, "OFFLINE", "Launch failed. Check Access settings.");
+          state.launchingRunId = null;
         } finally {
           launchBtn.disabled = false;
         }
@@ -1912,6 +2637,14 @@
 
       document.getElementById("toggleRawLogs").addEventListener("change", () => {
         renderTerminal(buildLogLines());
+      });
+
+      document.getElementById("chatSend")?.addEventListener("click", sendChat);
+      document.getElementById("chatInput")?.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && !event.shiftKey) {
+          event.preventDefault();
+          sendChat();
+        }
       });
 
       document.querySelectorAll(".nav-link").forEach((link) => {
