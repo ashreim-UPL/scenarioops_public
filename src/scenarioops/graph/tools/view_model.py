@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any
+from datetime import datetime
 
 from scenarioops.graph.tools.storage import read_latest_status
 
@@ -37,6 +38,51 @@ def _load_text(path: Path) -> str | None:
     if not path.exists():
         return None
     return path.read_text(encoding="utf-8")
+
+
+def _parse_ts(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        if value.endswith("Z"):
+            value = value[:-1] + "+00:00"
+        return datetime.fromisoformat(value)
+    except ValueError:
+        return None
+
+
+def _derive_run_status(run_dir: Path) -> dict[str, Any] | None:
+    log_path = run_dir / "logs" / "node_events.jsonl"
+    if not log_path.exists():
+        return None
+    events = _load_jsonl(log_path)
+    if not events:
+        return None
+    latest_by_node: dict[str, dict[str, Any]] = {}
+    for entry in events:
+        node = str(entry.get("node") or entry.get("step") or entry.get("id") or "")
+        if not node:
+            continue
+        ts = _parse_ts(entry.get("timestamp"))
+        current = latest_by_node.get(node)
+        if not current:
+            latest_by_node[node] = {"entry": entry, "timestamp": ts}
+            continue
+        current_ts = current.get("timestamp")
+        if current_ts is None or (ts and ts > current_ts):
+            latest_by_node[node] = {"entry": entry, "timestamp": ts}
+
+    latest_entries = [item["entry"] for item in latest_by_node.values()]
+    has_fail = any("FAIL" in str(entry.get("status") or "").upper() for entry in latest_entries)
+    has_running = any(
+        any(flag in str(entry.get("status") or "").upper() for flag in ["RUN", "START", "IN_PROGRESS"])
+        for entry in latest_entries
+    )
+    if has_fail:
+        return {"status": "FAIL"}
+    if has_running:
+        return {"status": "RUNNING"}
+    return {"status": "OK"}
 
 
 def _group_drivers_by_domain(drivers: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
@@ -132,9 +178,13 @@ def build_view_model(run_dir: Path) -> dict[str, Any]:
 
     latest_status = read_latest_status(run_dir.parent) or {}
     run_config = _load_json(run_dir / "run_config.json")
+    derived_status = _derive_run_status(run_dir) or {}
+    status = derived_status.get("status")
+    if not status and latest_status.get("run_id") == run_dir.name:
+        status = latest_status.get("status")
     run_meta = {
         "run_id": run_dir.name,
-        "status": latest_status.get("status", "unknown"),
+        "status": status or "unknown",
     }
     if run_config:
         run_meta["run_config"] = run_config
