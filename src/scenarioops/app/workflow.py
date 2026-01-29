@@ -27,7 +27,16 @@ def list_run_ids(base_dir: Path | None = None) -> list[str]:
     runs_dir = _runs_dir(base_dir)
     if not runs_dir.exists():
         return []
-    return sorted([path.name for path in runs_dir.iterdir() if path.is_dir()])
+    excluded = {"vectordb", "vector_db", "cache", "embed_cache"}
+    runs: list[str] = []
+    for path in runs_dir.iterdir():
+        if not path.is_dir():
+            continue
+        if path.name in excluded:
+            continue
+        if (path / "artifacts").exists() or (path / "logs").exists() or (path / "run_meta.json").exists():
+            runs.append(path.name)
+    return sorted(runs)
 
 
 def latest_run_id(base_dir: Path | None = None) -> str | None:

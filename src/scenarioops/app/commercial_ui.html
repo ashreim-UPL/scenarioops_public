@@ -533,6 +533,10 @@
         color: var(--muted);
       }
 
+      .scenario-card p {
+        white-space: pre-wrap;
+      }
+
       .chip {
         display: inline-flex;
         align-items: center;
@@ -727,6 +731,50 @@
         border-radius: 8px;
         background: rgba(15, 24, 44, 0.5);
         border: 1px solid rgba(110, 140, 200, 0.2);
+      }
+
+      .run-step.status-ok {
+        background: rgba(56, 196, 132, 0.2);
+        border-color: rgba(56, 196, 132, 0.45);
+      }
+
+      .run-step.status-running {
+        background: rgba(242, 198, 90, 0.22);
+        border-color: rgba(242, 198, 90, 0.55);
+      }
+
+      .run-step.status-failed {
+        background: rgba(232, 92, 104, 0.2);
+        border-color: rgba(232, 92, 104, 0.55);
+      }
+
+      .run-step.status-skipped {
+        background: rgba(110, 140, 200, 0.12);
+        border-color: rgba(110, 140, 200, 0.3);
+        color: rgba(210, 220, 250, 0.7);
+      }
+
+      .run-step.status-pending {
+        background: transparent;
+      }
+
+      .config-editor {
+        width: 100%;
+        font-family: var(--font-mono);
+        background: rgba(9, 15, 30, 0.85);
+        border: 1px solid rgba(110, 140, 200, 0.35);
+        border-radius: 12px;
+        padding: 10px 12px;
+        color: #f5f8ff;
+        min-height: 220px;
+      }
+
+      .config-label {
+        margin: 12px 0 6px;
+        font-size: 12px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
       }
 
       .matrix td {
@@ -1061,9 +1109,12 @@
 
     <div class="modal hidden" id="configModal">
       <div class="glass modal-card">
-        <div class="section-title">Admin Configuration</div>
-        <div class="helper">Requires an admin API key. Edit carefully.</div>
-        <textarea id="configEditor" rows="10" style="width:100%; font-family: var(--font-mono);"></textarea>
+        <div class="section-title">Admin Overrides (advanced)</div>
+        <div class="helper" style="margin: 6px 0 12px;">
+          Requires an admin API key. These settings override runtime configuration for all runs.
+        </div>
+        <div class="config-label">Override JSON</div>
+        <textarea id="configEditor" rows="10" class="config-editor"></textarea>
         <div id="configStatus" class="helper"></div>
         <div class="modal-actions">
           <button id="closeConfig">Close</button>
@@ -1193,40 +1244,37 @@
       function _statusLabel(connected) {
         if (!connected) return "OFFLINE";
         if (state.launchingRunId) return "LAUNCHING";
-        const runStatus = state.viewModel?.run_meta?.status;
+        const runStatus = deriveRunStatus().status;
         if (runStatus) return String(runStatus).toUpperCase();
         if (state.runId) return "LOADED";
         return "CONNECTED";
       }
 
-      function _statusDetail(connected) {
-        const baseLabel = apiBase() || window.location.origin;
-        if (!connected) {
-          return `Unable to reach API at ${baseLabel}.`;
+        function _statusDetail(connected) {
+          const baseLabel = apiBase() || window.location.origin;
+          if (!connected) {
+            return `Unable to reach API at ${baseLabel}.`;
+          }
+          if (state.launchingRunId) {
+            return `Run ${state.launchingRunId} is launching.`;
+          }
+          if (state.runId) {
+            const context = state.viewModel ? resolveContext(state.viewModel) : null;
+            const label = context ? formatRunLabel(context) : state.runId;
+            const age = state.lastEventAt ? ` • Last update ${formatAge(state.lastEventAt)}` : "";
+            return `Run ${label}${age}`;
+          }
+          return `Connected to ${baseLabel}.`;
         }
-        if (state.launchingRunId) {
-          return `Run ${state.launchingRunId} is launching.`;
-        }
-        if (state.runId) {
-          const context = state.viewModel ? resolveContext(state.viewModel) : null;
-          const label = context ? formatRunLabel(context) : state.runId;
-          return `Run ${label}`;
-        }
-        return `Connected to ${baseLabel}.`;
-      }
 
-      function setStatus(connected, message, detail) {
-        state.connected = connected;
-        const pulse = document.getElementById("pulseIndicator");
-        pulse.classList.toggle("off", !connected);
-        const label = message || _statusLabel(connected);
-        const last = state.lastEventAt ? ` · Last update ${state.lastEventAt.toLocaleTimeString()}` : "";
-        document.getElementById("statusText").textContent = label;
-        document.getElementById("statusDetail").textContent = detail || `${_statusDetail(connected)}${connected ? last : ""}`;
-        if (connected) {
-          state.lastEventAt = new Date();
+        function setStatus(connected, message, detail) {
+          state.connected = connected;
+          const pulse = document.getElementById("pulseIndicator");
+          pulse.classList.toggle("off", !connected);
+          const label = message || _statusLabel(connected);
+          document.getElementById("statusText").textContent = label;
+          document.getElementById("statusDetail").textContent = detail || _statusDetail(connected);
         }
-      }
 
       function showEmptyState(show) {
         const emptyState = document.getElementById("emptyState");
@@ -1249,11 +1297,29 @@
         ].join("");
       }
 
-      function truncateText(value, limit) {
-        if (!value) return "";
-        if (value.length <= limit) return value;
-        return `${value.slice(0, Math.max(0, limit - 1)).trim()}…`;
-      }
+        function truncateText(value, limit) {
+          if (!value) return "";
+          if (value.length <= limit) return value;
+          return `${value.slice(0, Math.max(0, limit - 1)).trim()}…`;
+        }
+
+        function formatAge(date) {
+          if (!date) return "";
+          const deltaMs = Date.now() - date.getTime();
+          if (deltaMs < 60000) return "just now";
+          const minutes = Math.floor(deltaMs / 60000);
+          if (minutes < 60) return `${minutes}m ago`;
+          const hours = Math.floor(minutes / 60);
+          if (hours < 24) return `${hours}h ago`;
+          const days = Math.floor(hours / 24);
+          return `${days}d ago`;
+        }
+
+        function formatStepLabel(step) {
+          return String(step || "")
+            .replace(/_/g, " ")
+            .replace(/\b\w/g, (match) => match.toUpperCase());
+        }
 
       function escapeHtml(value) {
         if (value === null || value === undefined) return "";
@@ -1273,9 +1339,84 @@
         return `${company} • SP${horizon} • ${geography}`;
       }
 
-      function formatAdvisorHtml(text) {
-        if (!text) return "";
-        const safe = escapeHtml(text);
+      const STALL_MINUTES = 10;
+
+      function _parseTimestamp(value) {
+        if (!value) return null;
+        const parsed = Date.parse(value);
+        if (Number.isNaN(parsed)) return null;
+        return new Date(parsed);
+      }
+
+      function _lastNodeEvent() {
+        const events = Array.isArray(state.nodeEvents) ? state.nodeEvents : [];
+        let last = null;
+        let lastTime = null;
+        events.forEach((entry) => {
+          const ts = _parseTimestamp(entry.timestamp);
+          if (!ts) return;
+          if (!lastTime || ts > lastTime) {
+            lastTime = ts;
+            last = entry;
+          }
+        });
+        return { entry: last, timestamp: lastTime };
+      }
+
+      function _runLooksComplete() {
+        if (!state.viewModel) return false;
+        const wind = state.viewModel?.wind_tunnel_evaluations_v2?.evaluations || [];
+        if (wind.length) return true;
+        const strategies = state.viewModel?.strategies || [];
+        if (strategies.length) return true;
+        const scenarios = state.viewModel?.scenarios || [];
+        const axes = state.viewModel?.uncertainty_axes || [];
+        return scenarios.length >= 4 && axes.length >= 2;
+      }
+
+      function deriveRunStatus() {
+        if (state.launchingRunId) {
+          return { status: "LAUNCHING", lastEvent: null, current: null };
+        }
+        const events = Array.isArray(state.nodeEvents) ? state.nodeEvents : [];
+        if (!events.length) {
+          return { status: state.runId ? "PENDING" : "IDLE", lastEvent: null, current: null };
+        }
+        const hasFail = events.some((entry) => String(entry.status || "").toUpperCase().includes("FAIL"));
+        const last = _lastNodeEvent();
+        if (hasFail) {
+          return { status: "FAIL", lastEvent: last.timestamp, current: last.entry };
+        }
+        if (_runLooksComplete()) {
+          return { status: "OK", lastEvent: last.timestamp, current: last.entry };
+        }
+        if (last.timestamp) {
+          const minutes = (Date.now() - last.timestamp.getTime()) / 60000;
+          if (minutes > STALL_MINUTES) {
+            return { status: "STALLED", lastEvent: last.timestamp, current: last.entry };
+          }
+        }
+        return { status: "RUNNING", lastEvent: last.timestamp, current: last.entry };
+      }
+
+        function _decodeHtmlEntities(value) {
+          if (!value) return "";
+          const helper = document.createElement("textarea");
+          helper.innerHTML = value;
+          return helper.value;
+        }
+
+        function sanitizeChatText(text) {
+          if (text === null || text === undefined) return "";
+          let cleaned = Array.isArray(text) ? text.join("") : String(text);
+          cleaned = _decodeHtmlEntities(_decodeHtmlEntities(cleaned));
+          cleaned = cleaned.replace(/<[^>]+>/g, "");
+          return cleaned;
+        }
+
+        function formatAdvisorHtml(text) {
+          if (!text) return "";
+          const safe = escapeHtml(sanitizeChatText(text));
         const lines = safe.split("\n");
         let html = "";
         let inList = false;
@@ -1363,7 +1504,7 @@
           pill.textContent = item;
           ribbon.appendChild(pill);
         });
-        const status = viewModel?.run_meta?.status || "idle";
+        const status = deriveRunStatus().status || "idle";
         const runLabel = formatRunLabel(context);
         document.getElementById("runState").textContent = runId ? `${status.toUpperCase()} - ${runLabel}` : "Idle";
       }
@@ -1574,41 +1715,75 @@
         `;
       }
 
-      function renderRunSteps() {
-        const container = document.getElementById("runSteps");
-        container.innerHTML = "";
-        if (!state.viewModel) {
-          container.innerHTML = "<div class=\"helper\">No run loaded.</div>";
-          return;
+        function renderRunSteps() {
+          const container = document.getElementById("runSteps");
+          container.innerHTML = "";
+          if (!state.viewModel) {
+            container.innerHTML = "<div class=\"helper\">No run loaded.</div>";
+            return;
+          }
+          const events = Array.isArray(state.nodeEvents) ? state.nodeEvents : [];
+          const statusByNode = new Map();
+          events.forEach((entry) => {
+            const node = entry.node || entry.step || entry.id;
+            if (!node) return;
+            const ts = _parseTimestamp(entry.timestamp);
+            const existing = statusByNode.get(node);
+            if (!existing || (ts && (!existing.timestamp || ts > existing.timestamp))) {
+              statusByNode.set(node, { status: entry.status || "OK", timestamp: ts });
+            }
+          });
+          const derived = deriveRunStatus();
+          const runningNode = derived.status === "RUNNING" && derived.current ? derived.current.node : null;
+          const expectedSteps = resumeSteps.length ? resumeSteps : defaultNodes.map((node) => node.id);
+          expectedSteps.forEach((stepId) => {
+            const entry = statusByNode.get(stepId);
+            const status = entry ? entry.status : "PENDING";
+            const normalized = String(status || "").toUpperCase();
+            let statusClass = "";
+            if (normalized.includes("FAIL") || normalized.includes("ERROR")) {
+              statusClass = "status-failed";
+            } else if (normalized.includes("SKIP")) {
+              statusClass = "status-skipped";
+            } else if (normalized.includes("OK") || normalized.includes("DONE") || normalized.includes("SUCCESS")) {
+              statusClass = "status-ok";
+            } else if (
+              normalized.includes("RUN") ||
+              normalized.includes("START") ||
+              normalized.includes("IN_PROGRESS") ||
+              (runningNode && runningNode === stepId)
+            ) {
+              statusClass = "status-running";
+            } else {
+              statusClass = "status-pending";
+            }
+            const div = document.createElement("div");
+            div.className = `run-step ${statusClass}`.trim();
+            div.innerHTML = `<span>${formatStepLabel(stepId)}</span><span>${status || "PENDING"}</span>`;
+            container.appendChild(div);
+          });
         }
-        const steps = state.nodeEvents.length ? state.nodeEvents : defaultNodes.map((node) => ({ node: node.id, status: "PENDING" }));
-        steps.slice(0, 12).forEach((step) => {
-          const div = document.createElement("div");
-          div.className = "run-step";
-          div.innerHTML = `<span>${step.node || "node"}</span><span>${step.status || "PENDING"}</span>`;
-          container.appendChild(div);
-        });
-      }
 
-      function renderRunProgress() {
-        const el = document.getElementById("runProgress");
-        if (!el) return;
-        if (!state.viewModel) {
-          el.textContent = "No run loaded.";
-          return;
+        function renderRunProgress() {
+          const el = document.getElementById("runProgress");
+          if (!el) return;
+          if (!state.viewModel) {
+            el.textContent = "No run loaded.";
+            return;
+          }
+          const events = state.nodeEvents || [];
+          const completed = events.filter((e) => String(e.status || "").toUpperCase().includes("OK")).length;
+          const failed = events.filter((e) => String(e.status || "").toUpperCase().includes("FAIL")).length;
+          const derived = deriveRunStatus();
+          const status = derived.status || _statusLabel(state.connected);
+          const current = derived.current
+            ? `${derived.current.node || "node"} (${derived.current.status || "OK"})`
+            : state.launchingRunId
+            ? "Launching"
+            : "Pending";
+          const lastUpdate = derived.lastEvent ? ` • Last update ${formatAge(derived.lastEvent)}` : "";
+          el.textContent = `Status: ${status} • Current: ${current} • Completed: ${completed} • Failed: ${failed}${lastUpdate}`;
         }
-        const events = state.nodeEvents || [];
-        const last = events.length ? events[events.length - 1] : null;
-        const completed = events.filter((e) => String(e.status || "").toUpperCase().includes("OK")).length;
-        const failed = events.filter((e) => String(e.status || "").toUpperCase().includes("FAIL")).length;
-        const status = _statusLabel(state.connected);
-        const current = state.launchingRunId
-          ? "Launching"
-          : last
-          ? `${last.node || "node"} (${last.status || "OK"})`
-          : "Pending";
-        el.textContent = `Status: ${status} • Current: ${current} • Completed: ${completed} • Failed: ${failed}`;
-      }
 
       function renderArtifacts() {
         const container = document.getElementById("artifactList");
@@ -1783,28 +1958,29 @@
           container.innerHTML = `<div class="helper">No scenarios generated yet.</div>`;
           return;
         }
-        scenarios.forEach((scenario) => {
-          const card = document.createElement("div");
-          card.className = "glass card scenario-card";
-          const imageUrl = resolveScenarioImage(state.runId, scenario);
-          const title = scenario.name || scenario.id || scenario.scenario_id || "Scenario";
-          const summary = truncateText(scenario.narrative || scenario.summary || scenario.story_text || "", 320);
-          const axisStates = scenario.axis_states
-            ? Object.entries(scenario.axis_states)
-                .map(([key, value]) => `${key}: ${value}`)
-                .join(" • ")
-            : "";
+          scenarios.forEach((scenario) => {
+            const card = document.createElement("div");
+            card.className = "glass card scenario-card";
+            const imageUrl = resolveScenarioImage(state.runId, scenario);
+            const title = scenario.name || scenario.id || scenario.scenario_id || "Scenario";
+            const narrative = scenario.narrative || scenario.summary || scenario.story_text || "";
+            const summary = escapeHtml(narrative);
+            const axisStates = scenario.axis_states
+              ? Object.entries(scenario.axis_states)
+                  .map(([key, value]) => `${key}: ${value}`)
+                  .join(" • ")
+              : "";
           const imageHtml = imageUrl
             ? `<div class="scenario-media"><img src="${imageUrl}" alt="${title}" /></div>`
             : `<div class="scenario-media placeholder">No Image</div>`;
           card.innerHTML = `
-            ${imageHtml}
-            <div class="scenario-body">
-              <h4>${title}</h4>
-              <p>${summary || "Narrative pending."}</p>
-              ${axisStates ? `<div class="scenario-meta">${axisStates}</div>` : ""}
-            </div>
-          `;
+              ${imageHtml}
+              <div class="scenario-body">
+                <h4>${title}</h4>
+                <p>${summary || "Narrative pending."}</p>
+                ${axisStates ? `<div class="scenario-meta">${axisStates}</div>` : ""}
+              </div>
+            `;
           container.appendChild(card);
         });
       }
@@ -1964,11 +2140,7 @@
           div.innerHTML = `<div class="meta">${meta}</div><div class="content"></div>${sources}`;
           const contentEl = div.querySelector(".content");
           if (contentEl) {
-            if (message.role === "assistant") {
-              contentEl.innerHTML = formatAdvisorHtml(message.content || "");
-            } else {
-              contentEl.textContent = message.content || "";
-            }
+            contentEl.textContent = message.content || "";
           }
           container.appendChild(div);
         });
@@ -2023,16 +2195,17 @@
         renderChat();
       }
 
-      function clearView(reason) {
-        state.viewModel = null;
-        state.nodeEvents = [];
-        state.normalization = [];
-        state.latestLinks = [];
-        state.logs = [];
-        updateContext(null, null);
-        renderRunPage();
-        renderSignalFeed();
-        renderScenarioMatrix();
+        function clearView(reason) {
+          state.viewModel = null;
+          state.nodeEvents = [];
+          state.normalization = [];
+          state.latestLinks = [];
+          state.logs = [];
+          state.lastEventAt = null;
+          updateContext(null, null);
+          renderRunPage();
+          renderSignalFeed();
+          renderScenarioMatrix();
         renderScenarioCards();
         renderWindTunnel();
         renderActionConsole();
@@ -2072,13 +2245,13 @@
         return match ? match[1] : null;
       }
 
-      async function loadData(runIdOverride) {
-        try {
-          showEmptyState(false);
-          state.lastEventAt = new Date();
-          setStatus(true, "CONNECTING", "Fetching run data...");
-          const scrollY = window.scrollY;
-          let runId = runIdOverride || getRunIdFromPath() || state.runId;
+        async function loadData(runIdOverride) {
+          try {
+            showEmptyState(false);
+            state.lastEventAt = null;
+            setStatus(true, "CONNECTING", "Fetching run data...");
+            const scrollY = window.scrollY;
+            let runId = runIdOverride || getRunIdFromPath() || state.runId;
           if (runId) {
             state.latestLinks = [];
           }
@@ -2098,11 +2271,13 @@
           if (state.launchingRunId === runId) {
             state.launchingRunId = null;
           }
-          updateContext(state.viewModel, state.runId);
-          state.nodeEvents = await fetchNodeEvents(runId);
-          state.normalization = await fetchNormalization(runId);
-          const logs = buildLogLines();
-          state.logs = logs;
+            updateContext(state.viewModel, state.runId);
+            state.nodeEvents = await fetchNodeEvents(runId);
+            state.normalization = await fetchNormalization(runId);
+            const last = _lastNodeEvent();
+            state.lastEventAt = last.timestamp;
+            const logs = buildLogLines();
+            state.logs = logs;
           renderTerminal(logs);
           syncRunControls();
           renderRunPage();

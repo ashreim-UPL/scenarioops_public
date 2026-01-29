@@ -43,6 +43,7 @@ from scenarioops.app.config import (
 )
 from scenarioops.graph.tools.storage import default_runs_dir
 from scenarioops.graph.tools.view_model import build_view_model
+from scenarioops.graph.tools.schema_validate import SchemaValidationError, validate_artifact
 
 RUNS_DIR = default_runs_dir()
 LATEST_POINTER = RUNS_DIR / "latest.json"
@@ -381,6 +382,26 @@ def _format_list(values: Any) -> str:
     if isinstance(values, list):
         return ", ".join(str(item) for item in values)
     return str(values)
+
+
+def _coerce_markdown_text(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, list):
+        if all(isinstance(item, str) for item in value):
+            if value and all(len(item) == 1 for item in value):
+                return "".join(value)
+            return "\n".join(item for item in value if item)
+        return json.dumps(value, ensure_ascii=False, indent=2)
+    if isinstance(value, dict):
+        return json.dumps(value, ensure_ascii=False, indent=2)
+    return str(value)
+
+
+def _render_markdown_text(value: Any) -> None:
+    text = _coerce_markdown_text(value)
+    if text:
+        st.markdown(text)
 
 NODE_FUNCTIONS = {
     "charter": "run_charter_node",
@@ -1486,14 +1507,33 @@ if run_id and not st.session_state.get("running"):
             st.error(f"Could not load view model: {e}")
             st.stop()
 
+        # Validate strategist output before rendering
+        strategies_payload = None
+        strategies_path = run_dir / "artifacts" / "strategies.json"
+        if strategies_path.exists():
+            try:
+                strategies_payload = json.loads(strategies_path.read_text(encoding="utf-8"))
+                validate_artifact("strategies", strategies_payload)
+            except SchemaValidationError as exc:
+                st.warning(f"Strategies schema validation failed: {exc}")
+                strategies_payload = None
+            except Exception as exc:
+                st.warning(f"Could not validate strategies: {exc}")
+                strategies_payload = None
+
         # Metrics Row
         m1, m2, m3, m4 = st.columns(4)
         forces_count = len(view_model.get("forces") or view_model.get("driving_forces", []))
         axes_count = len(view_model.get("uncertainty_axes", [])) or len(view_model.get("uncertainties", []))
         m1.metric("Forces Identified", forces_count)
         m2.metric("Uncertainty Axes", axes_count)
+        strategies = (
+            strategies_payload.get("strategies", [])
+            if isinstance(strategies_payload, dict)
+            else view_model.get("strategies", [])
+        )
         m3.metric("Scenarios", len(view_model.get("scenarios", [])))
-        m4.metric("Strategies", len(view_model.get("strategies", [])))
+        m4.metric("Strategies", len(strategies))
 
         # Main Tabs
         tab1, tab2, tab3, tab4 = st.tabs(["Strategy Map", "Scenarios", "Wind Tunnel", "Raw Data"])
@@ -1545,7 +1585,7 @@ if run_id and not st.session_state.get("running"):
                         st.markdown(f"### {scen.get('name')}")
                         story_text = scen.get("story_text") or scen.get("narrative", "")
                         if story_text:
-                            st.write(story_text)
+                            _render_markdown_text(story_text)
                         image_path = scen.get("image_artifact_path")
                         if image_path:
                             full_path = RUNS_DIR / run_id / Path(image_path)
