@@ -107,6 +107,12 @@ class ChatResponse(BaseModel):
     sources: list[dict[str, Any]]
 
 
+class ActionConsolePayload(BaseModel):
+    run_id: str | None = None
+    updated_at: str | None = None
+    items: list[dict[str, Any]] = Field(default_factory=list)
+
+
 class LogResponse(BaseModel):
     entries: list[dict[str, Any]]
 
@@ -151,6 +157,91 @@ def _safe_load_json(path: Path) -> dict[str, Any] | None:
     except json.JSONDecodeError:
         return None
     return payload if isinstance(payload, dict) else None
+
+
+def _action_console_path(run_id: str, base_dir: Path) -> Path:
+    return _artifact_path(run_id, "action_console.json", base_dir)
+
+
+def _build_action_console(view_model: dict[str, Any]) -> dict[str, Any]:
+    wind_tunnel = view_model.get("wind_tunnel_evaluations_v2") or {}
+    if not isinstance(wind_tunnel, dict):
+        wind_tunnel = {}
+    recommendations = wind_tunnel.get("recommendations") or {}
+    if not isinstance(recommendations, dict):
+        recommendations = {}
+    primary = recommendations.get("primary_recommended_strategy") or {}
+    primary_name = ""
+    if isinstance(primary, dict):
+        primary_name = primary.get("strategy_name") or ""
+    items: list[dict[str, Any]] = []
+
+    def add_item(
+        *,
+        title: str,
+        priority: str,
+        action_type: str,
+        strategy: str | None = None,
+        scenario: str | None = None,
+        trigger: str | None = None,
+        source: str = "wind_tunnel",
+    ) -> None:
+        if not title:
+            return
+        items.append(
+            {
+                "id": f"action-{len(items) + 1}",
+                "priority": priority,
+                "type": action_type,
+                "title": title,
+                "strategy": strategy,
+                "scenario": scenario,
+                "trigger": trigger,
+                "owner": "",
+                "due": "",
+                "status": "open",
+                "source": source,
+            }
+        )
+
+    for action in recommendations.get("hardening_actions") or []:
+        add_item(
+            title=str(action),
+            priority="P0",
+            action_type="hardening",
+            strategy=primary_name,
+        )
+    for action in recommendations.get("hedge_actions") or []:
+        add_item(
+            title=str(action),
+            priority="P1",
+            action_type="hedge",
+            strategy="",
+        )
+    for trigger in recommendations.get("triggers_to_watch") or []:
+        if isinstance(trigger, dict):
+            title = trigger.get("recommended_action") or trigger.get("description") or ""
+            add_item(
+                title=str(title),
+                priority="P2",
+                action_type="trigger",
+                trigger=str(trigger.get("description") or ""),
+                strategy=primary_name,
+            )
+        else:
+            add_item(
+                title=str(trigger),
+                priority="P2",
+                action_type="trigger",
+                trigger=str(trigger),
+                strategy=primary_name,
+            )
+
+    return {
+        "run_id": (view_model.get("run_meta") or {}).get("run_id"),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "items": items,
+    }
 
 
 def _run_label(run_id: str, base_dir: Path) -> str:
@@ -230,6 +321,8 @@ def _compact_scenarios(scenarios: list[dict[str, Any]], limit: int = 6) -> list[
 
 def _build_chat_context(run_id: str, base_dir: Path) -> dict[str, Any]:
     artifacts_dir = base_dir / run_id / "artifacts"
+    trace_dir = base_dir / run_id / "trace"
+    logs_dir = base_dir / run_id / "logs"
     view_model = _safe_load_json(artifacts_dir / "view_model.json") or {}
     prompt_manifest = view_model.get("prompt_manifest") or _safe_load_json(artifacts_dir / "prompt_manifest.json") or {}
     focal_issue = view_model.get("focal_issue") or _safe_load_json(artifacts_dir / "focal_issue.json") or {}
@@ -250,6 +343,47 @@ def _build_chat_context(run_id: str, base_dir: Path) -> dict[str, Any]:
     if not isinstance(wind_tunnel, dict):
         wind_tunnel = {}
     scope = focal_issue.get("scope") if isinstance(focal_issue.get("scope"), dict) else {}
+
+    latest_failure = {}
+    node_events_path = logs_dir / "node_events.jsonl"
+    if node_events_path.exists():
+        for line in reversed(node_events_path.read_text(encoding="utf-8").splitlines()):
+            if not line.strip():
+                continue
+            try:
+                entry = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(entry, dict):
+                continue
+            status = str(entry.get("status") or "").upper()
+            error = entry.get("error")
+            if "FAIL" in status or error:
+                latest_failure = {
+                    "node": entry.get("node"),
+                    "status": entry.get("status"),
+                    "error": _truncate_text(str(error or ""), 360),
+                    "timestamp": entry.get("timestamp"),
+                }
+                break
+
+    wind_tunnel_failures: list[dict[str, Any]] = []
+    if trace_dir.exists():
+        for path in sorted(trace_dir.glob("wind_tunnel_failure_*.json"))[-3:]:
+            payload = _safe_load_json(path) or {}
+            if isinstance(payload, dict):
+                wind_tunnel_failures.append(
+                    {
+                        "error": _truncate_text(str(payload.get("error") or ""), 360),
+                        "chunk_index": payload.get("chunk_index"),
+                        "chunks": payload.get("chunks"),
+                        "strategy_count": payload.get("strategy_count"),
+                        "scenario_count": payload.get("scenario_count"),
+                    }
+                )
+    wind_tunnel_debug = _safe_load_json(trace_dir / "wind_tunnel_debug.json") or {}
+    if not isinstance(wind_tunnel_debug, dict):
+        wind_tunnel_debug = {}
 
     context = {
         "run_id": run_id,
@@ -284,6 +418,21 @@ def _build_chat_context(run_id: str, base_dir: Path) -> dict[str, Any]:
         "wind_tunnel": {
             "recommendation": (wind_tunnel.get("recommendations") or {}).get("primary_recommended_strategy"),
             "rankings": (wind_tunnel.get("rankings") or {}).get("overall", [])[:3],
+        },
+        "run_failures": {
+            "latest": latest_failure,
+            "wind_tunnel": {
+                "failures": wind_tunnel_failures,
+                "debug": {
+                    "missing_outcomes": wind_tunnel_debug.get("missing_outcomes"),
+                    "parsed_keys": wind_tunnel_debug.get("parsed_keys"),
+                    "response_raw_excerpt": _truncate_text(
+                        str(wind_tunnel_debug.get("response_raw_excerpt") or ""), 600
+                    ),
+                }
+                if wind_tunnel_debug
+                else {},
+            },
         },
     }
     return context
@@ -475,6 +624,65 @@ def artifact_image(
         raise HTTPException(status_code=404, detail="Image not found.")
     media_type, _ = mimetypes.guess_type(str(path))
     return FileResponse(path, media_type=media_type or "application/octet-stream")
+
+
+@app.get("/action-console/{run_id}")
+def action_console_get(
+    run_id: str, tenant: TenantContext = Depends(_tenant_context)
+) -> JSONResponse:
+    path = _action_console_path(run_id, tenant.base_dir)
+    if path.exists():
+        return JSONResponse(json.loads(path.read_text(encoding="utf-8")))
+    view_model = _safe_load_json(
+        tenant.base_dir / run_id / "artifacts" / "view_model.json"
+    )
+    if not view_model:
+        run_dir = tenant.base_dir / run_id
+        if run_dir.exists():
+            try:
+                view_model = build_view_model(run_dir)
+            except Exception:
+                view_model = {}
+    payload = _build_action_console(view_model or {})
+    return JSONResponse(payload)
+
+
+@app.post("/action-console/{run_id}")
+def action_console_update(
+    run_id: str,
+    payload: ActionConsolePayload,
+    tenant: TenantContext = Depends(_tenant_context),
+) -> JSONResponse:
+    action_payload = payload.model_dump()
+    action_payload["run_id"] = run_id
+    action_payload["updated_at"] = datetime.now(timezone.utc).isoformat()
+    path = _action_console_path(run_id, tenant.base_dir)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(action_payload, indent=2), encoding="utf-8")
+    return JSONResponse(action_payload)
+
+
+@app.post("/action-console/{run_id}/generate")
+def action_console_generate(
+    run_id: str, tenant: TenantContext = Depends(_tenant_context)
+) -> JSONResponse:
+    view_model = _safe_load_json(
+        tenant.base_dir / run_id / "artifacts" / "view_model.json"
+    )
+    if not view_model:
+        run_dir = tenant.base_dir / run_id
+        if run_dir.exists():
+            try:
+                view_model = build_view_model(run_dir)
+            except Exception:
+                view_model = {}
+    payload = _build_action_console(view_model or {})
+    payload["run_id"] = run_id
+    payload["updated_at"] = datetime.now(timezone.utc).isoformat()
+    path = _action_console_path(run_id, tenant.base_dir)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    return JSONResponse(payload)
 
 
 @app.get("/runs", response_model=RunsResponse)

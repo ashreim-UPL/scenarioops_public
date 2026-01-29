@@ -1,0 +1,13 @@
+venv/
+.git/
+.vscode/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+storage/runs/
+storage/logs/
+storage/vectordb/
+.env
+.DS_Store

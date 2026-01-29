@@ -483,6 +483,132 @@
         padding: 14px;
       }
 
+      .action-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 8px;
+      }
+
+      .action-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .action-board {
+        margin-top: 12px;
+      }
+
+      .action-item {
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(110, 140, 200, 0.25);
+        background: rgba(15, 24, 44, 0.55);
+        display: grid;
+        gap: 8px;
+        font-size: 12px;
+      }
+
+      .action-title {
+        font-weight: 600;
+        font-size: 13px;
+        color: var(--ink);
+      }
+
+      .action-meta {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        color: var(--muted);
+      }
+
+      .action-meta .chip {
+        font-size: 10px;
+        padding: 2px 8px;
+      }
+
+      .action-fields {
+        display: grid;
+        gap: 6px;
+      }
+
+      .action-fields input,
+      .action-fields select,
+      .action-fields textarea {
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(110, 140, 200, 0.35);
+        border-radius: 10px;
+        padding: 6px 8px;
+        color: var(--ink);
+        font-family: var(--font-body);
+        font-size: 12px;
+      }
+
+      .action-fields textarea {
+        min-height: 54px;
+        resize: vertical;
+      }
+
+      .action-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 8px;
+      }
+
+      .axis-graph {
+        display: grid;
+        gap: 16px;
+      }
+
+      .axis-block {
+        display: grid;
+        gap: 10px;
+      }
+
+      .axis-title {
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .axis-sub {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .axis-bars {
+        display: grid;
+        gap: 8px;
+      }
+
+      .axis-bar {
+        position: relative;
+        height: 36px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, rgba(58, 164, 255, 0.35), rgba(40, 240, 200, 0.15));
+        border: 1px solid rgba(58, 164, 255, 0.35);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 12px;
+        overflow: hidden;
+        color: var(--ink);
+      }
+
+      .axis-bar span {
+        font-size: 12px;
+      }
+
+      .axis-score {
+        color: var(--muted);
+        font-family: var(--font-mono);
+      }
+
       .scenario-card {
         display: flex;
         flex-direction: column;
@@ -956,17 +1082,35 @@
               </div>
               <div class="glass card sidebar-card">
                 <div class="section-title">Node Reference</div>
-                <div id="nodeReference" class="helper">Sentinel, Analyst, Scenario Builder, Critic, Planner, Auditor.</div>
+                <div id="nodeReference" class="helper">Charter, Focal Issue, Company Profile, Ingest Docs, Retrieval Real, Forces, EBE Rank, Clusters, Uncertainty Axes, Scenarios, Scenario Media, Strategies, Wind Tunnel, Auditor.</div>
               </div>
             </div>
+          </aside>
 
+          <div>
+            <div class="glass workflow-map">
+              <div class="section-title">Workflow Map</div>
+              <div class="workflow-nodes" id="workflowNodes"></div>
+            </div>
+
+            <div class="glass detail-card" id="nodeDetail" style="margin-top: 16px;">
+              <div class="section-title">Run Progress</div>
+              <div id="runProgress" class="helper" style="margin-bottom: 12px;">No run loaded.</div>
+              <div class="section-title">Node Detail</div>
+              <div id="nodeDetailBody" class="ghost" style="padding: 12px; border-radius: 12px; min-height: 200px;"></div>
+              <div class="section-title" style="margin-top: 14px;">Artifacts</div>
+              <div id="artifactList" class="run-steps"></div>
+            </div>
+          </div>
+
+          <aside class="glass sidebar">
             <div class="section-title">Run Controls</div>
             <div class="glass company-card">
               <div class="company-header">
                 <div class="company-logo" id="companyLogo">SO</div>
                 <div>
                   <div id="companyName" style="font-weight: 600;">Company</div>
-                  <div id="companyMarket" class="company-meta">Market • Region</div>
+                  <div id="companyMarket" class="company-meta">Market ??? Region</div>
                 </div>
               </div>
               <div id="companySummary" class="company-meta">Awaiting profile data.</div>
@@ -981,6 +1125,7 @@
             <div style="display:flex; gap:8px; margin-bottom: 10px;">
               <button id="loadRunBtn">Load Run</button>
               <button id="latestRunBtn">Latest</button>
+              <button id="retryFailedBtn">Retry Failed</button>
             </div>
             <div class="section-title" style="margin-top: 10px;">Recent Runs</div>
             <div id="runList" class="run-list"></div>
@@ -1000,22 +1145,6 @@
             <label>Filter Signals<select id="controlSignal"><option>All</option></select></label>
             <label>Filter Scenarios<select id="controlScenario"><option>All</option></select></label>
           </aside>
-
-          <div class="glass workflow-map">
-            <div class="section-title">Workflow Map</div>
-            <div class="workflow-nodes" id="workflowNodes"></div>
-          </div>
-
-          <div class="glass detail-card" id="nodeDetail">
-            <div class="section-title">Run Progress</div>
-            <div id="runProgress" class="helper" style="margin-bottom: 12px;">No run loaded.</div>
-            <div class="section-title">Node Detail</div>
-            <div id="nodeDetailBody" class="ghost" style="padding: 12px; border-radius: 12px; min-height: 240px;"></div>
-            <div class="section-title" style="margin-top: 14px;">Run Steps</div>
-            <div id="runSteps" class="run-steps"></div>
-            <div class="section-title" style="margin-top: 14px;">Artifacts</div>
-            <div id="artifactList" class="run-steps"></div>
-          </div>
         </div>
 
         <div class="section">
@@ -1050,6 +1179,10 @@
       <section class="section hidden" data-view="/scenarios">
         <div class="glass" style="padding: 18px;">
           <div class="section-title">Scenario Lab</div>
+          <div class="glass" style="padding: 14px; margin-bottom: 16px;">
+            <div class="section-title">Axis Cluster EBE</div>
+            <div id="axisEbeGraph" class="axis-graph"></div>
+          </div>
           <div class="matrix" id="scenarioMatrix" style="margin-bottom: 16px;"></div>
           <div class="cards" id="scenarioCards"></div>
         </div>
@@ -1070,8 +1203,17 @@
 
       <section class="section hidden" data-view="/actions">
         <div class="glass" style="padding: 18px;">
-          <div class="section-title">Action Console</div>
-          <div class="cards" id="actionBoard"></div>
+          <div class="action-toolbar">
+            <div class="section-title">Action Console</div>
+            <div class="action-actions">
+              <button id="actionGenerateBtn">Generate Actions</button>
+              <button id="actionAddBtn">Add Action</button>
+              <button id="actionEditBtn">Edit</button>
+              <button class="primary" id="actionSaveBtn">Save</button>
+            </div>
+          </div>
+          <div id="actionStatus" class="helper"></div>
+          <div class="cards action-board" id="actionBoard"></div>
         </div>
       </section>
 
@@ -1138,14 +1280,25 @@
         connected: false,
         lastEventAt: null,
         launchingRunId: null,
+        actionConsole: null,
+        actionEditMode: false,
+        actionDirty: false,
       };
 
       const defaultNodes = [
-        { id: "sentinel", label: "Sentinel" },
-        { id: "analyst", label: "Analyst" },
-        { id: "scenario_builder", label: "Scenario Builder" },
-        { id: "critic", label: "Critic" },
-        { id: "planner", label: "Planner" },
+        { id: "charter", label: "Charter" },
+        { id: "focal_issue", label: "Focal Issue" },
+        { id: "company_profile", label: "Company Profile" },
+        { id: "ingest_docs", label: "Ingest Docs" },
+        { id: "retrieval_real", label: "Retrieval Real" },
+        { id: "forces", label: "Forces" },
+        { id: "ebe_rank", label: "EBE Rank" },
+        { id: "clusters", label: "Clusters" },
+        { id: "uncertainty_axes", label: "Uncertainty Axes" },
+        { id: "scenarios", label: "Scenarios" },
+        { id: "scenario_media", label: "Scenario Media" },
+        { id: "strategies", label: "Strategies" },
+        { id: "wind_tunnel", label: "Wind Tunnel" },
         { id: "auditor", label: "Auditor" },
       ];
 
@@ -1167,11 +1320,20 @@
       ];
 
       const stageMap = {
-        sentinel: ["charter", "focal_issue", "company_profile", "ingest_docs", "retrieval_real"],
-        analyst: ["forces", "ebe_rank", "clusters"],
-        scenario_builder: ["uncertainty_axes", "scenarios", "scenario_media"],
-        critic: ["strategies", "wind_tunnel"],
-        planner: ["auditor"],
+        charter: ["charter"],
+        focal_issue: ["focal_issue"],
+        company_profile: ["company_profile"],
+        ingest_docs: ["ingest_docs"],
+        retrieval_real: ["retrieval_real"],
+        forces: ["forces"],
+        ebe_rank: ["ebe_rank"],
+        clusters: ["clusters"],
+        uncertainty_axes: ["uncertainty_axes"],
+        scenarios: ["scenarios"],
+        scenario_media: ["scenario_media"],
+        strategies: ["strategies"],
+        wind_tunnel: ["wind_tunnel"],
+        auditor: ["auditor"],
       };
 
       function apiBase() {
@@ -1221,6 +1383,22 @@
 
       async function fetchNormalization(runId) {
         return fetchJson(`/run/${runId}/normalization`).then((d) => d.entries || []);
+      }
+
+      async function fetchActionConsole(runId) {
+        return fetchJson(`/action-console/${runId}`);
+      }
+
+      async function generateActionConsole(runId) {
+        return fetchJson(`/action-console/${runId}/generate`, { method: "POST" });
+      }
+
+      async function saveActionConsole(runId, payload) {
+        return fetchJson(`/action-console/${runId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
       }
 
       async function fetchConfig() {
@@ -1397,6 +1575,18 @@
           }
         }
         return { status: "RUNNING", lastEvent: last.timestamp, current: last.entry };
+      }
+
+      function latestFailedNode() {
+        const events = Array.isArray(state.nodeEvents) ? state.nodeEvents : [];
+        for (let i = events.length - 1; i >= 0; i -= 1) {
+          const entry = events[i] || {};
+          const status = String(entry.status || "").toUpperCase();
+          if (status.includes("FAIL") || entry.error) {
+            return String(entry.node || entry.step || entry.id || "");
+          }
+        }
+        return "";
       }
 
         function _decodeHtmlEntities(value) {
@@ -1610,17 +1800,7 @@
       function renderWorkflow() {
         const map = document.getElementById("workflowNodes");
         map.innerHTML = "";
-        const packName =
-          state.viewModel?.run_meta?.run_config?.agent_pack ||
-          state.viewModel?.run_meta?.run_config?.pack ||
-          draft.pack ||
-          "Strategist";
-        const packNodes = {
-          Strategist: defaultNodes.map((node) => node.id),
-          Analyst: ["sentinel", "analyst", "scenario_builder"],
-          Critic: ["critic", "planner"],
-        };
-        const enabledByPack = new Set(packNodes[packName] || defaultNodes.map((node) => node.id));
+        const enabledByPack = new Set(defaultNodes.map((node) => node.id));
         const capabilityNodes = (state.viewModel?.run_meta?.capabilities?.nodes || [])
           .map((node) => String(node).toLowerCase());
         const enabledByCapability = new Set(capabilityNodes);
@@ -1631,18 +1811,6 @@
           [...enabledNodes].forEach((node) => {
             if (!enabledByCapability.has(node)) enabledNodes.delete(node);
           });
-        } else if (state.viewModel && runComplete) {
-          const hasAnalystArtifacts =
-            (state.viewModel?.forces || []).length ||
-            (state.viewModel?.forces_ranked?.forces || []).length ||
-            (state.viewModel?.clusters || []).length;
-          const windTunnel = state.viewModel?.wind_tunnel || {};
-          const hasCriticArtifacts =
-            (state.viewModel?.wind_tunnel_evaluations_v2?.evaluations || []).length ||
-            (state.viewModel?.strategies || []).length ||
-            Object.keys(windTunnel).length > 0;
-          if (!hasAnalystArtifacts) enabledNodes.delete("analyst");
-          if (!hasCriticArtifacts) enabledNodes.delete("critic");
         }
         if (!state.viewModel) {
           defaultNodes.forEach((node) => {
@@ -1715,56 +1883,7 @@
         `;
       }
 
-        function renderRunSteps() {
-          const container = document.getElementById("runSteps");
-          container.innerHTML = "";
-          if (!state.viewModel) {
-            container.innerHTML = "<div class=\"helper\">No run loaded.</div>";
-            return;
-          }
-          const events = Array.isArray(state.nodeEvents) ? state.nodeEvents : [];
-          const statusByNode = new Map();
-          events.forEach((entry) => {
-            const node = entry.node || entry.step || entry.id;
-            if (!node) return;
-            const ts = _parseTimestamp(entry.timestamp);
-            const existing = statusByNode.get(node);
-            if (!existing || (ts && (!existing.timestamp || ts > existing.timestamp))) {
-              statusByNode.set(node, { status: entry.status || "OK", timestamp: ts });
-            }
-          });
-          const derived = deriveRunStatus();
-          const runningNode = derived.status === "RUNNING" && derived.current ? derived.current.node : null;
-          const expectedSteps = resumeSteps.length ? resumeSteps : defaultNodes.map((node) => node.id);
-          expectedSteps.forEach((stepId) => {
-            const entry = statusByNode.get(stepId);
-            const status = entry ? entry.status : "PENDING";
-            const normalized = String(status || "").toUpperCase();
-            let statusClass = "";
-            if (normalized.includes("FAIL") || normalized.includes("ERROR")) {
-              statusClass = "status-failed";
-            } else if (normalized.includes("SKIP")) {
-              statusClass = "status-skipped";
-            } else if (normalized.includes("OK") || normalized.includes("DONE") || normalized.includes("SUCCESS")) {
-              statusClass = "status-ok";
-            } else if (
-              normalized.includes("RUN") ||
-              normalized.includes("START") ||
-              normalized.includes("IN_PROGRESS") ||
-              (runningNode && runningNode === stepId)
-            ) {
-              statusClass = "status-running";
-            } else {
-              statusClass = "status-pending";
-            }
-            const div = document.createElement("div");
-            div.className = `run-step ${statusClass}`.trim();
-            div.innerHTML = `<span>${formatStepLabel(stepId)}</span><span>${status || "PENDING"}</span>`;
-            container.appendChild(div);
-          });
-        }
-
-        function renderRunProgress() {
+      function renderRunProgress() {
           const el = document.getElementById("runProgress");
           if (!el) return;
           if (!state.viewModel) {
@@ -1935,6 +2054,76 @@
         matrix.appendChild(table);
       }
 
+      function renderAxisEbeGraph() {
+        const container = document.getElementById("axisEbeGraph");
+        if (!container) return;
+        container.innerHTML = "";
+        if (!state.viewModel) {
+          container.innerHTML = `<div class="helper">No run loaded.</div>`;
+          return;
+        }
+        const clusters = Array.isArray(state.viewModel?.clusters) ? state.viewModel.clusters : [];
+        const axes = Array.isArray(state.viewModel?.uncertainty_axes) ? state.viewModel.uncertainty_axes : [];
+        const forces = state.viewModel?.forces_ranked?.forces || [];
+        if (!clusters.length || !axes.length || !forces.length) {
+          container.innerHTML = `<div class="helper">Axis cluster graph will appear after clusters, axes, and EBE ranks are generated.</div>`;
+          return;
+        }
+
+        const ebeByForce = new Map();
+        forces.forEach((force) => {
+          const id = force.force_id || force.id;
+          if (!id) return;
+          ebeByForce.set(String(id), Number(force.ebe_score || 0));
+        });
+
+        const clusterTotals = new Map();
+        clusters.forEach((cluster) => {
+          const ids = Array.isArray(cluster.force_ids) ? cluster.force_ids : [];
+          const total = ids.reduce((sum, forceId) => sum + (ebeByForce.get(String(forceId)) || 0), 0);
+          clusterTotals.set(String(cluster.cluster_id || cluster.id), {
+            total,
+            label: cluster.cluster_label || cluster.centroid_summary || "Cluster",
+          });
+        });
+
+        axes.slice(0, 3).forEach((axis) => {
+          const axisId = axis.axis_id || axis.id || "axis";
+          const axisName = axis.axis_name || "Axis";
+          const poles = `${axis.pole_a || "A"} ↔ ${axis.pole_b || "B"}`;
+          const clusterIds = axis.tension_basis?.cluster_ids || [];
+          const entries = clusterIds
+            .map((clusterId) => {
+              const entry = clusterTotals.get(String(clusterId));
+              if (!entry) return null;
+              return { id: clusterId, label: entry.label, total: entry.total };
+            })
+            .filter(Boolean);
+          if (!entries.length) return;
+          const maxTotal = Math.max(...entries.map((entry) => entry.total), 1);
+          const block = document.createElement("div");
+          block.className = "axis-block";
+          block.innerHTML = `
+            <div class="axis-title">${escapeHtml(axisName)}</div>
+            <div class="axis-sub">${escapeHtml(poles)}</div>
+            <div class="axis-bars">
+              ${entries
+                .map((entry) => {
+                  const width = Math.max(20, Math.round((entry.total / maxTotal) * 100));
+                  return `
+                    <div class="axis-bar" style="width: ${width}%">
+                      <span>${escapeHtml(entry.label)}</span>
+                      <span class="axis-score">EBE ${entry.total.toFixed(1)}</span>
+                    </div>
+                  `;
+                })
+                .join("")}
+            </div>
+          `;
+          container.appendChild(block);
+        });
+      }
+
       function resolveScenarioImage(runId, scenario) {
         const imagePath = scenario?.image_url || scenario?.image || scenario?.image_artifact_path || "";
         if (!imagePath) return "";
@@ -2100,21 +2289,214 @@
 
       function renderActionConsole() {
         const board = document.getElementById("actionBoard");
+        const status = document.getElementById("actionStatus");
+        const saveBtn = document.getElementById("actionSaveBtn");
+        const editBtn = document.getElementById("actionEditBtn");
+        if (saveBtn) saveBtn.disabled = !state.actionDirty;
+        if (editBtn) editBtn.textContent = state.actionEditMode ? "Preview" : "Edit";
         board.innerHTML = "";
         if (!state.viewModel) {
           board.innerHTML = `<div class="helper">No run loaded.</div>`;
+          if (status) status.textContent = "";
           return;
         }
-        const rec = state.viewModel?.wind_tunnel_evaluations_v2?.recommendations || {};
-        const hardening = rec.hardening_actions || [];
-        const hedges = rec.hedge_actions || [];
-        ["P0", "P1", "P2"].forEach((bucket, idx) => {
+
+        const actionConsole = state.actionConsole || buildActionConsoleFromViewModel();
+        const items = Array.isArray(actionConsole?.items) ? actionConsole.items : [];
+        const grouped = { P0: [], P1: [], P2: [] };
+        items.forEach((item) => {
+          const priority = String(item.priority || "P1").toUpperCase();
+          const bucket = grouped[priority] ? priority : "P1";
+          grouped[bucket].push(item);
+        });
+
+        const updated = actionConsole?.updated_at ? `Updated ${actionConsole.updated_at}` : "Not saved";
+        if (status) {
+          status.textContent = state.actionDirty ? `${updated} • Unsaved changes` : updated;
+        }
+
+        ["P0", "P1", "P2"].forEach((bucket) => {
           const card = document.createElement("div");
           card.className = "glass card";
-          const action = hardening[idx] || hedges[idx] || "Define actions";
-          card.innerHTML = `<h4>${bucket} Actions</h4><p>${action}</p>`;
+          const entries = grouped[bucket];
+          const content = entries.length
+            ? entries
+                .map((item) => renderActionItem(item, state.actionEditMode))
+                .join("")
+            : `<div class="helper">Define actions</div>`;
+          card.innerHTML = `<h4>${bucket} Actions</h4>${content}`;
           board.appendChild(card);
         });
+      }
+
+      function buildActionConsoleFromViewModel() {
+        const wind = state.viewModel?.wind_tunnel_evaluations_v2 || {};
+        const rec = wind.recommendations || {};
+        const primary = rec.primary_recommended_strategy || {};
+        const primaryName = primary.strategy_name || "";
+        const items = [];
+        const add = (payload) => {
+          if (!payload.title) return;
+          items.push({
+            id: payload.id || `action-${items.length + 1}`,
+            priority: payload.priority || "P1",
+            type: payload.type || "custom",
+            title: payload.title,
+            strategy: payload.strategy || "",
+            scenario: payload.scenario || "",
+            trigger: payload.trigger || "",
+            owner: payload.owner || "",
+            due: payload.due || "",
+            status: payload.status || "open",
+            source: payload.source || "wind_tunnel",
+          });
+        };
+        (rec.hardening_actions || []).forEach((action) =>
+          add({
+            title: action,
+            priority: "P0",
+            type: "hardening",
+            strategy: primaryName,
+          })
+        );
+        (rec.hedge_actions || []).forEach((action) =>
+          add({
+            title: action,
+            priority: "P1",
+            type: "hedge",
+          })
+        );
+        (rec.triggers_to_watch || []).forEach((trigger) => {
+          if (typeof trigger === "object") {
+            add({
+              title: trigger.recommended_action || trigger.description || "",
+              priority: "P2",
+              type: "trigger",
+              trigger: trigger.description || "",
+              strategy: primaryName,
+            });
+          } else {
+            add({
+              title: trigger,
+              priority: "P2",
+              type: "trigger",
+              trigger: trigger,
+              strategy: primaryName,
+            });
+          }
+        });
+        return { run_id: state.runId, updated_at: null, items };
+      }
+
+      function renderActionItem(item, editable) {
+        if (!editable) {
+          const chips = [
+            item.type ? `Type: ${item.type}` : null,
+            item.strategy ? `Strategy: ${item.strategy}` : null,
+            item.scenario ? `Scenario: ${item.scenario}` : null,
+            item.status ? `Status: ${item.status}` : null,
+            item.owner ? `Owner: ${item.owner}` : null,
+            item.due ? `Due: ${item.due}` : null,
+            item.source ? `Source: ${item.source}` : null,
+          ]
+            .filter(Boolean)
+            .map((text) => `<span class="chip">${escapeHtml(text)}</span>`)
+            .join("");
+          const trigger = item.trigger ? `<div class="helper">Trigger: ${escapeHtml(item.trigger)}</div>` : "";
+          return `
+            <div class="action-item">
+              <div class="action-title">${escapeHtml(item.title || "Action")}</div>
+              <div class="action-meta">${chips || ""}</div>
+              ${trigger}
+            </div>
+          `;
+        }
+
+        return `
+          <div class="action-item" data-id="${escapeHtml(item.id || "")}">
+            <div class="action-fields">
+              <textarea data-field="title" placeholder="Action">${escapeHtml(item.title || "")}</textarea>
+              <div class="action-row">
+                <select data-field="priority">
+                  ${["P0", "P1", "P2"]
+                    .map((value) => `<option value="${value}" ${item.priority === value ? "selected" : ""}>${value}</option>`)
+                    .join("")}
+                </select>
+                <select data-field="type">
+                  ${["hardening", "hedge", "trigger", "custom"]
+                    .map((value) => `<option value="${value}" ${item.type === value ? "selected" : ""}>${value}</option>`)
+                    .join("")}
+                </select>
+                <select data-field="status">
+                  ${["open", "in_progress", "done", "blocked"]
+                    .map((value) => `<option value="${value}" ${item.status === value ? "selected" : ""}>${value}</option>`)
+                    .join("")}
+                </select>
+              </div>
+              <div class="action-row">
+                <input data-field="strategy" placeholder="Strategy" value="${escapeHtml(item.strategy || "")}" />
+                <input data-field="scenario" placeholder="Scenario" value="${escapeHtml(item.scenario || "")}" />
+                <input data-field="trigger" placeholder="Trigger" value="${escapeHtml(item.trigger || "")}" />
+              </div>
+              <div class="action-row">
+                <input data-field="owner" placeholder="Owner" value="${escapeHtml(item.owner || "")}" />
+                <input data-field="due" placeholder="Due (YYYY-MM-DD)" value="${escapeHtml(item.due || "")}" />
+                <input data-field="source" placeholder="Source" value="${escapeHtml(item.source || "")}" />
+              </div>
+            </div>
+            <div class="action-actions">
+              <button data-action="remove">Remove</button>
+            </div>
+          </div>
+        `;
+      }
+
+      function ensureActionConsole() {
+        if (!state.actionConsole) {
+          state.actionConsole = buildActionConsoleFromViewModel();
+        }
+        if (!Array.isArray(state.actionConsole.items)) {
+          state.actionConsole.items = [];
+        }
+      }
+
+      function setActionDirty(value) {
+        state.actionDirty = value;
+        const saveBtn = document.getElementById("actionSaveBtn");
+        if (saveBtn) saveBtn.disabled = !state.actionDirty;
+        renderActionConsole();
+      }
+
+      function updateActionItem(id, field, value) {
+        ensureActionConsole();
+        const item = state.actionConsole.items.find((entry) => entry.id === id);
+        if (!item) return;
+        item[field] = value;
+        setActionDirty(true);
+      }
+
+      function removeActionItem(id) {
+        ensureActionConsole();
+        state.actionConsole.items = state.actionConsole.items.filter((entry) => entry.id !== id);
+        setActionDirty(true);
+      }
+
+      function addActionItem() {
+        ensureActionConsole();
+        state.actionConsole.items.unshift({
+          id: `manual-${Date.now()}`,
+          priority: "P1",
+          type: "custom",
+          title: "New action",
+          strategy: "",
+          scenario: "",
+          trigger: "",
+          owner: "",
+          due: "",
+          status: "open",
+          source: "manual",
+        });
+        setActionDirty(true);
       }
 
       function renderChat() {
@@ -2190,9 +2572,9 @@
         renderBriefing();
         renderWorkflow();
         renderRunProgress();
-        renderRunSteps();
         renderArtifacts();
         renderChat();
+        renderAxisEbeGraph();
       }
 
         function clearView(reason) {
@@ -2202,10 +2584,13 @@
           state.latestLinks = [];
           state.logs = [];
           state.lastEventAt = null;
+          state.actionConsole = null;
+          state.actionDirty = false;
           updateContext(null, null);
           renderRunPage();
           renderSignalFeed();
           renderScenarioMatrix();
+          renderAxisEbeGraph();
         renderScenarioCards();
         renderWindTunnel();
         renderActionConsole();
@@ -2274,6 +2659,9 @@
             updateContext(state.viewModel, state.runId);
             state.nodeEvents = await fetchNodeEvents(runId);
             state.normalization = await fetchNormalization(runId);
+            state.actionConsole = await fetchActionConsole(runId).catch(() => null);
+            state.actionDirty = false;
+            state.actionEditMode = false;
             const last = _lastNodeEvent();
             state.lastEventAt = last.timestamp;
             const logs = buildLogLines();
@@ -2796,6 +3184,23 @@
         }
       });
 
+      document.getElementById("retryFailedBtn").addEventListener("click", async () => {
+        const runStatus = document.getElementById("runStatus");
+        const failedNode = latestFailedNode();
+        if (!failedNode) {
+          runStatus.textContent = "No failed node detected for this run.";
+          return;
+        }
+        if (!state.runId) {
+          runStatus.textContent = "Load a run before retrying.";
+          return;
+        }
+        document.getElementById("resumeLast").checked = false;
+        document.getElementById("resumeNode").value = failedNode;
+        document.getElementById("resumeRunId").value = state.runId;
+        document.getElementById("launchRun").click();
+      });
+
       document.getElementById("uploadInput").addEventListener("change", async (event) => {
         const files = event.target.files || [];
         if (!files.length) return;
@@ -2819,6 +3224,95 @@
         if (event.key === "Enter" && !event.shiftKey) {
           event.preventDefault();
           sendChat();
+        }
+      });
+
+      document.getElementById("actionGenerateBtn")?.addEventListener("click", async () => {
+        const status = document.getElementById("actionStatus");
+        if (!state.runId) {
+          if (status) status.textContent = "Load a run before generating actions.";
+          return;
+        }
+        if (status) status.textContent = "Generating actions...";
+        try {
+          const payload = await generateActionConsole(state.runId);
+          state.actionConsole = payload;
+          state.actionDirty = false;
+          state.actionEditMode = false;
+          renderActionConsole();
+          if (status) status.textContent = "Actions generated.";
+        } catch (err) {
+          if (status) status.textContent = "Unable to generate actions.";
+        }
+      });
+
+      document.getElementById("actionAddBtn")?.addEventListener("click", () => {
+        addActionItem();
+      });
+
+      document.getElementById("actionEditBtn")?.addEventListener("click", () => {
+        state.actionEditMode = !state.actionEditMode;
+        const btn = document.getElementById("actionEditBtn");
+        if (btn) btn.textContent = state.actionEditMode ? "Preview" : "Edit";
+        renderActionConsole();
+      });
+
+      document.getElementById("actionSaveBtn")?.addEventListener("click", async () => {
+        const status = document.getElementById("actionStatus");
+        if (!state.runId) {
+          if (status) status.textContent = "Load a run before saving actions.";
+          return;
+        }
+        ensureActionConsole();
+        if (status) status.textContent = "Saving actions...";
+        try {
+          const payload = await saveActionConsole(state.runId, state.actionConsole);
+          state.actionConsole = payload;
+          state.actionDirty = false;
+          state.actionEditMode = false;
+          const btn = document.getElementById("actionEditBtn");
+          if (btn) btn.textContent = "Edit";
+          renderActionConsole();
+          if (status) status.textContent = "Actions saved.";
+        } catch (err) {
+          if (status) status.textContent = "Unable to save actions.";
+        }
+      });
+
+      const actionBoard = document.getElementById("actionBoard");
+      actionBoard?.addEventListener("input", (event) => {
+        if (!state.actionEditMode) return;
+        const target = event.target;
+        if (!target || !target.dataset) return;
+        const field = target.dataset.field;
+        if (!field) return;
+        const wrapper = target.closest(".action-item");
+        const id = wrapper?.dataset?.id;
+        if (!id) return;
+        updateActionItem(id, field, target.value);
+      });
+
+      actionBoard?.addEventListener("change", (event) => {
+        if (!state.actionEditMode) return;
+        const target = event.target;
+        if (!target || !target.dataset) return;
+        const field = target.dataset.field;
+        if (!field) return;
+        const wrapper = target.closest(".action-item");
+        const id = wrapper?.dataset?.id;
+        if (!id) return;
+        updateActionItem(id, field, target.value);
+      });
+
+      actionBoard?.addEventListener("click", (event) => {
+        if (!state.actionEditMode) return;
+        const target = event.target;
+        if (!target) return;
+        if (target.dataset?.action === "remove") {
+          const wrapper = target.closest(".action-item");
+          const id = wrapper?.dataset?.id;
+          if (!id) return;
+          removeActionItem(id);
         }
       });
 
