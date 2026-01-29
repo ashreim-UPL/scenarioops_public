@@ -1463,6 +1463,13 @@
       const draft = JSON.parse(localStorage.getItem(draftKey) || "{}");
       const advKey = "scenarioops_adv_overrides";
       const advDraft = JSON.parse(localStorage.getItem(advKey) || "{}");
+      const draftVersionKey = "scenarioops_run_draft_version";
+      const draftVersion = "2026-01-29-live-default";
+      if (localStorage.getItem(draftVersionKey) !== draftVersion) {
+        localStorage.setItem(draftVersionKey, draftVersion);
+        localStorage.setItem(draftKey, JSON.stringify({ web: "true", mode: "live" }));
+        Object.assign(draft, { web: "true", mode: "live" });
+      }
 
       function updateDraft(patch) {
         Object.assign(draft, patch);
@@ -1523,6 +1530,17 @@
         }
         const forceWeb = draft.web === "true";
         const useCache = draft.cache !== "false";
+        const runMode = draft.mode || "live";
+        if (runMode === "mock") {
+          overrides.llm_provider = "mock";
+          overrides.mode = "demo";
+          overrides.sources_policy = overrides.sources_policy || "fixtures";
+          overrides.allow_web = false;
+          overrides.simulate_evidence = true;
+          return overrides;
+        }
+        overrides.llm_provider = overrides.llm_provider || "gemini";
+        overrides.mode = overrides.mode || "live";
         if (forceWeb) {
           overrides.allow_web = true;
         } else if (overrides.allow_web === undefined) {
@@ -1626,6 +1644,7 @@
             <label>Creativity<input id="forgeCreativity" type="range" min="1" max="10" value="5" /></label>
             <label>Depth<input id="forgeDepth" type="range" min="1" max="10" value="6" /></label>
             <label>Use cached intelligence<select id="forgeCache"><option value="true">Yes</option><option value="false">No</option></select></label>
+            <label>Run Mode<select id="forgeMode"><option value="live">Live</option><option value="mock">Mock</option></select></label>
             <label>Force fresh web scan<select id="forgeWeb"><option value="true">Yes</option><option value="false">No</option></select></label>
           `,
         },
@@ -1650,6 +1669,7 @@
         const creativity = document.getElementById("forgeCreativity");
         const depth = document.getElementById("forgeDepth");
         const cache = document.getElementById("forgeCache");
+        const mode = document.getElementById("forgeMode");
         const web = document.getElementById("forgeWeb");
 
         if (company) company.value = draft.company || "";
@@ -1710,9 +1730,10 @@
         if (creativity) creativity.value = draft.creativity || 5;
         if (depth) depth.value = draft.depth || 6;
         if (cache) cache.value = draft.cache || "true";
+        if (mode) mode.value = draft.mode || "live";
         if (web) web.value = draft.web || "true";
 
-        [company, scope, geographySelect, geographyCustom, horizon, model, pack, creativity, depth, cache, web].forEach((input) => {
+        [company, scope, geographySelect, geographyCustom, horizon, model, pack, creativity, depth, cache, mode, web].forEach((input) => {
           if (!input) return;
           input.addEventListener("change", () => {
             updateGeoScope();
@@ -1730,6 +1751,7 @@
               creativity: parseInt(creativity?.value || "5", 10),
               depth: parseInt(depth?.value || "6", 10),
               cache: cache?.value,
+              mode: mode?.value,
               web: web?.value,
             });
           });
@@ -1748,6 +1770,7 @@
           creativity: parseInt(creativity?.value || "5", 10),
           depth: parseInt(depth?.value || "6", 10),
           cache: cache?.value,
+          mode: mode?.value,
           web: web?.value,
         });
       }
@@ -1771,7 +1794,7 @@
         if (currentStep === steps.length - 1) {
           const preview = document.getElementById("forgePreview");
           if (preview) {
-            preview.innerHTML = `Company: ${draft.company || "Company"} | Geography: ${draft.geography || "Global"} | Horizon: ${draft.horizon || 60} months`;
+            preview.innerHTML = `Company: ${draft.company || "Company"} | Geography: ${draft.geography || "Global"} | Horizon: ${draft.horizon || 60} months | Mode: ${draft.mode || "live"}`;
           }
         }
       });
@@ -1789,9 +1812,8 @@
         const latest = resumeLast ? await fetchLatest().catch(() => null) : null;
         const runId = manualRunId || (resumeFrom ? (resumeLast ? latest?.run_id : selectedRunId) : null);
         const settingsOverrides = buildSettingsOverrides();
-        const forceWeb = draft.web === "true";
-        const useCache = draft.cache !== "false";
-        const mockMode = forceWeb ? false : settingsOverrides.allow_web ? false : true;
+        const runMode = draft.mode || "live";
+        const mockMode = runMode === "mock";
         const payload = {
           scope: draft.scope || "country",
           value: draft.geography || draft.company || "Global",

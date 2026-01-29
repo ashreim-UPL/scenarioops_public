@@ -425,7 +425,10 @@ def latest(tenant: TenantContext = Depends(_tenant_context)) -> LatestResponse:
     )
     if not run_id:
         return LatestResponse()
-    daily_brief = _load_daily_brief(run_id, tenant.base_dir)
+    try:
+        daily_brief = _load_daily_brief(run_id, tenant.base_dir)
+    except FileNotFoundError:
+        daily_brief = {}
     return LatestResponse(
         run_id=run_id,
         daily_brief=daily_brief,
