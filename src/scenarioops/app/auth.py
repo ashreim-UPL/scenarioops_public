@@ -7,6 +7,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from scenarioops.storage.run_store import runs_root
+
 
 @dataclass(frozen=True)
 class TenantContext:
@@ -17,7 +19,7 @@ class TenantContext:
 
     @property
     def base_dir(self) -> Path:
-        return Path("storage") / "runs" / self.tenant_id
+        return runs_root() / self.tenant_id
 
 
 def _hash_key(value: str) -> str:

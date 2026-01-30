@@ -9,6 +9,7 @@ google-genai     # Gemini 3 Pro SDK for Squad Intelligence
 requests         # External Retrieval
 boto3            # S3 storage
 psycopg[binary]  # Postgres connectivity
+google-cloud-storage  # GCS run storage
 
 # --- UI & Visualization ---
 streamlit        # Dashboard UI

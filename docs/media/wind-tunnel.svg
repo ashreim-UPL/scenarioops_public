@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675">
+  <rect width="1200" height="675" fill="#0b1222"/>
+  <rect x="60" y="60" width="1080" height="80" rx="16" fill="#14213d"/>
+  <rect x="60" y="180" width="1080" height="420" rx="20" fill="#101a33"/>
+  <text x="80" y="110" fill="#e5e7eb" font-family="Arial" font-size="28">Wind Tunnel Scores (placeholder)</text>
+  <rect x="100" y="230" width="220" height="80" rx="10" fill="#1b2a4a"/>
+  <rect x="360" y="230" width="220" height="80" rx="10" fill="#1b2a4a"/>
+  <rect x="620" y="230" width="220" height="80" rx="10" fill="#1b2a4a"/>
+  <rect x="880" y="230" width="220" height="80" rx="10" fill="#1b2a4a"/>
+  <text x="110" y="280" fill="#9ca3af" font-family="Arial" font-size="16">Strategy x Scenario</text>
+</svg>

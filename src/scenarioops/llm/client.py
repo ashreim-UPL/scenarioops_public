@@ -885,6 +885,14 @@ def _try_load_dotenv() -> None:
 
 
 def get_gemini_api_key() -> str:
+    try:
+        from scenarioops.security.api_keys import get_request_api_key
+    except Exception:
+        get_request_api_key = None
+    if get_request_api_key is not None:
+        request_key = get_request_api_key()
+        if isinstance(request_key, str) and request_key.strip():
+            return request_key.strip()
     # Try loading from .env file first
     _try_load_dotenv()
 

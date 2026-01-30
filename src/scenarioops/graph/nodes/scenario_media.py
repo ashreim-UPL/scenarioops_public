@@ -17,6 +17,7 @@ from scenarioops.graph.tools.storage import (
     ensure_run_dirs,
     log_normalization,
     write_artifact,
+    write_bytes,
 )
 from scenarioops.graph.tools.traceability import build_run_metadata
 from scenarioops.llm.guards import ensure_dict
@@ -206,7 +207,7 @@ def run_scenario_media_node(
         safe_id = _safe_id(scenario_id)
         image_name = f"scenario_{safe_id}.png"
         image_path = images_dir / image_name
-        image_path.write_bytes(image_bytes)
+        write_bytes(image_path, image_bytes, base_dir=base_dir, content_type="image/png")
         image_rel_path = (Path("artifacts") / "images" / image_name).as_posix()
 
         scenario_enriched = dict(scenario)

@@ -21,6 +21,7 @@ from scenarioops.graph.tools.storage import (
     ensure_run_dirs,
     register_run_timestamp,
     write_run_config,
+    update_run_json,
 )
 from scenarioops.graph.tools.view_model import build_view_model
 from scenarioops.graph.tools.storage import write_artifact
@@ -90,6 +91,17 @@ def run_graph(
             if isinstance(existing_created, str) and existing_created:
                 created_at = existing_created
     register_run_timestamp(run_id, created_at)
+    update_run_json(
+        run_id=run_id,
+        updates={
+            "run_id": run_id,
+            "status": "RUNNING",
+            "is_final": False,
+            "created_at": created_at,
+            "updated_at": created_at,
+        },
+        base_dir=base_dir,
+    )
     prompt_manifest = build_prompt_manifest()
     prompt_manifest_hash = hashlib.sha256(
         json.dumps(prompt_manifest, sort_keys=True).encode("utf-8")
@@ -99,6 +111,8 @@ def run_graph(
         "created_at": created_at,
         "legacy_mode": legacy_mode,
         "resume_from": resume_from,
+        "user_params": dict(inputs.user_params or {}),
+        "generate_strategies": bool(generate_strategies),
         "settings": settings.as_dict() if settings else {},
         "models": {
             "llm_model": settings.llm_model if settings else None,

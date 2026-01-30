@@ -5,10 +5,12 @@ from pathlib import Path
 from typing import Any
 from datetime import datetime
 
-from scenarioops.graph.tools.storage import read_latest_status
+from scenarioops.graph.tools.storage import read_latest_status, ensure_local_file
+from scenarioops.storage.run_store import get_run_store, run_store_mode, runs_root
 
 
 def _load_json(path: Path) -> dict[str, Any] | None:
+    ensure_local_file(path)
     if not path.exists():
         return None
     try:
@@ -19,6 +21,7 @@ def _load_json(path: Path) -> dict[str, Any] | None:
 
 
 def _load_jsonl(path: Path) -> list[dict[str, Any]]:
+    ensure_local_file(path)
     if not path.exists():
         return []
     items: list[dict[str, Any]] = []
@@ -35,6 +38,7 @@ def _load_jsonl(path: Path) -> list[dict[str, Any]]:
 
 
 def _load_text(path: Path) -> str | None:
+    ensure_local_file(path)
     if not path.exists():
         return None
     return path.read_text(encoding="utf-8")
@@ -53,6 +57,7 @@ def _parse_ts(value: str | None) -> datetime | None:
 
 def _derive_run_status(run_dir: Path) -> dict[str, Any] | None:
     log_path = run_dir / "logs" / "node_events.jsonl"
+    ensure_local_file(log_path)
     if not log_path.exists():
         return None
     events = _load_jsonl(log_path)
@@ -94,6 +99,31 @@ def _group_drivers_by_domain(drivers: list[dict[str, Any]]) -> dict[str, list[di
 
 
 def _load_narratives(artifacts_dir: Path) -> list[dict[str, str]]:
+    if run_store_mode() == "gcs":
+        run_dir = artifacts_dir.parent
+        base_dir = run_dir.parent
+        root_dir = runs_root()
+        try:
+            relative_prefix = base_dir.resolve().relative_to(root_dir.resolve())
+        except Exception:
+            relative_prefix = Path("")
+        prefix = str(relative_prefix).replace("\\", "/").strip("/")
+        if prefix:
+            prefix = f"{prefix}/{run_dir.name}/artifacts/"
+        else:
+            prefix = f"{run_dir.name}/artifacts/"
+        store = get_run_store()
+        for key in store.list(prefix):
+            if not key.startswith(prefix):
+                continue
+            name = key[len(prefix):]
+            if not (name.startswith("narrative_") and name.endswith(".md")):
+                continue
+            local_path = artifacts_dir / name
+            if not local_path.exists():
+                local_path.parent.mkdir(parents=True, exist_ok=True)
+                local_path.write_bytes(store.get_bytes(key))
+
     narratives: list[dict[str, str]] = []
     for path in sorted(artifacts_dir.glob("narrative_*.md")):
         scenario_id = path.stem.replace("narrative_", "")
@@ -103,6 +133,11 @@ def _load_narratives(artifacts_dir: Path) -> list[dict[str, str]]:
 
 def build_view_model(run_dir: Path) -> dict[str, Any]:
     artifacts_dir = run_dir / "artifacts"
+    run_meta_payload = (
+        _load_json(run_dir / "run.json")
+        or _load_json(run_dir / "run_meta.json")
+        or {}
+    )
 
     charter = _load_json(artifacts_dir / "scenario_charter.json")
     focal_issue = _load_json(artifacts_dir / "focal_issue.json")
@@ -182,10 +217,11 @@ def build_view_model(run_dir: Path) -> dict[str, Any]:
     status = derived_status.get("status")
     if not status and latest_status.get("run_id") == run_dir.name:
         status = latest_status.get("status")
-    run_meta = {
-        "run_id": run_dir.name,
-        "status": status or "unknown",
-    }
+    run_meta: dict[str, Any] = {}
+    if isinstance(run_meta_payload, dict):
+        run_meta.update(run_meta_payload)
+    run_meta["run_id"] = run_dir.name
+    run_meta["status"] = status or run_meta.get("status") or "unknown"
     if run_config:
         run_meta["run_config"] = run_config
 

@@ -39,6 +39,17 @@ class VectorStoreClient(Protocol):
         ...
 
 
+class NullVectorStore:
+    def add_documents(self, documents: Iterable[VectorDocument]) -> None:
+        return None
+
+    def query(self, text: str, *, top_k: int = 5) -> list[VectorMatch]:
+        return []
+
+    def get_by_ids(self, ids: Iterable[str]) -> list[VectorDocument]:
+        return []
+
+
 def _cosine_similarity(left: list[float], right: list[float]) -> float:
     if not left or not right or len(left) != len(right):
         return 0.0
@@ -222,7 +233,10 @@ def open_run_vector_store(
     base_dir: Path | None = None,
     embed_model: str,
     seed: int = 0,
-) -> LocalVectorStore:
+) -> VectorStoreClient:
+    vector_mode = os.environ.get("VECTOR_STORE", "local").strip().lower()
+    if vector_mode == "off":
+        return NullVectorStore()  # type: ignore[return-value]
     scope = os.environ.get("SCENARIOOPS_VECTORDB_SCOPE", "global").strip().lower()
     if scope == "run":
         db_dir = run_vectordb_dir(run_id, base_dir=base_dir)
@@ -230,9 +244,12 @@ def open_run_vector_store(
         db_dir = global_vectordb_dir(base_dir=base_dir)
     cache_root = db_dir / "embed_cache"
     db_path = db_dir / "embeddings.sqlite"
-    return LocalVectorStore(
-        db_path,
-        embed_model=embed_model,
-        seed=seed,
-        cache_root=cache_root,
-    )
+    try:
+        return LocalVectorStore(
+            db_path,
+            embed_model=embed_model,
+            seed=seed,
+            cache_root=cache_root,
+        )
+    except Exception:
+        return NullVectorStore()  # type: ignore[return-value]

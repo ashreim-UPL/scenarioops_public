@@ -44,10 +44,16 @@ from scenarioops.graph.nodes.trace_map import run_trace_map_node
 from scenarioops.graph.nodes.daily_runner import run_daily_runner_node
 from scenarioops.graph.nodes.utils import get_client
 from scenarioops.graph.tools.web_retriever import retrieve_url
-from scenarioops.graph.tools.storage import default_runs_dir, log_node_event, write_artifact
+from scenarioops.graph.tools.storage import (
+    default_runs_dir,
+    ensure_local_file,
+    log_node_event,
+    write_artifact,
+)
 from scenarioops.graph.tools.schema_validate import validate_artifact
 from scenarioops.graph.tools.artifact_contracts import schema_for_artifact
 from scenarioops.graph.tools.traceability import build_run_metadata
+from scenarioops.storage.run_store import run_store_mode
 
 from .sentinel import Sentinel
 from .analyst import Analyst
@@ -724,6 +730,7 @@ def _load_cached_evidence(
 
 
 def _load_json(path: Path) -> dict[str, Any]:
+    ensure_local_file(path)
     payload = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
         raise TypeError(f"Expected JSON object in {path}.")
@@ -746,7 +753,7 @@ def _load_resume_state(
 ) -> ScenarioOpsState:
     run_root = base_dir if base_dir is not None else default_runs_dir()
     artifacts_dir = run_root / run_id / "artifacts"
-    if not artifacts_dir.exists():
+    if not artifacts_dir.exists() and run_store_mode() != "gcs":
         raise FileNotFoundError(f"Run artifacts not found for resume: {run_id}")
 
     resume_from = resume_from.strip().lower()

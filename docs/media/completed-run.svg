@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675">
+  <rect width="1200" height="675" fill="#0b1222"/>
+  <rect x="40" y="40" width="1120" height="80" rx="16" fill="#14213d"/>
+  <rect x="40" y="140" width="1120" height="200" rx="20" fill="#101a33"/>
+  <rect x="40" y="360" width="1120" height="260" rx="20" fill="#0f1b2f"/>
+  <text x="60" y="90" fill="#e5e7eb" font-family="Arial" font-size="28">ScenarioOps - Completed Run (placeholder)</text>
+  <text x="60" y="200" fill="#9ca3af" font-family="Arial" font-size="20">Executive Briefing + Run Summary</text>
+  <text x="60" y="430" fill="#9ca3af" font-family="Arial" font-size="20">Workflow, Steps, Artifacts</text>
+</svg>

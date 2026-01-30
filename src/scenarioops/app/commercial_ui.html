@@ -789,12 +789,29 @@
         font-size: 12px;
       }
 
+      .run-label {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .run-actions {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+
       .badge {
         padding: 2px 8px;
         border-radius: 999px;
         font-size: 10px;
         background: rgba(58, 164, 255, 0.2);
         border: 1px solid rgba(58, 164, 255, 0.35);
+      }
+
+      .badge.danger {
+        background: rgba(255, 99, 132, 0.2);
+        border-color: rgba(255, 99, 132, 0.4);
+        color: #ffb3c7;
       }
 
       .node {
@@ -960,6 +977,7 @@
             </div>
             <div id="statusText" style="font-weight: 600;">Connecting...</div>
             <div id="statusDetail" class="helper">Awaiting connection.</div>
+            <div id="apiKeyStatus" class="helper"></div>
           </div>
         </div>
         <div class="context-ribbon" id="contextRibbon"></div>
@@ -967,6 +985,7 @@
         <div class="status-actions">
           <button id="accessBtn">Access</button>
           <button id="configBtn">Config</button>
+          <button id="helpBtn">?</button>
           <button id="newRunBtn">New Run</button>
           <button id="openLatestBtn">Open Latest</button>
         </div>
@@ -1122,9 +1141,10 @@
               </div>
             </div>
             <label>Run Library<select id="runSelect"></select></label>
-            <div style="display:flex; gap:8px; margin-bottom: 10px;">
+            <div style="display:flex; gap:8px; margin-bottom: 10px; flex-wrap: wrap;">
               <button id="loadRunBtn">Load Run</button>
               <button id="latestRunBtn">Latest</button>
+              <button id="rerunBtn">Rerun</button>
               <button id="retryFailedBtn">Retry Failed</button>
             </div>
             <div class="section-title" style="margin-top: 10px;">Recent Runs</div>
@@ -1265,6 +1285,21 @@
       </div>
     </div>
 
+    <div class="modal hidden" id="helpModal">
+      <div class="glass modal-card">
+        <div class="section-title">ScenarioOps Help</div>
+        <div class="helper" style="margin-top: 8px;">
+          <p><strong>What is scenario planning?</strong> A structured way to explore multiple plausible futures so leaders can stress-test strategy.</p>
+          <p><strong>Uncertainty axes</strong> define the two most critical unknowns that shape the scenario matrix.</p>
+          <p><strong>Wind tunneling</strong> evaluates strategies against each scenario to find robust options.</p>
+          <p><strong>Runs</strong> are full scenario pipelines. Completed runs are read-only; use Rerun to refresh.</p>
+        </div>
+        <div class="modal-actions">
+          <button id="closeHelp">Close</button>
+        </div>
+      </div>
+    </div>
+
     <script>
       const state = {
         runId: null,
@@ -1283,6 +1318,7 @@
         actionConsole: null,
         actionEditMode: false,
         actionDirty: false,
+        readOnly: false,
       };
 
       const defaultNodes = [
@@ -1348,8 +1384,10 @@
 
       async function fetchJson(path, options = {}) {
         const url = path.startsWith("http") ? path : `${apiBase()}${path}`;
+        const method = (options.method || "GET").toUpperCase();
+        const useAuth = options.useAuth ?? (method !== "GET");
         const res = await fetch(url, {
-          headers: { ...apiHeaders(), ...(options.headers || {}) },
+          headers: { ...(useAuth ? apiHeaders() : {}), ...(options.headers || {}) },
           ...options,
         });
         if (!res.ok) {
@@ -1369,8 +1407,16 @@
         return fetchJson("/latest");
       }
 
+      async function fetchHealth() {
+        return fetchJson("/health", { useAuth: true });
+      }
+
       async function fetchRuns() {
         return fetchJson("/runs");
+      }
+
+      async function deleteRun(runId) {
+        return fetchJson(`/runs/${runId}`, { method: "DELETE" });
       }
 
       async function fetchArtifact(runId, name) {
@@ -1402,7 +1448,7 @@
       }
 
       async function fetchConfig() {
-        return fetchJson("/config");
+        return fetchJson("/config", { useAuth: true });
       }
 
       async function saveConfig(settings) {
@@ -1452,6 +1498,38 @@
           const label = message || _statusLabel(connected);
           document.getElementById("statusText").textContent = label;
           document.getElementById("statusDetail").textContent = detail || _statusDetail(connected);
+        }
+
+        async function refreshApiKeyStatus() {
+          const label = document.getElementById("apiKeyStatus");
+          if (!label) return;
+          try {
+            const health = await fetchHealth();
+            const source = health?.api_key_source || "none";
+            label.textContent = `API: Connected (source: ${source})`;
+          } catch (err) {
+            label.textContent = "API: Unknown";
+          }
+        }
+
+        function applyReadOnlyState() {
+          const isReadOnly = Boolean(state.readOnly);
+          const status = document.getElementById("runStatus");
+          if (status && isReadOnly) {
+            status.textContent = "Read-only mode: completed run.";
+          }
+          [
+            "launchRun",
+            "retryFailedBtn",
+            "uploadInput",
+            "actionEditBtn",
+            "actionSaveBtn",
+            "actionGenerateBtn",
+          ].forEach((id) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.disabled = isReadOnly;
+          });
         }
 
       function showEmptyState(show) {
@@ -1555,6 +1633,30 @@
       function deriveRunStatus() {
         if (state.launchingRunId) {
           return { status: "LAUNCHING", lastEvent: null, current: null };
+        }
+        const meta = state.viewModel?.run_meta || {};
+        const nodeStatus = meta.node_status || {};
+        const nodeEntries = Object.entries(nodeStatus).map(([node, entry]) => ({
+          node,
+          entry: entry || {},
+          updated_at: entry?.updated_at ? new Date(entry.updated_at) : null,
+        }));
+        if (nodeEntries.length) {
+          const statuses = nodeEntries.map((item) => String(item.entry.status || "").toUpperCase());
+          const hasFail = statuses.some((status) => status.includes("FAIL"));
+          const hasRunning = statuses.some((status) => status.includes("RUN"));
+          const last = nodeEntries
+            .filter((item) => item.updated_at)
+            .sort((a, b) => b.updated_at - a.updated_at)[0];
+          if (hasFail) {
+            return { status: "FAIL", lastEvent: last?.updated_at || null, current: last?.entry || null };
+          }
+          if (hasRunning) {
+            return { status: "RUNNING", lastEvent: last?.updated_at || null, current: last?.entry || null };
+          }
+          if (String(meta.status || "").toUpperCase().includes("COMPLETE")) {
+            return { status: "OK", lastEvent: last?.updated_at || null, current: last?.entry || null };
+          }
         }
         const events = Array.isArray(state.nodeEvents) ? state.nodeEvents : [];
         if (!events.length) {
@@ -1824,10 +1926,16 @@
         }
         defaultNodes.forEach((node) => {
           const steps = stageMap[node.id] || [];
+          const nodeStatusMap = state.viewModel?.run_meta?.node_status || {};
+          const nodeMeta = nodeStatusMap[node.id] || null;
           const entries = state.nodeEvents.filter((e) => steps.includes((e.node || "").toLowerCase()));
           const statuses = entries.map((e) => String(e.status || "").toUpperCase());
           let stageStatus = "PENDING";
-          if (statuses.some((status) => status.includes("FAIL"))) {
+          if (nodeMeta && String(nodeMeta.status || "").toUpperCase().includes("FAIL")) {
+            stageStatus = "FAIL";
+          } else if (nodeMeta && String(nodeMeta.status || "").toUpperCase().includes("RUN")) {
+            stageStatus = "RUNNING";
+          } else if (statuses.some((status) => status.includes("FAIL"))) {
             stageStatus = "FAIL";
           } else if (statuses.some((status) => status.includes("RUN"))) {
             stageStatus = "RUNNING";
@@ -1860,7 +1968,8 @@
                 node: node.id,
                 status: stageStatus,
                 message: detailMessage,
-                duration_seconds: durationSeconds,
+                duration_seconds: nodeMeta?.duration_seconds ?? durationSeconds,
+                attempt: nodeMeta?.attempt,
               })
             );
           }
@@ -1875,11 +1984,22 @@
           detail.textContent = "Select a node to view details.";
           return;
         }
+        const history = state.nodeEvents
+          .filter((e) => String(e.node || "").toLowerCase() === String(entry.node || "").toLowerCase())
+          .slice(-5)
+          .map((e, idx) => {
+            const status = String(e.status || "OK");
+            const ts = e.timestamp ? formatDate(e.timestamp) : "unknown";
+            return `<div>${idx + 1}. ${status} • ${ts}</div>`;
+          })
+          .join("");
         detail.innerHTML = `
           <div><strong>${entry.node || "node"}</strong></div>
           <div>Status: ${entry.status || "OK"}</div>
           <div>Duration: ${entry.duration_seconds || 0}s</div>
+          ${entry.attempt ? `<div>Attempts: ${entry.attempt}</div>` : ""}
           <div>Notes: ${entry.message || entry.detail || "None"}</div>
+          ${history ? `<div style="margin-top:8px;"><div class="helper">Recent attempts</div>${history}</div>` : ""}
         `;
       }
 
@@ -2039,7 +2159,9 @@
         }
         const table = document.createElement("table");
         const header = document.createElement("tr");
-        header.innerHTML = `<th></th><th>${axes[0].high || "High"}</th><th>${axes[0].low || "Low"}</th>`;
+        const axis0Label = axes[0].axis_name || "Axis 1";
+        const axis1Label = axes[1].axis_name || "Axis 2";
+        header.innerHTML = `<th></th><th title="Axis: ${escapeHtml(axis0Label)}">${axes[0].high || "High"}</th><th title="Axis: ${escapeHtml(axis0Label)}">${axes[0].low || "Low"}</th>`;
         table.appendChild(header);
         const rows = [
           { label: axes[1].high || "High", scenarios: [scenarios[0], scenarios[1]] },
@@ -2047,7 +2169,7 @@
         ];
         rows.forEach((row) => {
           const tr = document.createElement("tr");
-          tr.innerHTML = `<th>${row.label}</th>${row.scenarios.map((s) => `<td>${s?.name || s?.id || "Scenario"}</td>`).join("")}`;
+          tr.innerHTML = `<th title="Axis: ${escapeHtml(axis1Label)}">${row.label}</th>${row.scenarios.map((s) => `<td>${s?.name || s?.id || "Scenario"}</td>`).join("")}`;
           table.appendChild(tr);
         });
         matrix.innerHTML = "";
@@ -2653,6 +2775,7 @@
           }
           state.runId = runId;
           state.viewModel = await fetchArtifact(runId, "view_model.json");
+          state.readOnly = Boolean(state.viewModel?.run_meta?.is_final);
           if (state.launchingRunId === runId) {
             state.launchingRunId = null;
           }
@@ -2667,6 +2790,7 @@
             const logs = buildLogLines();
             state.logs = logs;
           renderTerminal(logs);
+          applyReadOnlyState();
           syncRunControls();
           renderRunPage();
           renderSignalFeed();
@@ -2722,8 +2846,45 @@
         state.runs.slice(0, 8).forEach((run) => {
           const div = document.createElement("div");
           div.className = "run-item";
-          const label = escapeHtml(state.runLabels[run] || run);
-          div.innerHTML = `<span title="${run}">${label}</span><span class="badge">Load</span>`;
+          const label = document.createElement("span");
+          label.className = "run-label";
+          label.textContent = state.runLabels[run] || run;
+          label.title = run;
+          const actions = document.createElement("div");
+          actions.className = "run-actions";
+          const loadBadge = document.createElement("span");
+          loadBadge.className = "badge";
+          loadBadge.textContent = "Load";
+          loadBadge.addEventListener("click", (event) => {
+            event.stopPropagation();
+            history.pushState({}, "", `/runs/${run}`);
+            setRoute("/runs");
+            loadData(run);
+          });
+          const removeBadge = document.createElement("span");
+          removeBadge.className = "badge danger";
+          removeBadge.textContent = "Remove";
+          removeBadge.addEventListener("click", async (event) => {
+            event.stopPropagation();
+            if (!confirm("Remove run from list? This does not delete stored evidence.")) {
+              return;
+            }
+            try {
+              await deleteRun(run);
+              if (state.runId === run) {
+                state.runId = null;
+                clearView("Run removed.");
+                showEmptyState(true);
+              }
+              refreshRuns();
+            } catch (err) {
+              alert("Unable to remove run.");
+            }
+          });
+          actions.appendChild(loadBadge);
+          actions.appendChild(removeBadge);
+          div.appendChild(label);
+          div.appendChild(actions);
           div.addEventListener("click", () => {
             history.pushState({}, "", `/runs/${run}`);
             setRoute("/runs");
@@ -2824,6 +2985,44 @@
           overrides.simulate_evidence = useCache;
         }
         return overrides;
+      }
+
+      function buildRerunPayload() {
+        const runConfig = state.viewModel?.run_meta?.run_config || {};
+        const userParams = runConfig.user_params || {};
+        const prompt = state.viewModel?.prompt_manifest || {};
+        const company = userParams.company || prompt.company_name || draft.company || "";
+        const geography = userParams.geography || prompt.geography || draft.geography || "";
+        const horizon =
+          userParams.horizon ||
+          userParams.horizon_months ||
+          prompt.horizon_months ||
+          draft.horizon ||
+          60;
+        const scope = userParams.scope || draft.scope || "country";
+        const value = userParams.value || geography || company || "Global";
+        const pack = userParams.pack || runConfig.pack || draft.pack || "";
+        const settingsOverrides = runConfig.settings || buildSettingsOverrides();
+        const mode = settingsOverrides.mode || runConfig.settings?.mode || draft.mode || "live";
+        const generateStrategies =
+          runConfig.generate_strategies !== undefined
+            ? runConfig.generate_strategies
+            : document.getElementById("generateStrategies").value === "true";
+        return {
+          scope,
+          value,
+          company,
+          geography,
+          horizon: parseInt(horizon, 10) || 60,
+          pack,
+          mock: mode === "demo",
+          run_id: null,
+          resume_from: null,
+          input_docs: state.uploadedDocs,
+          generate_strategies: generateStrategies,
+          settings_overrides: settingsOverrides,
+          force: true,
+        };
       }
 
       function refreshAdvancedPreview() {
@@ -3107,6 +3306,7 @@
           company: draft.company || "",
           geography: draft.geography || "",
           horizon: draft.horizon || 60,
+          pack: draft.pack || "",
           mock: mockMode,
           run_id: plannedRunId,
           resume_from: resumeFrom || null,
@@ -3126,7 +3326,17 @@
             body: JSON.stringify(payload),
           });
           const newRunId = response?.run_id || plannedRunId || runId;
-          runStatus.textContent = newRunId ? `Run launched: ${newRunId}` : "Run launched.";
+          if (response?.reused) {
+            const reason =
+              response.reuse_reason === "in_progress"
+                ? "Run already in progress"
+                : response.reuse_reason === "completed"
+                ? "Reusing completed run"
+                : "Reusing run";
+            runStatus.textContent = newRunId ? `${reason}: ${newRunId}` : reason;
+          } else {
+            runStatus.textContent = newRunId ? `Run launched: ${newRunId}` : "Run launched.";
+          }
           if (newRunId) {
             history.pushState({}, "", `/runs/${newRunId}`);
             setRoute("/runs");
@@ -3139,6 +3349,7 @@
           setStatus(false, "OFFLINE", "Launch failed. Check Access settings.");
           state.launchingRunId = null;
         } finally {
+          state.launchingRunId = null;
           launchBtn.disabled = false;
         }
       });
@@ -3181,6 +3392,36 @@
         } catch (err) {
           setStatus(false, "NO RUNS", "No runs available yet. Launch a new run.");
           showEmptyState(true);
+        }
+      });
+
+      document.getElementById("rerunBtn").addEventListener("click", async () => {
+        const runStatus = document.getElementById("runStatus");
+        if (!state.viewModel) {
+          runStatus.textContent = "Load a run before rerunning.";
+          return;
+        }
+        runStatus.textContent = "Rerunning...";
+        const rerunBtn = document.getElementById("rerunBtn");
+        rerunBtn.disabled = true;
+        try {
+          const payload = buildRerunPayload();
+          const response = await fetchJson("/build", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const newRunId = response?.run_id;
+          runStatus.textContent = newRunId ? `Rerun launched: ${newRunId}` : "Rerun launched.";
+          if (newRunId) {
+            history.pushState({}, "", `/runs/${newRunId}`);
+            setRoute("/runs");
+            await loadData(newRunId);
+          }
+        } catch (err) {
+          runStatus.textContent = "Rerun failed.";
+        } finally {
+          rerunBtn.disabled = false;
         }
       });
 
@@ -3346,6 +3587,7 @@
         localStorage.setItem("scenarioops_api_base", document.getElementById("apiBaseInput").value.trim());
         localStorage.setItem("scenarioops_api_key", document.getElementById("apiKeyInput").value.trim());
         document.getElementById("accessModal").classList.add("hidden");
+        refreshApiKeyStatus();
         loadData();
       });
 
@@ -3378,6 +3620,14 @@
         } catch (err) {
           status.textContent = "Config save failed.";
         }
+      });
+
+      document.getElementById("helpBtn").addEventListener("click", () => {
+        document.getElementById("helpModal").classList.remove("hidden");
+      });
+
+      document.getElementById("closeHelp").addEventListener("click", () => {
+        document.getElementById("helpModal").classList.add("hidden");
       });
 
       applyAdvancedDraft();
@@ -3414,6 +3664,7 @@
       setRoute(window.location.pathname);
       refreshRuns();
       loadData();
+      refreshApiKeyStatus();
       startPolling();
     </script>
 

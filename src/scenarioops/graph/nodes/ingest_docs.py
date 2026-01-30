@@ -13,7 +13,7 @@ from scenarioops.app.config import LLMConfig, ScenarioOpsSettings, llm_config_fr
 from scenarioops.graph.state import ScenarioOpsState
 from scenarioops.graph.tools.evidence_processing import fallback_summary, summarize_text
 from scenarioops.graph.tools.schema_validate import validate_artifact
-from scenarioops.graph.tools.storage import ensure_run_dirs, write_artifact
+from scenarioops.graph.tools.storage import ensure_run_dirs, write_artifact, write_bytes, write_text
 from scenarioops.graph.tools.traceability import build_run_metadata
 from scenarioops.graph.tools.vectordb import open_run_vector_store
 from scenarioops.llm.client import get_llm_client
@@ -283,7 +283,7 @@ def run_ingest_docs_node(
         input_name = f"{safe_name}-{file_hash[:8]}{safe_suffix}"
         input_path = inputs_dir / input_name
         if not input_path.exists():
-            input_path.write_bytes(file_bytes)
+            write_bytes(input_path, file_bytes, base_dir=base_dir)
 
         text, extract_error = _extract_text(source_path)
         if extract_error:
@@ -324,7 +324,7 @@ def run_ingest_docs_node(
 
         derived_name = f"{safe_name}-{file_hash[:8]}.txt"
         derived_path = derived_dir / derived_name
-        derived_path.write_text(text, encoding="utf-8")
+        write_text(derived_path, text, base_dir=base_dir, content_type="text/plain")
 
         chunks = _chunk_text(text)
         if not chunks:

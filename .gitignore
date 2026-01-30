@@ -21,9 +21,10 @@ htmlcov/
 
 cache/
 
-storage/
-storage/runs/*
-!storage/runs/.gitkeep
+/storage/
+/storage/runs/*
+!/storage/runs/.gitkeep
+/src/storage/
 
 .streamlit/
 .streamlit/secrets.toml

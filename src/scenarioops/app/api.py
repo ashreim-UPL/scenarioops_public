@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import json
 import mimetypes
+import hashlib
+import os
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, Mapping
 
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 
@@ -33,6 +35,19 @@ from scenarioops.graph.tools.injection_defense import strip_instruction_patterns
 from scenarioops.graph.tools.vectordb import open_run_vector_store
 from scenarioops.llm.client import get_llm_client
 from scenarioops.graph.tools.view_model import build_view_model
+from scenarioops.graph.tools.prompts import build_prompt_manifest
+from scenarioops.graph.tools.storage import (
+    ensure_run_dirs,
+    write_run_config,
+    ensure_local_file,
+    read_run_json,
+    update_run_json,
+    write_run_json,
+    write_run_inputs,
+    write_artifact,
+)
+from scenarioops.security.api_keys import resolve_api_key
+from scenarioops.storage.run_store import run_store_mode
 from scenarioops.graph.nodes import (
     run_auditor_node,
     run_daily_runner_node,
@@ -57,6 +72,7 @@ class BuildRequest(BaseModel):
     company: str | None = None
     geography: str | None = None
     horizon: int = Field(..., ge=36, le=120)
+    pack: str | None = None
     sources: list[str] | None = None
     run_id: str | None = None
     mock: bool = True
@@ -64,6 +80,8 @@ class BuildRequest(BaseModel):
     input_docs: list[str] | None = None
     generate_strategies: bool = True
     settings_overrides: dict[str, Any] | None = None
+    force: bool = False
+    rerun: bool = False
 
 
 class StrategiesRequest(BaseModel):
@@ -81,6 +99,15 @@ class DailyRequest(BaseModel):
 class RunResponse(BaseModel):
     run_id: str
     artifacts: list[str]
+    reused: bool = False
+    reuse_reason: str | None = None
+    existing_run_id: str | None = None
+    signature: str | None = None
+
+
+class RunDeleteResponse(BaseModel):
+    run_id: str
+    deleted: bool
 
 
 class LatestResponse(BaseModel):
@@ -120,18 +147,29 @@ class LogResponse(BaseModel):
 def _load_daily_brief(run_id: str, base_dir: Path) -> dict[str, Any]:
     artifacts_dir = base_dir / run_id / "artifacts"
     path = artifacts_dir / "daily_brief.json"
+    ensure_local_file(path, base_dir=base_dir)
     if not path.exists():
         return {}
     return json.loads(path.read_text(encoding="utf-8"))
 
 
 def _latest_run_with_daily(base_dir: Path) -> str | None:
+    if run_store_mode() == "gcs":
+        for run_id in list_run_ids(base_dir=base_dir, include_deleted=False):
+            path = base_dir / run_id / "artifacts" / "daily_brief.json"
+            ensure_local_file(path, base_dir=base_dir)
+            if path.exists():
+                return run_id
+        return None
     runs_dir = base_dir
     if not runs_dir.exists():
         return None
     runs = [path for path in runs_dir.iterdir() if path.is_dir()]
     runs.sort(key=lambda path: path.stat().st_mtime, reverse=True)
     for run in runs:
+        run_meta = _safe_load_json(run / "run.json") or _safe_load_json(run / "run_meta.json") or {}
+        if isinstance(run_meta, dict) and run_meta.get("is_deleted"):
+            continue
         if (run / "artifacts" / "daily_brief.json").exists():
             return run.name
     return None
@@ -150,6 +188,7 @@ def _safe_image_path(run_id: str, image_name: str, base_dir: Path) -> Path:
 
 
 def _safe_load_json(path: Path) -> dict[str, Any] | None:
+    ensure_local_file(path)
     if not path.exists():
         return None
     try:
@@ -157,6 +196,288 @@ def _safe_load_json(path: Path) -> dict[str, Any] | None:
     except json.JSONDecodeError:
         return None
     return payload if isinstance(payload, dict) else None
+
+
+def _normalize_text(value: str | None) -> str:
+    if not value:
+        return ""
+    return " ".join(value.strip().lower().split())
+
+
+def _settings_dict(settings: Any) -> dict[str, Any]:
+    if hasattr(settings, "as_dict"):
+        try:
+            return settings.as_dict()
+        except Exception:
+            return {}
+    if isinstance(settings, Mapping):
+        return dict(settings)
+    return {}
+
+
+def _prompt_manifest_sha256() -> str:
+    manifest = build_prompt_manifest()
+    return hashlib.sha256(
+        json.dumps(manifest, sort_keys=True).encode("utf-8")
+    ).hexdigest()
+
+
+def _build_signature_payload(
+    *,
+    company: str | None,
+    geography: str | None,
+    scope: str | None,
+    value: str | None,
+    horizon: int | None,
+    pack: str | None,
+    settings: Any,
+    models: Mapping[str, Any] | None = None,
+    generate_strategies: bool | None = None,
+    prompt_manifest_sha256: str | None = None,
+    source_count: int | None = None,
+) -> dict[str, Any]:
+    settings_payload = _settings_dict(settings)
+    models_payload = dict(models or {})
+    if not models_payload:
+        models_payload = {
+            "llm_model": settings_payload.get("llm_model") or settings_payload.get("gemini_model"),
+            "search_model": settings_payload.get("search_model"),
+            "summarizer_model": settings_payload.get("summarizer_model"),
+            "embed_model": settings_payload.get("embed_model"),
+            "image_model": settings_payload.get("image_model"),
+        }
+    normalized_models = {
+        key: _normalize_text(str(value)) if value is not None else ""
+        for key, value in models_payload.items()
+    }
+    return {
+        "company": _normalize_text(company),
+        "geography": _normalize_text(geography),
+        "scope": _normalize_text(scope),
+        "value": _normalize_text(value),
+        "horizon_months": int(horizon or 0),
+        "pack": _normalize_text(pack),
+        "pipeline_version": _normalize_text(os.environ.get("SCENARIOOPS_PIPELINE_VERSION", "v1")),
+        "app_version": _normalize_text(os.environ.get("SCENARIOOPS_VERSION", "")),
+        "scenario_config_version": _normalize_text(os.environ.get("SCENARIOOPS_SCENARIO_VERSION", "")),
+        "pack_version": _normalize_text(os.environ.get("SCENARIOOPS_PACK_VERSION", "")),
+        "generate_strategies": bool(generate_strategies)
+        if generate_strategies is not None
+        else True,
+        "mode": _normalize_text(settings_payload.get("mode")),
+        "llm_provider": _normalize_text(settings_payload.get("llm_provider")),
+        "models": normalized_models,
+        "retriever": {
+            "allow_web": bool(settings_payload.get("allow_web")),
+            "sources_policy": _normalize_text(settings_payload.get("sources_policy")),
+            "source_count": int(
+                source_count
+                or settings_payload.get("source_count")
+                or 0
+            ),
+            "simulate_evidence": bool(settings_payload.get("simulate_evidence")),
+        },
+        "controls": {
+            "temperature": float(settings_payload.get("temperature") or 0.0),
+            "seed": settings_payload.get("seed"),
+            "min_sources_per_domain": int(settings_payload.get("min_sources_per_domain") or 0),
+            "min_citations_per_driver": int(settings_payload.get("min_citations_per_driver") or 0),
+            "min_forces": int(settings_payload.get("min_forces") or 0),
+            "min_forces_per_domain": int(settings_payload.get("min_forces_per_domain") or 0),
+            "min_evidence_ok": int(settings_payload.get("min_evidence_ok") or 0),
+            "min_evidence_total": int(settings_payload.get("min_evidence_total") or 0),
+            "max_failed_ratio": settings_payload.get("max_failed_ratio"),
+            "forbid_fixture_citations": bool(settings_payload.get("forbid_fixture_citations")),
+        },
+        "prompt_manifest_sha256": prompt_manifest_sha256 or "",
+    }
+
+
+def _hash_signature(payload: dict[str, Any]) -> str:
+    data = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    return hashlib.sha256(data.encode("utf-8")).hexdigest()
+
+
+def _load_run_meta(run_id: str, base_dir: Path) -> dict[str, Any] | None:
+    return read_run_json(run_id, base_dir)
+
+
+def _write_run_meta(run_id: str, base_dir: Path, updates: Mapping[str, Any]) -> dict[str, Any]:
+    payload = update_run_json(run_id=run_id, updates=updates, base_dir=base_dir)
+    run_dir = ensure_run_dirs(run_id, base_dir=base_dir)["run_dir"]
+    run_meta_path = run_dir / "run_meta.json"
+    run_meta_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+    run_config_path = run_dir / "run_config.json"
+    if run_config_path.exists():
+        run_config = _safe_load_json(run_config_path) or {}
+        run_config_meta = run_config.get("run_meta")
+        if not isinstance(run_config_meta, dict):
+            run_config_meta = {}
+        for key in (
+            "signature",
+            "signature_payload",
+            "parent_run_id",
+            "is_deleted",
+            "deleted_at",
+            "deleted_by",
+            "status",
+            "updated_at",
+            "created_at",
+            "is_final",
+            "completed_at",
+        ):
+            if key in payload:
+                run_config_meta[key] = payload.get(key)
+        run_config["run_meta"] = run_config_meta
+        write_run_config(run_id=run_id, run_config=run_config, base_dir=base_dir)
+    return payload
+
+
+def _load_jsonl(path: Path) -> list[dict[str, Any]]:
+    ensure_local_file(path)
+    if not path.exists():
+        return []
+    items: list[dict[str, Any]] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            parsed = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(parsed, dict):
+            items.append(parsed)
+    return items
+
+
+def _derive_run_status(run_dir: Path) -> str | None:
+    log_path = run_dir / "logs" / "node_events.jsonl"
+    ensure_local_file(log_path, base_dir=run_dir.parent)
+    if not log_path.exists():
+        return None
+    events = _load_jsonl(log_path)
+    if not events:
+        return None
+    latest_by_node: dict[str, dict[str, Any]] = {}
+    for entry in events:
+        node = str(entry.get("node") or entry.get("step") or entry.get("id") or "")
+        if not node:
+            continue
+        ts = entry.get("timestamp")
+        current = latest_by_node.get(node)
+        if not current:
+            latest_by_node[node] = {"entry": entry, "timestamp": ts}
+            continue
+        if ts and (current.get("timestamp") is None or ts > current.get("timestamp")):
+            latest_by_node[node] = {"entry": entry, "timestamp": ts}
+    latest_entries = [item["entry"] for item in latest_by_node.values()]
+    has_fail = any("FAIL" in str(entry.get("status") or "").upper() for entry in latest_entries)
+    has_running = any(
+        any(flag in str(entry.get("status") or "").upper() for flag in ["RUN", "START", "IN_PROGRESS"])
+        for entry in latest_entries
+    )
+    if has_fail:
+        return "FAIL"
+    if has_running:
+        return "RUNNING"
+    return "OK"
+
+
+def _run_status_for_dir(run_dir: Path, run_meta: Mapping[str, Any] | None) -> str:
+    status = ""
+    if isinstance(run_meta, Mapping):
+        status = str(run_meta.get("status") or "").upper()
+    if status:
+        return status
+    derived = _derive_run_status(run_dir)
+    if derived:
+        return derived
+    if (run_dir / "artifacts" / "view_model.json").exists():
+        return "OK"
+    artifacts_dir = run_dir / "artifacts"
+    if artifacts_dir.exists() and any(path.is_file() for path in artifacts_dir.iterdir()):
+        return "OK"
+    if (run_dir / "run_config.json").exists():
+        return "PENDING"
+    return "UNKNOWN"
+
+
+def _signature_payload_for_run(run_dir: Path) -> dict[str, Any] | None:
+    run_config = _safe_load_json(run_dir / "run_config.json") or {}
+    settings = run_config.get("settings") or run_config
+    models = run_config.get("models") if isinstance(run_config.get("models"), Mapping) else {}
+    user_params = run_config.get("user_params") if isinstance(run_config.get("user_params"), Mapping) else {}
+    prompt_manifest = None
+    if not user_params:
+        prompt_manifest = _safe_load_json(run_dir / "artifacts" / "prompt_manifest.json") or {}
+        user_params = {
+            "company": prompt_manifest.get("company_name"),
+            "geography": prompt_manifest.get("geography"),
+            "horizon": prompt_manifest.get("horizon_months"),
+            "value": prompt_manifest.get("value"),
+            "scope": prompt_manifest.get("scope"),
+        }
+    if not run_config and not prompt_manifest:
+        return None
+    retriever = run_config.get("retriever") if isinstance(run_config.get("retriever"), Mapping) else {}
+    prompt_sha = run_config.get("prompt_manifest_sha256") or _prompt_manifest_sha256()
+    return _build_signature_payload(
+        company=user_params.get("company"),
+        geography=user_params.get("geography"),
+        scope=user_params.get("scope"),
+        value=user_params.get("value"),
+        horizon=user_params.get("horizon"),
+        pack=user_params.get("pack") or run_config.get("pack"),
+        settings=settings,
+        models=models,
+        generate_strategies=run_config.get("generate_strategies", True),
+        prompt_manifest_sha256=prompt_sha,
+        source_count=retriever.get("source_count"),
+    )
+
+
+def _find_existing_run(signature: str, base_dir: Path) -> dict[str, Any] | None:
+    candidates: list[dict[str, Any]] = []
+    for run_id in list_run_ids(base_dir=base_dir, include_deleted=False):
+        run_dir = base_dir / run_id
+        run_meta = _load_run_meta(run_id, base_dir) or {}
+        if run_meta.get("is_deleted"):
+            continue
+        run_signature = run_meta.get("signature")
+        signature_payload = run_meta.get("signature_payload")
+        if not run_signature:
+            signature_payload = _signature_payload_for_run(run_dir)
+            if signature_payload:
+                run_signature = _hash_signature(signature_payload)
+                _write_run_meta(
+                    run_id,
+                    base_dir,
+                    {"signature": run_signature, "signature_payload": signature_payload},
+                )
+        if run_signature != signature:
+            continue
+        status = _run_status_for_dir(run_dir, run_meta)
+        candidates.append(
+            {
+                "run_id": run_id,
+                "status": status,
+                "mtime": run_dir.stat().st_mtime,
+            }
+        )
+    if not candidates:
+        return None
+
+    def status_rank(value: str) -> int:
+        if value in {"RUNNING", "PENDING", "IN_PROGRESS"}:
+            return 0
+        if value in {"OK", "COMPLETED", "COMPLETED_WITH_WARNINGS"}:
+            return 1
+        if value in {"FAIL", "FAILED"}:
+            return 2
+        return 3
+
+    candidates.sort(key=lambda item: (status_rank(item["status"]), -item["mtime"]))
+    return candidates[0]
 
 
 def _action_console_path(run_id: str, base_dir: Path) -> Path:
@@ -346,6 +667,7 @@ def _build_chat_context(run_id: str, base_dir: Path) -> dict[str, Any]:
 
     latest_failure = {}
     node_events_path = logs_dir / "node_events.jsonl"
+    ensure_local_file(node_events_path, base_dir=base_dir)
     if node_events_path.exists():
         for line in reversed(node_events_path.read_text(encoding="utf-8").splitlines()):
             if not line.strip():
@@ -381,7 +703,9 @@ def _build_chat_context(run_id: str, base_dir: Path) -> dict[str, Any]:
                         "scenario_count": payload.get("scenario_count"),
                     }
                 )
-    wind_tunnel_debug = _safe_load_json(trace_dir / "wind_tunnel_debug.json") or {}
+    debug_path = trace_dir / "wind_tunnel_debug.json"
+    ensure_local_file(debug_path, base_dir=base_dir)
+    wind_tunnel_debug = _safe_load_json(debug_path) or {}
     if not isinstance(wind_tunnel_debug, dict):
         wind_tunnel_debug = {}
 
@@ -445,16 +769,59 @@ def _safe_log_path(run_id: str, log_name: str, base_dir: Path) -> Path:
     return logs_dir / log_name
 
 
+def _run_meta_for(run_id: str, base_dir: Path) -> dict[str, Any]:
+    meta = read_run_json(run_id, base_dir) or {}
+    if not meta:
+        fallback = _safe_load_json(base_dir / run_id / "run_meta.json")
+        if isinstance(fallback, dict):
+            meta = fallback
+    return meta if isinstance(meta, dict) else {}
+
+
+def _ensure_mutable(run_id: str, base_dir: Path) -> None:
+    meta = _run_meta_for(run_id, base_dir)
+    if meta.get("is_final"):
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "RUN_READ_ONLY", "message": "Run is completed and read-only."},
+        )
+
+
+def _require_llm_key(request: Request) -> str:
+    key, source = resolve_api_key(request)
+    if not key:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "MISSING_API_KEY",
+                "message": "No API key found. Provide in UI or set GEMINI_API_KEY in Cloud Run.",
+            },
+        )
+    return key
+
+
 def _tenant_context(
+    request: Request,
     x_api_key: str | None = Header(default=None, alias="X-Api-Key"),
     authorization: str | None = Header(default=None),
 ) -> TenantContext:
-    api_key = x_api_key
-    if not api_key and authorization:
-        parts = authorization.split()
-        if len(parts) == 2 and parts[0].lower() == "bearer":
-            api_key = parts[1]
+    api_key, _ = resolve_api_key(request)
     return resolve_tenant(api_key)
+
+
+def _tenant_context_optional(
+    request: Request,
+    x_api_key: str | None = Header(default=None, alias="X-Api-Key"),
+    authorization: str | None = Header(default=None),
+) -> TenantContext:
+    api_key, _ = resolve_api_key(request)
+    try:
+        return resolve_tenant(api_key)
+    except Exception:
+        return TenantContext(
+            tenant_id=os.environ.get("SCENARIOOPS_DEFAULT_TENANT", "public"),
+            is_admin=False,
+        )
 
 
 def _require_admin(tenant: TenantContext = Depends(_tenant_context)) -> TenantContext:
@@ -488,9 +855,12 @@ def config_update(
 
 @app.post("/build", response_model=RunResponse)
 def build(
-    payload: BuildRequest, tenant: TenantContext = Depends(_tenant_context)
+    payload: BuildRequest,
+    tenant: TenantContext = Depends(_tenant_context),
+    request: Request,
 ) -> RunResponse:
-    run_id = payload.run_id or datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+    if not payload.mock:
+        _require_llm_key(request)
     if payload.resume_from and not payload.run_id:
         raise HTTPException(status_code=400, detail="run_id required when resuming.")
     user_params = {"scope": payload.scope, "value": payload.value, "horizon": payload.horizon}
@@ -498,6 +868,8 @@ def build(
         user_params["company"] = payload.company
     if payload.geography:
         user_params["geography"] = payload.geography
+    if payload.pack:
+        user_params["pack"] = payload.pack
     sources = payload.sources or []
     overrides = {"mode": "demo" if payload.mock else "live"}
     if payload.mock:
@@ -511,12 +883,68 @@ def build(
     if not sources:
         sources = default_sources()
 
+    signature_payload = _build_signature_payload(
+        company=payload.company or user_params.get("company"),
+        geography=payload.geography or user_params.get("geography"),
+        scope=payload.scope,
+        value=payload.value,
+        horizon=payload.horizon,
+        pack=payload.pack,
+        settings=settings,
+        generate_strategies=payload.generate_strategies,
+        prompt_manifest_sha256=_prompt_manifest_sha256(),
+        source_count=len(sources),
+    )
+    signature = _hash_signature(signature_payload)
+    force_run = bool(payload.force or payload.rerun)
+    resume_mode = bool(payload.resume_from)
+    existing = _find_existing_run(signature, tenant.base_dir)
+    if existing and not resume_mode and not force_run:
+        status = existing.get("status", "UNKNOWN")
+        if status in {"RUNNING", "PENDING", "IN_PROGRESS"}:
+            existing_id = existing["run_id"]
+            return RunResponse(
+                run_id=existing_id,
+                artifacts=list_artifacts(existing_id, base_dir=tenant.base_dir),
+                reused=True,
+                reuse_reason="in_progress",
+                existing_run_id=existing_id,
+                signature=signature,
+            )
+        if status in {"OK", "COMPLETED", "COMPLETED_WITH_WARNINGS"}:
+            existing_id = existing["run_id"]
+            return RunResponse(
+                run_id=existing_id,
+                artifacts=list_artifacts(existing_id, base_dir=tenant.base_dir),
+                reused=True,
+                reuse_reason="completed",
+                existing_run_id=existing_id,
+                signature=signature,
+            )
+
+    run_id = payload.run_id or datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
     inputs = GraphInputs(
         user_params=user_params,
         sources=sources,
         signals=[],
         input_docs=payload.input_docs or [],
     )
+    parent_run_id = existing["run_id"] if force_run and existing else None
+    now = datetime.now(timezone.utc).isoformat()
+    meta_updates: dict[str, Any] = {
+        "run_id": run_id,
+        "signature": signature,
+        "signature_payload": signature_payload,
+        "status": "RUNNING",
+        "updated_at": now,
+        "is_final": False,
+    }
+    if parent_run_id:
+        meta_updates["parent_run_id"] = parent_run_id
+    if not _load_run_meta(run_id, tenant.base_dir):
+        meta_updates["created_at"] = now
+    _write_run_meta(run_id, tenant.base_dir, meta_updates)
+    write_run_inputs(run_id=run_id, payload=signature_payload, base_dir=tenant.base_dir)
     try:
         run_graph(
             inputs,
@@ -529,10 +957,22 @@ def build(
             resume_from=payload.resume_from,
         )
     except Exception as exc:
+        _write_run_meta(
+            run_id,
+            tenant.base_dir,
+            {
+                "status": "FAILED",
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "is_final": True,
+                "completed_at": datetime.now(timezone.utc).isoformat(),
+            },
+        )
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
     return RunResponse(
-        run_id=run_id, artifacts=list_artifacts(run_id, base_dir=tenant.base_dir)
+        run_id=run_id,
+        artifacts=list_artifacts(run_id, base_dir=tenant.base_dir),
+        signature=signature,
     )
 
 
@@ -578,7 +1018,16 @@ def chat_ui() -> FileResponse:
 
 
 @app.get("/runs/{run_id}")
-def run_ui(run_id: str) -> FileResponse:
+def run_ui(
+    run_id: str,
+    request: Request,
+    tenant: TenantContext = Depends(_tenant_context_optional),
+):
+    accept = request.headers.get("accept", "")
+    if "application/json" in accept:
+        meta = _run_meta_for(run_id, tenant.base_dir)
+        artifacts = list_artifacts(run_id, base_dir=tenant.base_dir)
+        return JSONResponse({"run_id": run_id, "meta": meta, "artifacts": artifacts})
     return _commercial_ui()
 
 
@@ -586,21 +1035,21 @@ def run_ui(run_id: str) -> FileResponse:
 def artifact(
     run_id: str,
     artifact_name: str,
-    tenant: TenantContext = Depends(_tenant_context),
+    tenant: TenantContext = Depends(_tenant_context_optional),
 ):
     try:
         path = _artifact_path(run_id, artifact_name, tenant.base_dir)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    ensure_local_file(path)
     if not path.exists():
         if artifact_name == "view_model.json":
             run_dir = tenant.base_dir / run_id
-            if run_dir.exists():
-                try:
-                    view_model = build_view_model(run_dir)
-                except Exception as exc:
-                    raise HTTPException(status_code=500, detail=str(exc)) from exc
-                return JSONResponse(view_model)
+            try:
+                view_model = build_view_model(run_dir)
+            except Exception as exc:
+                raise HTTPException(status_code=500, detail=str(exc)) from exc
+            return JSONResponse(view_model)
         raise HTTPException(status_code=404, detail="Artifact not found.")
 
     if path.suffix == ".json":
@@ -614,12 +1063,13 @@ def artifact(
 def artifact_image(
     run_id: str,
     image_name: str,
-    tenant: TenantContext = Depends(_tenant_context),
+    tenant: TenantContext = Depends(_tenant_context_optional),
 ) -> FileResponse:
     try:
         path = _safe_image_path(run_id, image_name, tenant.base_dir)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    ensure_local_file(path)
     if not path.exists():
         raise HTTPException(status_code=404, detail="Image not found.")
     media_type, _ = mimetypes.guess_type(str(path))
@@ -628,9 +1078,10 @@ def artifact_image(
 
 @app.get("/action-console/{run_id}")
 def action_console_get(
-    run_id: str, tenant: TenantContext = Depends(_tenant_context)
+    run_id: str, tenant: TenantContext = Depends(_tenant_context_optional)
 ) -> JSONResponse:
     path = _action_console_path(run_id, tenant.base_dir)
+    ensure_local_file(path)
     if path.exists():
         return JSONResponse(json.loads(path.read_text(encoding="utf-8")))
     view_model = _safe_load_json(
@@ -638,11 +1089,10 @@ def action_console_get(
     )
     if not view_model:
         run_dir = tenant.base_dir / run_id
-        if run_dir.exists():
-            try:
-                view_model = build_view_model(run_dir)
-            except Exception:
-                view_model = {}
+        try:
+            view_model = build_view_model(run_dir)
+        except Exception:
+            view_model = {}
     payload = _build_action_console(view_model or {})
     return JSONResponse(payload)
 
@@ -653,12 +1103,17 @@ def action_console_update(
     payload: ActionConsolePayload,
     tenant: TenantContext = Depends(_tenant_context),
 ) -> JSONResponse:
+    _ensure_mutable(run_id, tenant.base_dir)
     action_payload = payload.model_dump()
     action_payload["run_id"] = run_id
     action_payload["updated_at"] = datetime.now(timezone.utc).isoformat()
-    path = _action_console_path(run_id, tenant.base_dir)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(action_payload, indent=2), encoding="utf-8")
+    write_artifact(
+        run_id=run_id,
+        artifact_name="action_console",
+        payload=action_payload,
+        ext="json",
+        base_dir=tenant.base_dir,
+    )
     return JSONResponse(action_payload)
 
 
@@ -666,28 +1121,32 @@ def action_console_update(
 def action_console_generate(
     run_id: str, tenant: TenantContext = Depends(_tenant_context)
 ) -> JSONResponse:
+    _ensure_mutable(run_id, tenant.base_dir)
     view_model = _safe_load_json(
         tenant.base_dir / run_id / "artifacts" / "view_model.json"
     )
     if not view_model:
         run_dir = tenant.base_dir / run_id
-        if run_dir.exists():
-            try:
-                view_model = build_view_model(run_dir)
-            except Exception:
-                view_model = {}
+        try:
+            view_model = build_view_model(run_dir)
+        except Exception:
+            view_model = {}
     payload = _build_action_console(view_model or {})
     payload["run_id"] = run_id
     payload["updated_at"] = datetime.now(timezone.utc).isoformat()
-    path = _action_console_path(run_id, tenant.base_dir)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    write_artifact(
+        run_id=run_id,
+        artifact_name="action_console",
+        payload=payload,
+        ext="json",
+        base_dir=tenant.base_dir,
+    )
     return JSONResponse(payload)
 
 
 @app.get("/runs", response_model=RunsResponse)
-def runs(tenant: TenantContext = Depends(_tenant_context)) -> RunsResponse:
-    run_ids = list_run_ids(base_dir=tenant.base_dir)
+def runs(tenant: TenantContext = Depends(_tenant_context_optional)) -> RunsResponse:
+    run_ids = list_run_ids(base_dir=tenant.base_dir, include_deleted=False)
     labels: dict[str, str] = {}
     for run_id in run_ids:
         try:
@@ -697,9 +1156,63 @@ def runs(tenant: TenantContext = Depends(_tenant_context)) -> RunsResponse:
     return RunsResponse(runs=run_ids, labels=labels)
 
 
+@app.delete("/runs/{run_id}", response_model=RunDeleteResponse)
+def delete_run(
+    run_id: str, tenant: TenantContext = Depends(_tenant_context)
+) -> RunDeleteResponse:
+    run_dir = tenant.base_dir / run_id
+    meta = _load_run_meta(run_id, tenant.base_dir) or {}
+    if not meta and not run_dir.exists():
+        raise HTTPException(status_code=404, detail="Run not found.")
+    deleted_at = datetime.now(timezone.utc).isoformat()
+    meta_updates = {
+        "run_id": run_id,
+        "is_deleted": True,
+        "deleted_at": deleted_at,
+        "updated_at": deleted_at,
+        "deleted_by": tenant.tenant_id,
+    }
+    _write_run_meta(run_id, tenant.base_dir, {**meta, **meta_updates})
+    return RunDeleteResponse(run_id=run_id, deleted=True)
+
+
+@app.post("/runs/{run_id}/clone", response_model=RunResponse)
+def clone_run(
+    run_id: str,
+    tenant: TenantContext = Depends(_tenant_context),
+    request: Request,
+) -> RunResponse:
+    run_config = _safe_load_json(tenant.base_dir / run_id / "run_config.json") or {}
+    if not isinstance(run_config, dict) or not run_config:
+        raise HTTPException(status_code=404, detail="Run config not found.")
+    user_params = run_config.get("user_params") if isinstance(run_config.get("user_params"), dict) else {}
+    settings_override = run_config.get("settings") if isinstance(run_config.get("settings"), dict) else {}
+    payload = BuildRequest(
+        scope=user_params.get("scope") or "country",
+        value=user_params.get("value") or user_params.get("geography") or user_params.get("company") or "Global",
+        company=user_params.get("company"),
+        geography=user_params.get("geography"),
+        horizon=int(user_params.get("horizon") or 60),
+        pack=user_params.get("pack"),
+        sources=run_config.get("sources"),
+        mock=settings_override.get("mode") == "demo",
+        resume_from=None,
+        input_docs=None,
+        generate_strategies=bool(run_config.get("generate_strategies", True)),
+        settings_overrides=settings_override or None,
+        force=True,
+        rerun=True,
+    )
+    if not payload.mock:
+        _require_llm_key(request)
+    return build(payload, tenant=tenant, request=request)
+
+
 @app.post("/chat", response_model=ChatResponse)
 def chat(
-    payload: ChatRequest, tenant: TenantContext = Depends(_tenant_context)
+    payload: ChatRequest,
+    tenant: TenantContext = Depends(_tenant_context),
+    request: Request,
 ) -> ChatResponse:
     run_id = payload.run_id or latest_run_id(base_dir=tenant.base_dir)
     if not run_id:
@@ -711,6 +1224,8 @@ def chat(
     tenant_overrides = get_tenant_config(tenant.tenant_id)
     settings = load_settings(tenant_overrides)
     config = llm_config_from_settings(settings)
+    if getattr(config, "mode", "mock") != "mock":
+        _require_llm_key(request)
     try:
         client = get_llm_client(config)
     except RuntimeError as exc:
@@ -771,12 +1286,13 @@ def chat(
 
 @app.get("/run/{run_id}/node_events", response_model=LogResponse)
 def node_events(
-    run_id: str, tenant: TenantContext = Depends(_tenant_context)
+    run_id: str, tenant: TenantContext = Depends(_tenant_context_optional)
 ) -> LogResponse:
     try:
         path = _safe_log_path(run_id, "node_events.jsonl", tenant.base_dir)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    ensure_local_file(path)
     if not path.exists():
         return LogResponse(entries=[])
     lines = [
@@ -789,12 +1305,13 @@ def node_events(
 
 @app.get("/run/{run_id}/normalization", response_model=LogResponse)
 def normalization_logs(
-    run_id: str, tenant: TenantContext = Depends(_tenant_context)
+    run_id: str, tenant: TenantContext = Depends(_tenant_context_optional)
 ) -> LogResponse:
     try:
         path = _safe_log_path(run_id, "normalization.jsonl", tenant.base_dir)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    ensure_local_file(path)
     if not path.exists():
         return LogResponse(entries=[])
     lines = [
@@ -807,16 +1324,21 @@ def normalization_logs(
 
 @app.post("/strategies", response_model=RunResponse)
 def strategies(
-    payload: StrategiesRequest, tenant: TenantContext = Depends(_tenant_context)
+    payload: StrategiesRequest,
+    tenant: TenantContext = Depends(_tenant_context),
+    request: Request,
 ) -> RunResponse:
     run_id = payload.run_id or latest_run_id(base_dir=tenant.base_dir)
     if not run_id:
         raise HTTPException(status_code=404, detail="No runs available.")
+    _ensure_mutable(run_id, tenant.base_dir)
 
     overrides = {"mode": "demo" if payload.mock else "live"}
     if payload.mock:
         overrides["sources_policy"] = "fixtures"
         overrides["llm_provider"] = "mock"
+    else:
+        _require_llm_key(request)
     tenant_overrides = get_tenant_config(tenant.tenant_id)
     settings = load_settings({**tenant_overrides, **overrides})
     config = llm_config_from_settings(settings)
@@ -859,16 +1381,21 @@ def strategies(
 
 @app.post("/daily", response_model=RunResponse)
 def daily(
-    payload: DailyRequest, tenant: TenantContext = Depends(_tenant_context)
+    payload: DailyRequest,
+    tenant: TenantContext = Depends(_tenant_context),
+    request: Request,
 ) -> RunResponse:
     run_id = payload.run_id or latest_run_id(base_dir=tenant.base_dir)
     if not run_id:
         raise HTTPException(status_code=404, detail="No runs available.")
+    _ensure_mutable(run_id, tenant.base_dir)
 
     overrides = {"mode": "demo" if payload.mock else "live"}
     if payload.mock:
         overrides["sources_policy"] = "fixtures"
         overrides["llm_provider"] = "mock"
+    else:
+        _require_llm_key(request)
     tenant_overrides = get_tenant_config(tenant.tenant_id)
     settings = load_settings({**tenant_overrides, **overrides})
     config = llm_config_from_settings(settings)
@@ -906,7 +1433,7 @@ def daily(
 
 
 @app.get("/latest", response_model=LatestResponse)
-def latest(tenant: TenantContext = Depends(_tenant_context)) -> LatestResponse:
+def latest(tenant: TenantContext = Depends(_tenant_context_optional)) -> LatestResponse:
     run_id = _latest_run_with_daily(tenant.base_dir) or latest_run_id(
         base_dir=tenant.base_dir
     )
@@ -921,6 +1448,22 @@ def latest(tenant: TenantContext = Depends(_tenant_context)) -> LatestResponse:
         daily_brief=daily_brief,
         links=list_artifacts(run_id, base_dir=tenant.base_dir),
     )
+
+
+@app.get("/health")
+def health(request: Request):
+    _, source = resolve_api_key(request)
+    if source in {"header", "bearer", "query"}:
+        source_label = "user"
+    elif source == "env":
+        source_label = "env"
+    else:
+        source_label = "none"
+    return {
+        "storage_backend": run_store_mode(),
+        "api_key_source": source_label,
+        "version": os.environ.get("SCENARIOOPS_VERSION", "unknown"),
+    }
 
 
 if _MULTIPART_AVAILABLE:

@@ -12,7 +12,7 @@ from scenarioops.graph.tools.schema_validate import (
     validate_artifact,
     validate_jsonl,
 )
-from scenarioops.graph.tools.storage import default_runs_dir
+from scenarioops.graph.tools.storage import default_runs_dir, write_text
 
 
 def _hash_text(text: str) -> str:
@@ -173,8 +173,11 @@ def write_artifact_index(
     index_path = artifacts_dir / "index.json"
     payload = build_artifact_index(run_id, base_dir=base_dir, strict=strict)
     index_payload = {"artifacts": payload.get("artifacts", [])}
-    index_path.write_text(
-        json.dumps(index_payload, indent=2, sort_keys=True), encoding="utf-8"
+    write_text(
+        index_path,
+        json.dumps(index_payload, indent=2, sort_keys=True),
+        base_dir=base_dir,
+        content_type="application/json",
     )
     validate_artifact("artifact_index", index_payload)
     return index_path
@@ -215,8 +218,11 @@ def write_run_manifest(
     if errors:
         manifest["errors"] = errors
 
-    manifest_path.write_text(
-        json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8"
+    write_text(
+        manifest_path,
+        json.dumps(manifest, indent=2, sort_keys=True),
+        base_dir=base_dir,
+        content_type="application/json",
     )
     validate_artifact("run_manifest", manifest)
     return manifest_path

@@ -8,10 +8,12 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from .provenance import ArtifactProvenance, build_provenance
+from scenarioops.storage.run_store import get_run_store, run_store_mode, runs_root
 
 _RUN_CREATED_AT: dict[str, str] = {}
 _DB_READY = False
 _S3_CLIENT = None
+_RUN_STORE_READY = False
 
 
 def _sha256_bytes(data: bytes) -> str:
@@ -92,6 +94,67 @@ def _s3_put_file(key: str, path: Path, content_type: str | None = None) -> None:
 def _s3_uri(key: str) -> str:
     bucket = os.environ.get("S3_BUCKET", "")
     return f"s3://{bucket}/{key}"
+
+
+def _runs_root(base_dir: Path | None = None) -> Path:
+    return base_dir if base_dir is not None else default_runs_dir()
+
+
+def _store_path_for(local_path: Path, base_dir: Path | None = None) -> str:
+    runs_dir = _runs_root(None)
+    try:
+        relative = local_path.resolve().relative_to(runs_dir.resolve())
+        return str(relative).replace("\\", "/")
+    except Exception:
+        pass
+    if base_dir is not None:
+        try:
+            relative = local_path.resolve().relative_to(base_dir.resolve())
+            return str(relative).replace("\\", "/")
+        except Exception:
+            pass
+    return str(local_path.name).replace("\\", "/")
+
+
+def _store_put(local_path: Path, *, base_dir: Path | None = None, content_type: str | None = None) -> None:
+    if run_store_mode() != "gcs":
+        return
+    store = get_run_store()
+    if not local_path.exists():
+        return
+    store_path = _store_path_for(local_path, base_dir=base_dir)
+    store.put_bytes(store_path, local_path.read_bytes(), content_type=content_type)
+
+
+def _store_get(local_path: Path, *, base_dir: Path | None = None) -> bool:
+    if run_store_mode() != "gcs":
+        return False
+    store = get_run_store()
+    store_path = _store_path_for(local_path, base_dir=base_dir)
+    if not store.exists(store_path):
+        return False
+    local_path.parent.mkdir(parents=True, exist_ok=True)
+    local_path.write_bytes(store.get_bytes(store_path))
+    return True
+
+
+def ensure_local_file(path: Path, *, base_dir: Path | None = None) -> Path:
+    if path.exists():
+        return path
+    _store_get(path, base_dir=base_dir)
+    return path
+
+
+def write_bytes(path: Path, data: bytes, *, base_dir: Path | None = None, content_type: str | None = None) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(data)
+    _store_put(path, base_dir=base_dir, content_type=content_type)
+
+
+def write_text(path: Path, data: str, *, base_dir: Path | None = None, content_type: str | None = None) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(data, encoding="utf-8")
+    _store_put(path, base_dir=base_dir, content_type=content_type)
 
 
 def _db_connect():
@@ -282,8 +345,7 @@ def _find_repo_root(start: Path) -> Path:
 
 
 def default_runs_dir() -> Path:
-    root = _find_repo_root(Path(__file__).resolve())
-    return root / "storage" / "runs"
+    return runs_root()
 
 
 def latest_pointer_path(base_dir: Path | None = None) -> Path:
@@ -294,6 +356,7 @@ def latest_pointer_path(base_dir: Path | None = None) -> Path:
 
 def read_latest_status(base_dir: Path | None = None) -> dict[str, Any] | None:
     path = latest_pointer_path(base_dir)
+    ensure_local_file(path, base_dir=base_dir)
     if not path.exists():
         if _db_enabled():
             conn = _db_connect()
@@ -354,7 +417,7 @@ def write_latest_status(
     if run_config:
         payload["run_config"] = dict(run_config)
     path = latest_pointer_path(base_dir)
-    _write_json(path, payload)
+    _write_json(path, payload, base_dir=base_dir)
     _db_upsert_run(
         run_id=run_id,
         updated_at=payload["updated_at"],
@@ -370,6 +433,16 @@ def write_latest_status(
             json.dumps(payload, indent=2, sort_keys=True).encode("utf-8"),
             content_type="application/json",
         )
+    final = status in {"OK", "FAIL"}
+    run_updates = {
+        "run_id": run_id,
+        "status": "COMPLETED" if status == "OK" else "FAILED" if status == "FAIL" else status,
+        "updated_at": payload["updated_at"],
+        "is_final": final,
+    }
+    if final:
+        run_updates["completed_at"] = payload["updated_at"]
+    update_run_json(run_id=run_id, updates=run_updates, base_dir=base_dir)
     return path
 
 
@@ -400,6 +473,62 @@ def ensure_run_dirs(run_id: str, base_dir: Path | None = None) -> dict[str, Path
     }
 
 
+def run_json_path(run_id: str, base_dir: Path | None = None) -> Path:
+    if base_dir is None:
+        base_dir = default_runs_dir()
+    return base_dir / run_id / "run.json"
+
+
+def read_run_json(run_id: str, base_dir: Path | None = None) -> dict[str, Any] | None:
+    path = run_json_path(run_id, base_dir)
+    ensure_local_file(path, base_dir=base_dir)
+    if not path.exists():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def write_run_json(
+    *, run_id: str, payload: Mapping[str, Any], base_dir: Path | None = None
+) -> Path:
+    dirs = ensure_run_dirs(run_id, base_dir=base_dir)
+    path = dirs["run_dir"] / "run.json"
+    _write_json(path, dict(payload), base_dir=base_dir)
+    return path
+
+
+def update_run_json(
+    *, run_id: str, updates: Mapping[str, Any], base_dir: Path | None = None
+) -> dict[str, Any]:
+    existing = read_run_json(run_id, base_dir) or {}
+    payload = {**existing, **dict(updates)}
+    write_run_json(run_id=run_id, payload=payload, base_dir=base_dir)
+    return payload
+
+
+def append_run_event(
+    *, run_id: str, payload: Mapping[str, Any], base_dir: Path | None = None
+) -> Path:
+    if base_dir is None:
+        base_dir = default_runs_dir()
+    path = base_dir / run_id / "events.jsonl"
+    _append_jsonl(path, payload, base_dir=base_dir)
+    return path
+
+
+def write_run_inputs(
+    *, run_id: str, payload: Mapping[str, Any], base_dir: Path | None = None
+) -> Path:
+    if base_dir is None:
+        base_dir = default_runs_dir()
+    path = base_dir / run_id / "inputs.json"
+    _write_json(path, dict(payload), base_dir=base_dir)
+    return path
+
+
 def register_run_timestamp(run_id: str, created_at: str) -> None:
     _RUN_CREATED_AT[run_id] = created_at
 
@@ -420,7 +549,7 @@ def write_run_config(
 ) -> Path:
     dirs = ensure_run_dirs(run_id, base_dir=base_dir)
     path = dirs["run_dir"] / "run_config.json"
-    _write_json(path, dict(run_config))
+    _write_json(path, dict(run_config), base_dir=base_dir)
     _db_upsert_run(
         run_id=run_id,
         created_at=run_config.get("created_at"),
@@ -432,23 +561,26 @@ def write_run_config(
     return path
 
 
-def _write_json(path: Path, payload: Any) -> None:
+def _write_json(path: Path, payload: Any, *, base_dir: Path | None = None) -> None:
     path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+    _store_put(path, base_dir=base_dir, content_type="application/json")
 
 
-def _write_md(path: Path, payload: Any) -> None:
+def _write_md(path: Path, payload: Any, *, base_dir: Path | None = None) -> None:
     if not isinstance(payload, str):
         raise TypeError("Markdown artifacts must be plain strings.")
     path.write_text(payload, encoding="utf-8")
+    _store_put(path, base_dir=base_dir, content_type="text/markdown")
 
 
-def _write_jsonl(path: Path, payload: Any) -> None:
+def _write_jsonl(path: Path, payload: Any, *, base_dir: Path | None = None) -> None:
     if not isinstance(payload, list):
         raise TypeError("JSONL artifacts must be a list of JSON-serializable items.")
     lines = [
         json.dumps(item, sort_keys=True, separators=(",", ":")) for item in payload
     ]
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    _store_put(path, base_dir=base_dir, content_type="application/jsonl")
 
 
 def _content_type(ext: str) -> str:
@@ -480,11 +612,11 @@ def write_artifact(
     artifact_filename = f"{artifact_name}.{ext}"
     artifact_path = artifacts_dir / artifact_filename
     if ext == "json":
-        _write_json(artifact_path, payload)
+        _write_json(artifact_path, payload, base_dir=base_dir)
     elif ext == "md":
-        _write_md(artifact_path, payload)
+        _write_md(artifact_path, payload, base_dir=base_dir)
     elif ext == "jsonl":
-        _write_jsonl(artifact_path, payload)
+        _write_jsonl(artifact_path, payload, base_dir=base_dir)
     else:
         raise ValueError("Artifact extension must be 'json', 'jsonl', or 'md'.")
 
@@ -500,7 +632,7 @@ def write_artifact(
     )
 
     meta_path = artifacts_dir / f"{artifact_name}.meta.json"
-    _write_json(meta_path, provenance.to_dict())
+    _write_json(meta_path, provenance.to_dict(), base_dir=base_dir)
     sha256 = _sha256_file(artifact_path)
     size_bytes = artifact_path.stat().st_size
     storage_uri = None
@@ -539,7 +671,7 @@ def write_trace_artifact(
     trace_dir = dirs["trace_dir"]
     artifact_filename = f"{artifact_name}.json"
     artifact_path = trace_dir / artifact_filename
-    _write_json(artifact_path, payload)
+    _write_json(artifact_path, payload, base_dir=base_dir)
 
     created_at = created_at or _created_at_for_run(run_id)
     provenance = build_provenance(
@@ -552,7 +684,7 @@ def write_trace_artifact(
         created_at=created_at,
     )
     meta_path = trace_dir / f"{artifact_name}.meta.json"
-    _write_json(meta_path, provenance.to_dict())
+    _write_json(meta_path, provenance.to_dict(), base_dir=base_dir)
     sha256 = _sha256_file(artifact_path)
     size_bytes = artifact_path.stat().st_size
     storage_uri = None
@@ -576,11 +708,12 @@ def write_trace_artifact(
     return artifact_path, meta_path, provenance
 
 
-def _append_jsonl(path: Path, payload: Mapping[str, Any]) -> None:
+def _append_jsonl(path: Path, payload: Mapping[str, Any], *, base_dir: Path | None = None) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     line = json.dumps(payload, sort_keys=True)
     with path.open("a", encoding="utf-8") as handle:
         handle.write(line + "\n")
+    _store_put(path, base_dir=base_dir, content_type="application/jsonl")
 
 
 def log_node_event(
@@ -600,13 +733,21 @@ def log_node_event(
     if base_dir is None:
         base_dir = default_runs_dir()
     log_path = base_dir / run_id / "logs" / "node_events.jsonl"
+    timestamp_value = timestamp or datetime.now(timezone.utc).isoformat()
+    run_payload = read_run_json(run_id, base_dir=base_dir) or {"run_id": run_id}
+    node_status = run_payload.get("node_status")
+    if not isinstance(node_status, dict):
+        node_status = {}
+    previous = node_status.get(node_name) if isinstance(node_status.get(node_name), dict) else {}
+    attempt = int(previous.get("attempt") or 0) + 1
     payload: dict[str, Any] = {
-        "timestamp": timestamp or datetime.now(timezone.utc).isoformat(),
+        "timestamp": timestamp_value,
         "node": node_name,
         "inputs": inputs,
         "outputs": outputs,
         "schema_validated": schema_validated,
         "duration_seconds": round(duration_seconds, 6),
+        "attempt": attempt,
     }
     if error:
         payload["error"] = error
@@ -614,7 +755,21 @@ def log_node_event(
         payload["tools"] = tools
     if status:
         payload["status"] = status
-    _append_jsonl(log_path, payload)
+    _append_jsonl(log_path, payload, base_dir=base_dir)
+    append_run_event(run_id=run_id, payload=payload, base_dir=base_dir)
+    node_status[node_name] = {
+        "status": payload.get("status") or "UNKNOWN",
+        "attempt": attempt,
+        "updated_at": timestamp_value,
+        "duration_seconds": payload.get("duration_seconds"),
+        "error": payload.get("error"),
+    }
+    run_updates = {
+        "run_id": run_id,
+        "node_status": node_status,
+        "updated_at": timestamp_value,
+    }
+    update_run_json(run_id=run_id, updates=run_updates, base_dir=base_dir)
     _db_insert_event(run_id, "node_event", payload)
     return log_path
 
@@ -633,7 +788,7 @@ def log_normalization(
     payload: dict[str, Any] = {"node": node_name, "operation": operation}
     if details:
         payload["details"] = dict(details)
-    _append_jsonl(log_path, payload)
+    _append_jsonl(log_path, payload, base_dir=base_dir)
     _db_insert_event(run_id, "normalization", payload)
     return log_path
 
