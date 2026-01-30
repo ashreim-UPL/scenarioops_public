@@ -47,7 +47,7 @@ from scenarioops.graph.tools.storage import (
     write_artifact,
 )
 from scenarioops.security.api_keys import resolve_api_key
-from scenarioops.storage.run_store import run_store_mode
+from scenarioops.storage.run_store import run_store_mode, runs_prefix, runs_root
 from scenarioops.graph.nodes import (
     run_auditor_node,
     run_daily_runner_node,
@@ -1459,9 +1459,31 @@ def health(request: Request):
         source_label = "env"
     else:
         source_label = "none"
+    storage_mode = run_store_mode()
+    runs_dir = runs_root()
+    gcs_bucket = os.environ.get("GCS_BUCKET", "").strip()
+    gcs_prefix = runs_prefix()
+    if storage_mode == "gcs" and gcs_bucket:
+        runs_location = f"gs://{gcs_bucket}/{gcs_prefix}".rstrip("/")
+    else:
+        runs_location = str(runs_dir)
+    vector_mode = os.environ.get("VECTOR_STORE", "local").strip().lower()
+    vector_scope = os.environ.get("SCENARIOOPS_VECTORDB_SCOPE", "global").strip().lower()
+    if vector_mode == "off":
+        vector_location = "disabled"
+    elif vector_scope == "run":
+        vector_location = str(runs_dir / "<run_id>" / "vectordb")
+    else:
+        vector_location = str(runs_dir.parent / "vectordb")
     return {
-        "storage_backend": run_store_mode(),
+        "storage_backend": storage_mode,
+        "runs_dir": str(runs_dir),
+        "runs_location": runs_location,
+        "runs_prefix": gcs_prefix,
         "api_key_source": source_label,
+        "vector_store": vector_mode,
+        "vector_scope": vector_scope,
+        "vector_location": vector_location,
         "version": os.environ.get("SCENARIOOPS_VERSION", "unknown"),
     }
 
