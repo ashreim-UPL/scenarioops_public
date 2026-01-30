@@ -856,8 +856,8 @@ def config_update(
 @app.post("/build", response_model=RunResponse)
 def build(
     payload: BuildRequest,
-    tenant: TenantContext = Depends(_tenant_context),
     request: Request,
+    tenant: TenantContext = Depends(_tenant_context),
 ) -> RunResponse:
     if not payload.mock:
         _require_llm_key(request)
@@ -1179,8 +1179,8 @@ def delete_run(
 @app.post("/runs/{run_id}/clone", response_model=RunResponse)
 def clone_run(
     run_id: str,
-    tenant: TenantContext = Depends(_tenant_context),
     request: Request,
+    tenant: TenantContext = Depends(_tenant_context),
 ) -> RunResponse:
     run_config = _safe_load_json(tenant.base_dir / run_id / "run_config.json") or {}
     if not isinstance(run_config, dict) or not run_config:
@@ -1211,8 +1211,8 @@ def clone_run(
 @app.post("/chat", response_model=ChatResponse)
 def chat(
     payload: ChatRequest,
-    tenant: TenantContext = Depends(_tenant_context),
     request: Request,
+    tenant: TenantContext = Depends(_tenant_context),
 ) -> ChatResponse:
     run_id = payload.run_id or latest_run_id(base_dir=tenant.base_dir)
     if not run_id:
@@ -1325,8 +1325,8 @@ def normalization_logs(
 @app.post("/strategies", response_model=RunResponse)
 def strategies(
     payload: StrategiesRequest,
-    tenant: TenantContext = Depends(_tenant_context),
     request: Request,
+    tenant: TenantContext = Depends(_tenant_context),
 ) -> RunResponse:
     run_id = payload.run_id or latest_run_id(base_dir=tenant.base_dir)
     if not run_id:
@@ -1382,8 +1382,8 @@ def strategies(
 @app.post("/daily", response_model=RunResponse)
 def daily(
     payload: DailyRequest,
-    tenant: TenantContext = Depends(_tenant_context),
     request: Request,
+    tenant: TenantContext = Depends(_tenant_context),
 ) -> RunResponse:
     run_id = payload.run_id or latest_run_id(base_dir=tenant.base_dir)
     if not run_id:
