@@ -2833,16 +2833,21 @@
         renderAxisEbeGraph();
       }
 
-        function clearView(reason) {
-          state.viewModel = null;
-          state.nodeEvents = [];
-          state.normalization = [];
-          state.latestLinks = [];
-          state.logs = [];
-          state.lastEventAt = null;
-          state.actionConsole = null;
-          state.actionDirty = false;
-          updateContext(null, null);
+      function clearView(reason) {
+        state.viewModel = null;
+        state.nodeEvents = [];
+        state.normalization = [];
+        state.latestLinks = [];
+        state.logs = [];
+        state.lastEventAt = null;
+        state.actionConsole = null;
+        state.actionDirty = false;
+        state.uploadedDocs = [];
+        const uploadInput = document.getElementById("uploadInput");
+        if (uploadInput) uploadInput.value = "";
+        const uploadStatus = document.getElementById("uploadStatus");
+        if (uploadStatus) uploadStatus.textContent = "";
+        updateContext(null, null);
           renderRunPage();
           renderSignalFeed();
           renderScenarioMatrix();
@@ -3491,6 +3496,11 @@
       });
 
       document.getElementById("newRunBtn").addEventListener("click", () => {
+        state.uploadedDocs = [];
+        const uploadInput = document.getElementById("uploadInput");
+        if (uploadInput) uploadInput.value = "";
+        const uploadStatus = document.getElementById("uploadStatus");
+        if (uploadStatus) uploadStatus.textContent = "";
         currentStep = 0;
         renderWizard();
         document.getElementById("wizard").scrollIntoView({ behavior: "smooth" });
