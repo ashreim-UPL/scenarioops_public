@@ -3491,6 +3491,8 @@
       });
 
       document.getElementById("newRunBtn").addEventListener("click", () => {
+        currentStep = 0;
+        renderWizard();
         document.getElementById("wizard").scrollIntoView({ behavior: "smooth" });
       });
 
