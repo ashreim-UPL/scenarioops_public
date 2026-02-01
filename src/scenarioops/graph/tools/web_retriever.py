@@ -119,7 +119,9 @@ def _parse_date(header_value: str | None) -> str | None:
         return None
 
 
-def _cache_dir() -> Path:
+def _cache_dir(base_dir: Path | None = None) -> Path:
+    if base_dir:
+        return base_dir
     return Path(__file__).resolve().parents[4] / "data" / "retriever_cache"
 
 
