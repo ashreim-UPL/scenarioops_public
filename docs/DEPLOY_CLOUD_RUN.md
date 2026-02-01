@@ -30,7 +30,7 @@
 
 ### Gemini API key usage (current)
 - **LLM key source:** `src/scenarioops/llm/client.py`
-  - `get_gemini_api_key()` reads Streamlit secrets or `GEMINI_API_KEY` env.
+  - `get_gemini_api_key()` reads `GEMINI_API_KEY` from environment or `.env`.
   - No request-level override (headers/query) used for LLM client init.
 - **FastAPI auth key:** `src/scenarioops/app/api.py::_tenant_context`
   - Accepts `X-Api-Key` or `Authorization: Bearer <key>` to resolve tenant.
@@ -59,7 +59,7 @@
   Public run links will 404 or lose artifacts; dedup cannot work reliably.
 - **GCS is not used**; S3/DB options are irrelevant on Cloud Run.
 - **API key resolution is not deterministic per request**:
-  LLM key is pulled only from env/Streamlit secrets; no header/query override.
+  LLM key is pulled only from env; no header/query override.
 - **Read-only access** is not enforced; UI always expects a key (sends header).
 - **Retry status** is not tracked as last attempt in a durable run metadata object.
 - **Vector DB** is local-only and not safe across instances; failures can impact chat.

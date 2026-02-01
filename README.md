@@ -34,16 +34,16 @@ pip install -r requirements.lock
 
 ## UI
 
-Run the Streamlit UI:
-
-```sh
-streamlit run src/scenarioops/ui/streamlit_app.py
-```
-
-Run the FastAPI app (commercial dashboard at `/`, legacy ops UI at `/ops`):
+Run the web app (commercial dashboard at `/`, legacy ops UI at `/ops`):
 
 ```sh
 uvicorn scenarioops.app.api:app --host 0.0.0.0 --port 8502
+```
+
+Then open:
+
+```text
+http://localhost:8502/
 ```
 
 ## Configuration
@@ -64,8 +64,7 @@ Key settings:
 - `llm_model`, `search_model`, `summarizer_model`, `embed_model`, `image_model`: model selection
 - `min_evidence_ok`, `min_evidence_total`, `max_failed_ratio`: retrieval grading thresholds
 
-Gemini API keys are loaded from Streamlit secrets at runtime. Use
-`.streamlit/secrets.example.toml` as a template.
+Gemini API keys are loaded from environment variables or a local `.env` file.
 
 ## Storage & Auth (Postgres + S3)
 

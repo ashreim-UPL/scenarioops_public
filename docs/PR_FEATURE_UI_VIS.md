@@ -3,7 +3,7 @@
 ## Summary
 - Added latest run pointer with command/status metadata.
 - Introduced view_model.json export for UI consumption.
-- Upgraded Streamlit UI with multi-tab scenario visualizations.
+- Upgraded web UI with multi-tab scenario visualizations.
 - Added verify demo pipeline and new documentation.
 
 ## How to Run
@@ -11,7 +11,7 @@
 scenarioops build-scenarios --scope country --value UAE --horizon 24
 scenarioops export-view
 scenarioops run-daily
-streamlit run src/scenarioops/ui/streamlit_app.py
+uvicorn scenarioops.app.api:app --host 0.0.0.0 --port 8502
 ```
 
 ## Screenshots

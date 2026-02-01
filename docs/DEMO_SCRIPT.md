@@ -14,11 +14,11 @@ Say: "We generate the base scenario artifacts and set a fixed run ID for repeata
 Command:
 
 ```sh
-streamlit run src/scenarioops/ui/streamlit_app.py
+uvicorn scenarioops.app.api:app --host 0.0.0.0 --port 8502
 ```
 
 Click:
-- Open the Driving Forces tab.
+- Open the Driving Forces section in the web UI.
 - Expand a domain cluster and point to citations.
 - Show the word map for dominant keywords.
 
@@ -26,21 +26,21 @@ Say: "Drivers are grouped by domain and surfaced as a weighted word map."
 
 ## 1:00-1:30 Critical Uncertainties
 Click:
-- Open the Critical Uncertainties tab.
+- Open the Critical Uncertainties section.
 - Point to axis uncertainties highlighted in the scatter.
 
 Say: "Impact and uncertainty are plotted together, with axis uncertainties emphasized."
 
 ## 1:30-2:00 Scenario Logic (2x2)
 Click:
-- Open the Scenario Logic (2x2) tab.
+- Open the Scenario Logic (2x2) section.
 - Walk through the axis poles and the grid placement.
 
 Say: "The 2x2 grid aligns scenarios to the two critical axes."
 
 ## 2:00-2:30 Scenario Cards
 Click:
-- Open the Scenarios tab.
+- Open the Scenarios section.
 - Show premise bullets, operating rules, and top EWIs.
 - Expand one narrative panel.
 
@@ -54,7 +54,7 @@ scenarioops run-daily --run-id $RUN_ID
 ```
 
 Click:
-- Open the Daily Brief tab.
+- Open the Daily Brief section.
 - Show the updated brief contents.
 
 Say: "Daily updates produce a brief and keep the run pointer current."

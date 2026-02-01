@@ -16,7 +16,6 @@ pip install -r requirements.lock
 ## Run the API + UI
 ```sh
 uvicorn scenarioops.app.api:app --host 0.0.0.0 --port 8502
-streamlit run src/scenarioops/ui/streamlit_app.py
 ```
 
 ## Build Scenarios

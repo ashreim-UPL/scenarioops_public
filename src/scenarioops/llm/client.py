@@ -896,21 +896,6 @@ def get_gemini_api_key() -> str:
     # Try loading from .env file first
     _try_load_dotenv()
 
-    try:
-        import streamlit as st  # type: ignore
-    except Exception:
-        st = None
-
-    if st is not None:
-        try:
-            secret_value = st.secrets.get("GEMINI_API_KEY")
-        except Exception:
-            secret_value = None
-        if isinstance(secret_value, str):
-            secret_value = secret_value.strip()
-            if secret_value:
-                return secret_value
-
     value = os.environ.get("GEMINI_API_KEY", "").strip()
     if value:
         return value

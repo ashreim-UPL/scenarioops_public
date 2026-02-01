@@ -17,7 +17,6 @@ dependencies = [
   "plotly>=5.22.0",
   "reportlab>=4.1.0",
   "requests>=2.32.0",
-  "streamlit>=1.33.0",
   "uvicorn>=0.23.0"
 ]
 

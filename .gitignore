@@ -26,9 +26,6 @@ cache/
 !/storage/runs/.gitkeep
 /src/storage/
 
-.streamlit/
-.streamlit/secrets.toml
-!.streamlit/secrets.example.toml
 *.log
 .env
 

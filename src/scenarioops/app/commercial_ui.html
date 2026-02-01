@@ -803,7 +803,16 @@
       }
 
       .hidden {
-        display: none;
+        display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        width: 0 !important;
+        overflow: hidden !important;
+        position: absolute !important;
+      }
+
+      section[data-view="/runs"] {
+        width: 100%;
       }
 
       .tabs {
@@ -847,9 +856,11 @@
         inset: 0;
         background: rgba(4, 8, 16, 0.75);
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         justify-content: center;
         z-index: 40;
+        overflow: auto;
+        padding: 24px 16px;
       }
 
       .modal.hidden {
@@ -859,6 +870,12 @@
       .modal-card {
         width: min(640px, 92vw);
         padding: 20px;
+        max-height: calc(100vh - 48px);
+        overflow: auto;
+      }
+
+      body.modal-open {
+        overflow: hidden;
       }
 
       .modal-actions {
@@ -962,6 +979,13 @@
       .node.disabled:hover {
         transform: none;
         box-shadow: none;
+      }
+
+      .node-detail {
+        margin-top: 8px;
+        font-size: 10px;
+        color: var(--muted);
+        line-height: 1.35;
       }
 
       .run-steps {
@@ -1086,17 +1110,14 @@
         </div>
         <div class="context-ribbon" id="contextRibbon"></div>
         <div id="runState" class="status-pill">Idle</div>
-        <div class="status-actions">
-          <button id="accessBtn">Access</button>
-          <button id="configBtn">Config</button>
-          <button id="helpBtn">?</button>
-          <button id="newRunBtn">New Run</button>
-          <button id="openLatestBtn">Open Latest</button>
-        </div>
+          <div class="status-actions">
+            <button id="configPanelBtn">Configuration</button>
+            <button id="helpBtn">Help</button>
+          </div>
       </div>
 
       <nav class="glass top-nav" id="navBar">
-        <a class="nav-link" data-route="/" href="/">Command Center</a>
+        <a class="nav-link" data-route="/runs" href="/runs">Command Center</a>
         <a class="nav-link" data-route="/intelligence" href="/intelligence">Intelligence</a>
         <a class="nav-link" data-route="/scenarios" href="/scenarios">Scenario Lab</a>
         <a class="nav-link" data-route="/wind-tunnel" href="/wind-tunnel">Wind Tunnel</a>
@@ -1105,83 +1126,34 @@
       </nav>
 
       <section class="section" data-view="/runs">
+        <div class="glass" style="padding: 14px 18px; margin-bottom: 12px; display:flex; justify-content: space-between; align-items:center;">
+          <div class="section-title" style="margin:0;">Strategic Forge</div>
+          <button class="primary" id="startNewRunBtn">Start New Run</button>
+        </div>
         <div class="glass" id="emptyState" style="padding: 18px; margin-bottom: 16px; display: none;">
           <div style="font-size: 24px; font-weight: 600;">No runs available.</div>
           <div class="helper">Check your API access or create a new run.</div>
         </div>
 
-        <div class="glass" style="padding: 18px; margin-bottom: 18px;">
-          <div class="section-title">Strategic Forge</div>
-          <div class="form" id="wizard">
-            <div id="wizardSteps"></div>
-            <div style="margin-top: 12px; display:flex; gap:10px;">
-              <button id="prevStep">Back</button>
-              <button class="primary" id="nextStep">Next</button>
-              <button class="primary" id="launchRun">Launch Run</button>
+        <div class="glass" style="padding: 18px; margin-bottom: 16px;">
+          <div class="section-title">Run Controls</div>
+          <label>Run Library<select id="runSelect"></select></label>
+          <div id="runActionsPanel" style="display:none; margin-top: 8px;">
+            <div class="section-title" style="margin-top: 6px;">Run Actions</div>
+            <div style="display:flex; gap:8px; margin-bottom: 10px; flex-wrap: wrap;">
+              <button id="runActionLoadBtn">Load</button>
+              <button id="runActionLatestBtn">Latest</button>
+              <button id="runActionRerunBtn">Rerun</button>
+              <button id="retryFailedBtn">Retry Failed</button>
             </div>
-            <div id="runStatus" class="helper" style="margin-top: 10px;"></div>
           </div>
-          <details style="margin-top:12px;" id="advancedPanel">
-            <summary style="cursor:pointer;">Developer Overrides (advanced)</summary>
-            <div class="helper" style="margin: 8px 0 12px;">
-              Configure precise model + data settings. These map to runtime settings overrides.
-            </div>
-            <div class="card-grid">
-              <label>LLM Model<select id="advLlmModel">
-                <option value="">Default</option>
-                <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
-                <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
-                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-              </select></label>
-              <label>Search Model<select id="advSearchModel">
-                <option value="">Default</option>
-                <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
-                <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
-                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-              </select></label>
-              <label>Summarizer Model<select id="advSummarizerModel">
-                <option value="">Default</option>
-                <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
-                <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
-                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-              </select></label>
-              <label>Image Model<select id="advImageModel">
-                <option value="">Default</option>
-                <option value="gemini-2.5-flash-image">Gemini 2.5 Flash Image</option>
-                <option value="imagen-3.0-generate-002">Imagen 3</option>
-              </select></label>
-              <label>Embedding Model<input id="advEmbedModel" placeholder="local-hash-256" /></label>
-              <label>Temperature<input id="advTemperature" type="number" step="0.1" min="0" max="2" placeholder="0.2" /></label>
-              <label>Seed<input id="advSeed" type="number" placeholder="Optional" /></label>
-              <label>Sources Policy<select id="advSourcesPolicy">
-                <option value="">Default</option>
-                <option value="fixtures">Fixtures</option>
-                <option value="academic_only">Academic Only</option>
-                <option value="mixed_reputable">Mixed Reputable</option>
-              </select></label>
-              <label>Allow Web<select id="advAllowWeb">
-                <option value="">Default</option>
-                <option value="true">True</option>
-                <option value="false">False</option>
-              </select></label>
-              <label>Simulate Evidence<select id="advSimulateEvidence">
-                <option value="">Default</option>
-                <option value="true">True</option>
-                <option value="false">False</option>
-              </select></label>
-              <label>Min Sources / Domain<input id="advMinSourcesDomain" type="number" placeholder="8" /></label>
-              <label>Min Citations / Driver<input id="advMinCitations" type="number" placeholder="2" /></label>
-              <label>Min Forces<input id="advMinForces" type="number" placeholder="60" /></label>
-              <label>Min Forces / Domain<input id="advMinForcesDomain" type="number" placeholder="10" /></label>
-              <label>Min Evidence OK<input id="advMinEvidenceOk" type="number" placeholder="10" /></label>
-              <label>Min Evidence Total<input id="advMinEvidenceTotal" type="number" placeholder="15" /></label>
-              <label>Max Failed Ratio<input id="advMaxFailedRatio" type="number" step="0.05" placeholder="Optional" /></label>
-            </div>
-            <details style="margin-top: 12px;">
-              <summary style="cursor:pointer;">Preview (read-only)</summary>
-              <textarea id="advancedPreview" rows="6" style="width:100%; font-family: var(--font-mono);" readonly></textarea>
-            </details>
-          </details>
+          <div class="section-title" style="margin-top: 10px;">Recent Runs</div>
+          <div id="runList" class="run-list"></div>
+          <label>Resume last run<input id="resumeLast" type="checkbox" /></label>
+          <label>Resume from node<select id="resumeNode"></select></label>
+          <label>Run ID<input id="resumeRunId" placeholder="Optional" /></label>
+          <label>Uploads (optional)<input id="uploadInput" type="file" multiple /></label>
+          <div id="uploadStatus" class="helper"></div>
         </div>
 
         <div class="section">
@@ -1194,6 +1166,22 @@
         <div class="section layout-grid">
           <aside class="glass sidebar">
             <div class="section-title">Company Detail</div>
+<div class="glass company-card">
+              <div class="company-header">
+                <div class="company-logo" id="companyLogo">SO</div>
+                <div>
+                  <div id="companyName" style="font-weight: 600;">Company</div>
+                  <div id="companyMarket" class="company-meta">Market ??? Region</div>
+                </div>
+              </div>
+              <div id="companySummary" class="company-meta">Awaiting profile data.</div>
+              <div id="runMeta" class="company-meta" style="margin-top: 8px;"></div>
+              <div class="kpi-list">
+                <div class="kpi-item"><span>Market Volatility</span><strong id="kpiVolatility">--</strong></div>
+                <div class="kpi-item"><span>Strategy Confidence</span><strong id="kpiConfidence">--</strong></div>
+                <div class="kpi-item"><span>ROI Projection</span><strong id="kpiROI">--</strong></div>
+              </div>
+            </div>
             <div class="sidebar-stack" style="margin-bottom: 16px;">
               <div class="glass card sidebar-card">
                 <div class="section-title">Company Overview</div>
@@ -1216,80 +1204,18 @@
               <div class="workflow-nodes" id="workflowNodes"></div>
             </div>
 
-            <div class="glass detail-card" id="nodeDetail" style="margin-top: 16px;">
-              <div class="section-title">Run Progress</div>
-              <div id="runProgress" class="helper" style="margin-bottom: 12px;">No run loaded.</div>
-              <div class="section-title">Node Detail</div>
-              <div id="nodeDetailBody" class="ghost" style="padding: 12px; border-radius: 12px; min-height: 200px;"></div>
-              <div class="section-title" style="margin-top: 14px;">Artifacts</div>
-              <div id="artifactList" class="run-steps"></div>
-            </div>
+              <div class="glass detail-card" id="nodeDetail" style="margin-top: 16px;">
+                <div class="section-title">Run Progress</div>
+                <div id="runProgress" class="helper" style="margin-bottom: 12px;">No run loaded.</div>
+                <div class="section-title" style="margin-top: 14px;">Artifacts</div>
+                <div id="artifactList" class="run-steps"></div>
+              </div>
           </div>
 
-          <aside class="glass sidebar">
-            <div class="section-title">Run Controls</div>
-            <div class="glass company-card">
-              <div class="company-header">
-                <div class="company-logo" id="companyLogo">SO</div>
-                <div>
-                  <div id="companyName" style="font-weight: 600;">Company</div>
-                  <div id="companyMarket" class="company-meta">Market ??? Region</div>
-                </div>
-              </div>
-              <div id="companySummary" class="company-meta">Awaiting profile data.</div>
-              <div id="runMeta" class="company-meta" style="margin-top: 8px;"></div>
-              <div class="kpi-list">
-                <div class="kpi-item"><span>Market Volatility</span><strong id="kpiVolatility">--</strong></div>
-                <div class="kpi-item"><span>Strategy Confidence</span><strong id="kpiConfidence">--</strong></div>
-                <div class="kpi-item"><span>ROI Projection</span><strong id="kpiROI">--</strong></div>
-              </div>
-            </div>
-            <label>Run Library<select id="runSelect"></select></label>
-            <div style="display:flex; gap:8px; margin-bottom: 10px; flex-wrap: wrap;">
-              <button id="loadRunBtn">Load Run</button>
-              <button id="latestRunBtn">Latest</button>
-              <button id="rerunBtn">Rerun</button>
-              <button id="retryFailedBtn">Retry Failed</button>
-            </div>
-            <div class="section-title" style="margin-top: 10px;">Recent Runs</div>
-            <div id="runList" class="run-list"></div>
-            <label>Resume last run<input id="resumeLast" type="checkbox" /></label>
-            <label>Resume from node<select id="resumeNode"></select></label>
-            <label>Run ID<input id="resumeRunId" placeholder="Optional" /></label>
-            <label>Uploads<input id="uploadInput" type="file" multiple /></label>
-            <div id="uploadStatus" class="helper"></div>
-            <label>Generate strategies<select id="generateStrategies">
-              <option value="true">Yes</option>
-              <option value="false">No</option>
-            </select></label>
-            <div class="section-title" style="margin-top: 14px;">Filters</div>
-            <label>Company Focus<input id="controlCompany" placeholder="Microsoft" /></label>
-            <label>Scenario Depth<input id="controlDepth" type="range" min="1" max="10" value="6" /></label>
-            <label>Time Horizon<input id="controlHorizon" type="range" min="36" max="120" value="60" /></label>
-            <label>Filter Signals<select id="controlSignal"><option>All</option></select></label>
-            <label>Filter Scenarios<select id="controlScenario"><option>All</option></select></label>
-          </aside>
+          
+
         </div>
 
-        <div class="section">
-          <div class="glass" style="padding: 18px;">
-            <div style="display:flex; justify-content: space-between; align-items: center;">
-              <div class="section-title">Terminal Lite</div>
-              <label class="helper" style="display:flex; gap:6px; align-items:center;">
-                <input type="checkbox" id="toggleRawLogs" />
-                Show raw logs
-              </label>
-            </div>
-            <div class="tabs" id="logTabs">
-              <div class="tab active" data-log="all">All Logs</div>
-              <div class="tab" data-log="sentinel">Sentinel</div>
-              <div class="tab" data-log="analyst">Analyst</div>
-              <div class="tab" data-log="critic">Critic</div>
-              <div class="tab" data-log="errors">Errors</div>
-            </div>
-            <div class="terminal" id="terminal"></div>
-          </div>
-        </div>
       </section>
 
       <section class="section hidden" data-view="/intelligence">
@@ -1360,33 +1286,106 @@
 
     </div>
 
-    <div class="modal hidden" id="accessModal">
-      <div class="glass modal-card">
-        <div class="section-title">API Access</div>
+    </div>
+
+    </div>
+
+    
+    <div class="modal hidden" id="configPanelModal">
+      <div class="glass modal-card" style="max-width: 860px;">
+        <div class="section-title">Configuration</div>
+        <div class="helper" style="margin: 6px 0 12px;">Access, admin overrides, and developer overrides.</div>
+
+        <div class="section-title" style="margin-top: 12px;">API Access</div>
         <label>API Base URL<input id="apiBaseInput" placeholder="http://localhost:8502" /></label>
         <label>API Key<input id="apiKeyInput" type="password" placeholder="Enter API key" /></label>
         <div class="helper">Stored locally in your browser. Required if auth is enabled.</div>
-        <div class="section-title" style="margin-top: 14px;">Environment</div>
+        <div class="section-title" style="margin-top: 12px;">Environment</div>
         <pre id="envStatus" class="helper" style="white-space: pre-wrap; margin: 6px 0 0;"></pre>
+
+        <div class="section-title" style="margin-top: 16px;">Developer Overrides (advanced)</div>
+        <div class="helper" style="margin: 6px 0 12px;">
+          Configure precise model + data settings. These map to runtime settings overrides.
+        </div>
+        <div class="card-grid">
+          <label>LLM Model<select id="advLlmModel">
+            <option value="">Default</option>
+            <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
+            <option value="gemini-3-flash">Gemini 3 Flash (stable)</option>
+            <option value="gemini-3-pro">Gemini 3 Pro</option>
+            <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+          </select></label>
+          <label>Search Model<select id="advSearchModel">
+            <option value="">Default</option>
+            <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
+            <option value="gemini-3-flash">Gemini 3 Flash (stable)</option>
+            <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+          </select></label>
+          <label>Summarizer Model<select id="advSummarizerModel">
+            <option value="">Default</option>
+            <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
+            <option value="gemini-3-flash">Gemini 3 Flash (stable)</option>
+            <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+          </select></label>
+          <label>Image Model<select id="advImageModel">
+            <option value="">Default</option>
+            <option value="gemini-2.5-flash-image">Gemini 2.5 Flash Image</option>
+            <option value="gemini-2.5-pro-image">Gemini 2.5 Pro Image</option>
+          </select></label>
+          <label>Embedding Model<input id="advEmbedModel" placeholder="local-hash-256" /></label>
+          <label>Temperature<input id="advTemperature" type="number" step="0.1" min="0" max="2" placeholder="0.2" /></label>
+          <label>Seed<input id="advSeed" type="number" placeholder="Optional" /></label>
+          <label>Sources Policy<select id="advSourcesPolicy">
+            <option value="">Default</option>
+            <option value="mixed_reputable">Mixed reputable</option>
+            <option value="academic_only">Academic only</option>
+            <option value="fixtures">Fixtures</option>
+          </select></label>
+          <label>Allow Web<select id="advAllowWeb">
+            <option value="">Default</option>
+            <option value="true">Yes</option>
+            <option value="false">No</option>
+          </select></label>
+          <label>Simulate Evidence<select id="advSimulateEvidence">
+            <option value="">Default</option>
+            <option value="true">Yes</option>
+            <option value="false">No</option>
+          </select></label>
+          <label>Min Sources / Domain<input id="advMinSourcesDomain" type="number" placeholder="8" /></label>
+          <label>Min Citations / Driver<input id="advMinCitations" type="number" placeholder="2" /></label>
+          <label>Min Forces<input id="advMinForces" type="number" placeholder="60" /></label>
+          <label>Min Forces / Domain<input id="advMinForcesDomain" type="number" placeholder="10" /></label>
+          <label>Min Evidence OK<input id="advMinEvidenceOk" type="number" placeholder="10" /></label>
+          <label>Min Evidence Total<input id="advMinEvidenceTotal" type="number" placeholder="15" /></label>
+          <label>Max Failed Ratio<input id="advMaxFailedRatio" type="number" step="0.05" placeholder="Optional" /></label>
+        </div>
+        <div class="helper" style="margin-top: 12px;">Preview</div>
+        <textarea id="advancedPreview" rows="6" style="width:100%; font-family: var(--font-mono);" readonly></textarea>
+
         <div class="modal-actions">
-          <button id="closeAccess">Cancel</button>
-          <button class="primary" id="saveAccess">Save</button>
+          <button id="closeConfigPanel">Close</button>
+          <button id="saveConfigPanel" class="primary">Save</button>
         </div>
       </div>
     </div>
 
-    <div class="modal hidden" id="configModal">
-      <div class="glass modal-card">
-        <div class="section-title">Admin Overrides (advanced)</div>
-        <div class="helper" style="margin: 6px 0 12px;">
-          Requires an admin API key. These settings override runtime configuration for all runs.
+    
+    <div class="modal hidden" id="forgeModal">
+      <div class="glass modal-card" style="max-width: 980px;">
+        <div class="section-title">Strategic Forge</div>
+        <div class="glass" style="padding: 18px;">
+          <div class="form" id="wizard">
+            <div id="wizardSteps"></div>
+            <div style="margin-top: 12px; display:flex; gap:10px;">
+              <button id="prevStep">Back</button>
+              <button class="primary" id="nextStep">Next</button>
+              <button class="primary" id="launchRun">Launch Run</button>
+            </div>
+            <div id="runStatus" class="helper" style="margin-top: 10px;"></div>
+          </div>
         </div>
-        <div class="config-label">Override JSON</div>
-        <textarea id="configEditor" rows="10" class="config-editor"></textarea>
-        <div id="configStatus" class="helper"></div>
         <div class="modal-actions">
-          <button id="closeConfig">Close</button>
-          <button class="primary" id="saveConfig">Save Config</button>
+          <button id="closeForge">Close</button>
         </div>
       </div>
     </div>
@@ -1407,27 +1406,159 @@
     </div>
 
     <script>
-      const state = {
-        runId: null,
-        viewModel: null,
-        nodeEvents: [],
-        normalization: [],
-        logs: [],
-        runs: [],
-        runLabels: {},
-        latestLinks: [],
-        uploadedDocs: [],
-        chatMessages: [],
-        connected: false,
-        lastEventAt: null,
-        launchingRunId: null,
-        actionConsole: null,
-        actionEditMode: false,
-        actionDirty: false,
-        readOnly: false,
-      };
+        const state = {
+          runId: null,
+          viewModel: null,
+          nodeEvents: [],
+          normalization: [],
+          logs: [],
+          runs: [],
+          runLabels: {},
+          latestLinks: [],
+          uploadedDocs: [],
+          chatMessages: [],
+          connected: false,
+          lastEventAt: null,
+          lastUserScrollAt: 0,
+          isRestoringScroll: false,
+          launchingRunId: null,
+          actionConsole: null,
+          actionEditMode: false,
+          actionDirty: false,
+          readOnly: false,
+        };
 
-      const defaultNodes = [
+  
+        const CONSOLIDATED_RUN_UI = true;
+
+        function selectRun(runId) {
+          const select = document.getElementById("runSelect");
+          if (!select) return;
+          select.value = runId || "";
+        }
+
+        async function handleLoadSelected() {
+          const runId = document.getElementById("runSelect").value;
+          if (!runId) return;
+          history.pushState({}, "", `/runs/${runId}`);
+          setRoute("/runs");
+          loadData(runId);
+        }
+
+        async function handleLoadLatest() {
+          try {
+            const latest = await fetchLatest();
+            if (latest?.run_id) {
+              const select = document.getElementById("runSelect");
+              if (select) select.value = latest.run_id;
+              history.pushState({}, "", `/runs/${latest.run_id}`);
+              setRoute("/runs");
+              loadData(latest.run_id);
+            }
+          } catch (err) {
+            setStatus(false, "NO RUNS", "No runs available yet. Launch a new run.");
+            showEmptyState(true);
+          }
+        }
+
+        async function handleRerunSelected() {
+          const runStatus = document.getElementById("runStatus");
+          if (!state.viewModel) {
+            if (runStatus) runStatus.textContent = "Load a run before rerunning.";
+            return;
+          }
+          if (runStatus) runStatus.textContent = "Rerunning...";
+          const rerunBtn = document.getElementById("runActionRerunBtn") || document.getElementById("rerunBtn");
+          if (rerunBtn) rerunBtn.disabled = true;
+          try {
+            const payload = buildRerunPayload();
+            const response = await fetchJson("/build", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            });
+            const newRunId = response?.run_id;
+            if (runStatus) {
+              runStatus.textContent = newRunId ? `Rerun launched: ${newRunId}` : "Rerun launched.";
+            }
+            if (newRunId) {
+              history.pushState({}, "", `/runs/${newRunId}`);
+              setRoute("/runs");
+              await loadData(newRunId);
+            }
+          } catch (err) {
+            if (runStatus) runStatus.textContent = "Rerun failed.";
+          } finally {
+            if (rerunBtn) rerunBtn.disabled = false;
+          }
+        }
+
+        function handleRetryFailed() {
+          const runStatus = document.getElementById("runStatus");
+          const failedNode = latestFailedNode();
+          if (!failedNode) {
+            if (runStatus) runStatus.textContent = "No failed node detected for this run.";
+            return;
+          }
+          if (!state.runId) {
+            if (runStatus) runStatus.textContent = "Load a run before retrying.";
+            return;
+          }
+          document.getElementById("resumeLast").checked = false;
+          document.getElementById("resumeNode").value = failedNode;
+          document.getElementById("resumeRunId").value = state.runId;
+          document.getElementById("launchRun").click();
+        }
+
+        function actionLoadSelected() {
+          handleLoadSelected();
+        }
+
+        function actionLoadLatest() {
+          handleLoadLatest();
+        }
+
+        function actionRerunSelected() {
+          handleRerunSelected();
+        }
+
+        function getRunsModel() {
+          return { runs: state.runs.slice(), labels: { ...state.runLabels } };
+        }
+
+        function applyRunUiMode() {
+          const panel = document.getElementById("runActionsPanel");
+          const oldButtons = [
+            document.getElementById("loadRunBtn"),
+            document.getElementById("latestRunBtn"),
+            document.getElementById("rerunBtn"),
+          ];
+          const openLatest = document.getElementById("openLatestBtn");
+          if (CONSOLIDATED_RUN_UI) {
+            if (panel) panel.style.display = "block";
+            oldButtons.forEach((btn) => {
+              if (btn) btn.style.display = "none";
+            });
+            if (openLatest) openLatest.style.display = "none";
+          } else {
+            if (panel) panel.style.display = "none";
+            oldButtons.forEach((btn) => {
+              if (btn) btn.style.display = "inline-flex";
+            });
+            if (openLatest) openLatest.style.display = "inline-flex";
+          }
+        }
+      window.addEventListener(
+          "scroll",
+          () => {
+            if (!state.isRestoringScroll) {
+              state.lastUserScrollAt = Date.now();
+            }
+          },
+          { passive: true }
+        );
+
+        const defaultNodes = [
         { id: "charter", label: "Charter" },
         { id: "focal_issue", label: "Focal Issue" },
         { id: "company_profile", label: "Company Profile" },
@@ -1478,6 +1609,29 @@
         auditor: ["auditor"],
       };
 
+      const nodeAliases = {
+        charter: "charter",
+        focal_issue: "focal_issue",
+        company_profile: "company_profile",
+        ingest_docs: "ingest_docs",
+        retrieval_real: "retrieval_real",
+        forces: "forces",
+        ebe_rank: "ebe_rank",
+        clusters: "clusters",
+        uncertainty_axes: "uncertainty_axes",
+        scenarios: "scenarios",
+        scenario_media: "scenario_media",
+        strategies: "strategies",
+        wind_tunnel: "wind_tunnel",
+        auditor: "auditor",
+      };
+
+      function resolveNodeName(value) {
+        if (!value) return "";
+        const key = String(value).toLowerCase().replace(/\\s+/g, "_");
+        return nodeAliases[key] || key;
+      }
+
       function apiBase() {
         const base = localStorage.getItem("scenarioops_api_base") || "";
         return base.endsWith("/") ? base.slice(0, -1) : base;
@@ -1517,9 +1671,13 @@
         return fetchJson("/health", { useAuth: true });
       }
 
-      async function fetchRuns() {
-        return fetchJson("/runs");
-      }
+        async function fetchRuns() {
+          try {
+            return await fetchJson("/runs", { useAuth: true });
+          } catch (err) {
+            return fetchJson("/runs", { useAuth: false });
+          }
+        }
 
       async function deleteRun(runId) {
         return fetchJson(`/runs/${runId}`, { method: "DELETE" });
@@ -1550,18 +1708,6 @@
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
-        });
-      }
-
-      async function fetchConfig() {
-        return fetchJson("/config", { useAuth: true });
-      }
-
-      async function saveConfig(settings) {
-        return fetchJson("/config", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ settings }),
         });
       }
 
@@ -1759,46 +1905,62 @@
         return scenarios.length >= 4 && axes.length >= 2;
       }
 
-      function deriveRunStatus() {
-        if (state.launchingRunId) {
-          return { status: "LAUNCHING", lastEvent: null, current: null };
-        }
-        const meta = state.viewModel?.run_meta || {};
-        const nodeStatus = meta.node_status || {};
-        const nodeEntries = Object.entries(nodeStatus).map(([node, entry]) => ({
-          node,
-          entry: entry || {},
-          updated_at: entry?.updated_at ? new Date(entry.updated_at) : null,
-        }));
-        if (nodeEntries.length) {
-          const statuses = nodeEntries.map((item) => String(item.entry.status || "").toUpperCase());
-          const hasFail = statuses.some((status) => status.includes("FAIL"));
-          const hasRunning = statuses.some((status) => status.includes("RUN"));
-          const last = nodeEntries
-            .filter((item) => item.updated_at)
-            .sort((a, b) => b.updated_at - a.updated_at)[0];
+        function deriveRunStatus() {
+          if (state.launchingRunId) {
+            return { status: "LAUNCHING", lastEvent: null, current: null };
+          }
+          const meta = state.viewModel?.run_meta || {};
+          const nodeStatus = meta.node_status || {};
+          const nodeEntries = Object.entries(nodeStatus).map(([node, entry]) => ({
+            node,
+            entry: entry || {},
+            updated_at: entry?.updated_at ? new Date(entry.updated_at) : null,
+          }));
+          if (nodeEntries.length) {
+            const statuses = nodeEntries.map((item) => String(item.entry.status || "").toUpperCase());
+            const hasFail = statuses.some((status) => status.includes("FAIL"));
+            const hasRunning = statuses.some((status) => status.includes("RUN"));
+            const last = nodeEntries
+              .filter((item) => item.updated_at)
+              .sort((a, b) => b.updated_at - a.updated_at)[0];
+            if (hasFail) {
+              return { status: "FAIL", lastEvent: last?.updated_at || null, current: last?.entry || null };
+            }
+            if (hasRunning) {
+              return { status: "RUNNING", lastEvent: last?.updated_at || null, current: last?.entry || null };
+            }
+            if (String(meta.status || "").toUpperCase().includes("COMPLETE") || String(meta.status || "").toUpperCase() === "OK") {
+              return { status: "OK", lastEvent: last?.updated_at || null, current: last?.entry || null };
+            }
+          }
+          const events = Array.isArray(state.nodeEvents) ? state.nodeEvents : [];
+          if (!events.length) {
+            return { status: state.runId ? "PENDING" : "IDLE", lastEvent: null, current: null };
+          }
+          const latestByNode = new Map();
+          events.forEach((entry) => {
+            const node = resolveNodeName(entry.node);
+            if (!node) return;
+            const ts = _parseTimestamp(entry.timestamp);
+            const prev = latestByNode.get(node);
+            if (!prev || (ts && prev.timestamp && ts > prev.timestamp)) {
+              latestByNode.set(node, { entry, timestamp: ts });
+            }
+          });
+          const latestEntries = Array.from(latestByNode.values()).map((item) => item.entry);
+          const latestStatuses = latestEntries.map((entry) => String(entry.status || "").toUpperCase());
+          const hasFail = latestStatuses.some((status) => status.includes("FAIL"));
+          const hasRunning = latestStatuses.some((status) => status.includes("RUN"));
+          const last = _lastNodeEvent();
           if (hasFail) {
-            return { status: "FAIL", lastEvent: last?.updated_at || null, current: last?.entry || null };
+            return { status: "FAIL", lastEvent: last.timestamp, current: last.entry };
           }
           if (hasRunning) {
-            return { status: "RUNNING", lastEvent: last?.updated_at || null, current: last?.entry || null };
+            return { status: "RUNNING", lastEvent: last.timestamp, current: last.entry };
           }
-          if (String(meta.status || "").toUpperCase().includes("COMPLETE")) {
-            return { status: "OK", lastEvent: last?.updated_at || null, current: last?.entry || null };
+          if (_runLooksComplete()) {
+            return { status: "OK", lastEvent: last.timestamp, current: last.entry };
           }
-        }
-        const events = Array.isArray(state.nodeEvents) ? state.nodeEvents : [];
-        if (!events.length) {
-          return { status: state.runId ? "PENDING" : "IDLE", lastEvent: null, current: null };
-        }
-        const hasFail = events.some((entry) => String(entry.status || "").toUpperCase().includes("FAIL"));
-        const last = _lastNodeEvent();
-        if (hasFail) {
-          return { status: "FAIL", lastEvent: last.timestamp, current: last.entry };
-        }
-        if (_runLooksComplete()) {
-          return { status: "OK", lastEvent: last.timestamp, current: last.entry };
-        }
         if (last.timestamp) {
           const minutes = (Date.now() - last.timestamp.getTime()) / 60000;
           if (minutes > STALL_MINUTES) {
@@ -2028,9 +2190,9 @@
         el.innerHTML = `<ul><li>${focal}</li><li>${state.viewModel?.charter?.purpose || ""}</li><li>Next: review wind tunnel recommendations.</li></ul>`;
       }
 
-      function renderWorkflow() {
-        const map = document.getElementById("workflowNodes");
-        map.innerHTML = "";
+        function renderWorkflow() {
+          const map = document.getElementById("workflowNodes");
+          map.innerHTML = "";
         const enabledByPack = new Set(defaultNodes.map((node) => node.id));
         const capabilityNodes = (state.viewModel?.run_meta?.capabilities?.nodes || [])
           .map((node) => String(node).toLowerCase());
@@ -2043,117 +2205,131 @@
             if (!enabledByCapability.has(node)) enabledNodes.delete(node);
           });
         }
-        if (!state.viewModel) {
-          defaultNodes.forEach((node) => {
-            const div = document.createElement("div");
-            div.className = "node";
+          if (!state.viewModel) {
+            defaultNodes.forEach((node) => {
+              const div = document.createElement("div");
+              div.className = "node";
             if (!enabledNodes.has(node.id)) div.classList.add("disabled");
             div.textContent = node.label;
             map.appendChild(div);
-          });
-          return;
-        }
-        defaultNodes.forEach((node) => {
-          const steps = stageMap[node.id] || [];
-          const nodeStatusMap = state.viewModel?.run_meta?.node_status || {};
-          const nodeMeta = nodeStatusMap[node.id] || null;
-          const entries = state.nodeEvents.filter((e) => steps.includes((e.node || "").toLowerCase()));
-          const statuses = entries.map((e) => String(e.status || "").toUpperCase());
-          let stageStatus = "PENDING";
-          if (nodeMeta) {
-            const metaStatus = String(nodeMeta.status || "").toUpperCase();
-            if (metaStatus.includes("FAIL")) {
-              stageStatus = "FAIL";
-            } else if (metaStatus.includes("RUN")) {
-              stageStatus = "RUNNING";
-            } else if (metaStatus.includes("OK") || metaStatus.includes("SKIPPED") || metaStatus.includes("HYDRATED")) {
-              stageStatus = "OK";
-            }
-          } else if (statuses.some((status) => status.includes("FAIL"))) {
-            stageStatus = "FAIL";
-          } else if (statuses.some((status) => status.includes("RUN"))) {
-            stageStatus = "RUNNING";
-          } else if (steps.length && entries.length === steps.length && statuses.every((status) => status.includes("OK") || status.includes("SKIPPED"))) {
-            stageStatus = "OK";
-          } else if (entries.length) {
-            stageStatus = runComplete ? "OK" : "RUNNING";
-          }
-          if (runComplete && entries.length === 0 && stageStatus === "PENDING") {
-            stageStatus = "SKIPPED";
-          }
-          const div = document.createElement("div");
-          const isEnabled = enabledNodes.has(node.id);
-          div.className = "node";
-          if (!isEnabled) div.classList.add("disabled");
-          if (stageStatus === "RUNNING") div.classList.add("running");
-          if (stageStatus === "FAIL") div.classList.add("error");
-          if (stageStatus === "OK") div.classList.add("success");
-          div.textContent = node.label;
-          if (isEnabled) {
-            const durationSeconds = entries.reduce(
-              (total, entry) => total + (entry.duration_seconds || 0),
-              0
-            );
-            const detailMessage = steps.length
-              ? `Steps: ${steps.join(", ")} (${entries.length}/${steps.length})`
-              : "No steps mapped.";
-            div.addEventListener("click", () =>
-              renderNodeDetail({
-                node: node.id,
-                status: stageStatus,
-                message: detailMessage,
-                duration_seconds: nodeMeta?.duration_seconds ?? durationSeconds,
-                attempt: nodeMeta?.attempt,
-              })
-            );
-          }
-          map.appendChild(div);
-        });
-      }
-
-      function renderNodeDetail(entry) {
-        const detail = document.getElementById("nodeDetailBody");
-        detail.classList.remove("ghost");
-        if (!entry) {
-          detail.textContent = "Select a node to view details.";
-          return;
-        }
-        const history = state.nodeEvents
-          .filter((e) => String(e.node || "").toLowerCase() === String(entry.node || "").toLowerCase())
-          .slice(-5)
-          .map((e, idx) => {
-            const status = String(e.status || "OK");
-            const ts = e.timestamp ? formatDate(e.timestamp) : "unknown";
-            return `<div>${idx + 1}. ${status} • ${ts}</div>`;
-          })
-          .join("");
-        detail.innerHTML = `
-          <div><strong>${entry.node || "node"}</strong></div>
-          <div>Status: ${entry.status || "OK"}</div>
-          <div>Duration: ${entry.duration_seconds || 0}s</div>
-          ${entry.attempt ? `<div>Attempts: ${entry.attempt}</div>` : ""}
-          <div>Notes: ${entry.message || entry.detail || "None"}</div>
-          ${history ? `<div style="margin-top:8px;"><div class="helper">Recent attempts</div>${history}</div>` : ""}
-        `;
-      }
-
-      function renderRunProgress() {
-          const el = document.getElementById("runProgress");
-          if (!el) return;
-          if (!state.viewModel) {
-            el.textContent = "No run loaded.";
+            });
             return;
           }
-          const events = state.nodeEvents || [];
-          const completed = events.filter((e) => String(e.status || "").toUpperCase().includes("OK")).length;
-          const failed = events.filter((e) => String(e.status || "").toUpperCase().includes("FAIL")).length;
-          const derived = deriveRunStatus();
-          const status = derived.status || _statusLabel(state.connected);
-          const current = derived.current
-            ? `${derived.current.node || "node"} (${derived.current.status || "OK"})`
-            : state.launchingRunId
-            ? "Launching"
-            : "Pending";
+            const deriveStageStatus = (entries, nodeMeta, steps) => {
+              const statuses = entries.map((e) => String(e.status || "").toUpperCase());
+              let stageStatus = "PENDING";
+              if (nodeMeta) {
+                const metaStatus = String(nodeMeta.status || "").toUpperCase();
+                if (metaStatus.includes("FAIL")) {
+                  stageStatus = "FAIL";
+                } else if (metaStatus.includes("RUN")) {
+                  stageStatus = "RUNNING";
+                } else if (metaStatus.includes("OK") || metaStatus.includes("SKIPPED") || metaStatus.includes("HYDRATED")) {
+                  stageStatus = "OK";
+                } else if (metaStatus) {
+                  stageStatus = metaStatus;
+                }
+              } else if (statuses.some((status) => status.includes("FAIL"))) {
+                stageStatus = "FAIL";
+              } else if (statuses.some((status) => status.includes("RUN"))) {
+                stageStatus = "RUNNING";
+              } else if (
+                steps.length &&
+                entries.length === steps.length &&
+                statuses.every((status) => status.includes("OK") || status.includes("SKIPPED"))
+              ) {
+                stageStatus = "OK";
+              } else if (entries.length) {
+                stageStatus = runComplete ? "OK" : "RUNNING";
+              }
+              if (runComplete && entries.length === 0 && stageStatus === "PENDING") {
+                stageStatus = "NOT_RUN";
+              }
+              return stageStatus;
+            };
+
+            const buildDetailEntry = (node, stageStatus, entries, nodeMeta, steps) => {
+              const durationSeconds = entries.reduce(
+                (total, entry) => total + (entry.duration_seconds || 0),
+                0
+              );
+              const detailMessage = steps.length
+                ? `Steps: ${steps.join(", ")} (${entries.length}/${steps.length})`
+                : "No steps mapped.";
+              const lastEntry = entries[entries.length - 1] || {};
+              const hasTiming =
+                typeof nodeMeta?.duration_seconds === "number" || entries.some((e) => e.duration_seconds);
+              return {
+                node: node.id,
+                status: stageStatus,
+                message: nodeMeta?.message || lastEntry.message || detailMessage,
+                detail: nodeMeta?.detail || lastEntry.detail,
+                duration_seconds: hasTiming ? (nodeMeta?.duration_seconds ?? durationSeconds) : null,
+                attempt: nodeMeta?.attempt ?? lastEntry.attempt,
+                updated_at: nodeMeta?.updated_at || lastEntry.timestamp,
+              };
+            };
+            const statusLabelMap = {
+              OK: "COMPLETED",
+              FAIL: "FAILED",
+              FAILED: "FAILED",
+              RUNNING: "RUNNING",
+              PENDING: "NOT RUN",
+              NOT_RUN: "NOT RUN",
+              SKIPPED: "NOT RUN",
+            };
+            defaultNodes.forEach((node) => {
+              const steps = stageMap[node.id] || [];
+              const nodeStatusMap = state.viewModel?.run_meta?.node_status || {};
+              const nodeMeta = nodeStatusMap[node.id] || null;
+              const entries = state.nodeEvents.filter((e) => steps.includes(resolveNodeName(e.node)));
+              const stageStatus = deriveStageStatus(entries, nodeMeta, steps);
+              const div = document.createElement("div");
+              const isEnabled = enabledNodes.has(node.id);
+              div.className = "node";
+              if (!isEnabled) div.classList.add("disabled");
+              if (stageStatus === "RUNNING") div.classList.add("running");
+              if (stageStatus === "FAIL") div.classList.add("error");
+              if (stageStatus === "OK") div.classList.add("success");
+              div.textContent = node.label;
+              const entry = buildDetailEntry(node, stageStatus, entries, nodeMeta, steps);
+              const detail = document.createElement("div");
+              detail.className = "node-detail";
+              const statusLabel = statusLabelMap[String(entry.status || "PENDING").toUpperCase()] || entry.status;
+              const durationValue =
+                typeof entry.duration_seconds === "number" ? `${entry.duration_seconds}s` : "--";
+              detail.innerHTML = `Status: ${statusLabel}<br/>Duration: ${durationValue}`;
+              div.appendChild(detail);
+              map.appendChild(div);
+            });
+        }
+
+        function renderRunProgress() {
+            const el = document.getElementById("runProgress");
+            if (!el) return;
+            if (!state.viewModel) {
+              el.textContent = "No run loaded.";
+              return;
+            }
+            const statusLabelMap = {
+              OK: "COMPLETED",
+              FAIL: "FAILED",
+              FAILED: "FAILED",
+              RUNNING: "RUNNING",
+              PENDING: "NOT RUN",
+              NOT_RUN: "NOT RUN",
+              SKIPPED: "NOT RUN",
+            };
+            const events = state.nodeEvents || [];
+            const completed = events.filter((e) => String(e.status || "").toUpperCase().includes("OK")).length;
+            const failed = events.filter((e) => String(e.status || "").toUpperCase().includes("FAIL")).length;
+            const derived = deriveRunStatus();
+            const status = derived.status || _statusLabel(state.connected);
+              const current = derived.current
+              ? `${derived.current.node || "node"} (${statusLabelMap[String(derived.current.status || "OK").toUpperCase()] || derived.current.status || "OK"})`
+              : state.launchingRunId
+              ? "Launching"
+              : "Pending";
           const lastUpdate = derived.lastEvent ? ` • Last update ${formatAge(derived.lastEvent)}` : "";
           el.textContent = `Status: ${status} • Current: ${current} • Completed: ${completed} • Failed: ${failed}${lastUpdate}`;
         }
@@ -2175,33 +2351,6 @@
           div.innerHTML = `<span>${item}</span>`;
           container.appendChild(div);
         });
-      }
-
-      function buildLogLines() {
-        const includeRaw = document.getElementById("toggleRawLogs").checked;
-        const lines = [];
-        state.nodeEvents.forEach((entry) => {
-          lines.push({ text: `${entry.node || "node"} :: ${entry.status || "OK"}`, tag: entry.node || "node" });
-        });
-        if (includeRaw) {
-          state.normalization.forEach((entry) => {
-            lines.push({ text: `normalize :: ${entry.operation || ""}`, tag: "raw" });
-          });
-        }
-        return lines;
-      }
-
-      function renderTerminal(logs) {
-        const terminal = document.getElementById("terminal");
-        if (!state.viewModel) {
-          terminal.innerHTML = "<div class=\"helper\">No run loaded.</div>";
-          return;
-        }
-        if (!logs.length) {
-          terminal.innerHTML = "<div class=\"helper\">No logs yet. Launch a run to see live activity.</div>";
-          return;
-        }
-        terminal.innerHTML = logs.map((line) => `<div>${line.text}</div>`).join("");
       }
 
       function renderSignalFeed() {
@@ -2833,16 +2982,16 @@
         renderAxisEbeGraph();
       }
 
-      function clearView(reason) {
-        state.viewModel = null;
-        state.nodeEvents = [];
-        state.normalization = [];
-        state.latestLinks = [];
-        state.logs = [];
-        state.lastEventAt = null;
-        state.actionConsole = null;
-        state.actionDirty = false;
-        state.uploadedDocs = [];
+        function clearView(reason) {
+          state.viewModel = null;
+          state.nodeEvents = [];
+          state.normalization = [];
+          state.latestLinks = [];
+          state.logs = [];
+          state.lastEventAt = null;
+          state.actionConsole = null;
+          state.actionDirty = false;
+          state.uploadedDocs = [];
         const uploadInput = document.getElementById("uploadInput");
         if (uploadInput) uploadInput.value = "";
         const uploadStatus = document.getElementById("uploadStatus");
@@ -2855,7 +3004,6 @@
         renderScenarioCards();
         renderWindTunnel();
         renderActionConsole();
-        renderTerminal([]);
         const runStatus = document.getElementById("runStatus");
         if (runStatus && reason) {
           runStatus.textContent = reason;
@@ -2864,9 +3012,9 @@
 
       function syncRunControls() {
         const context = resolveContext(state.viewModel);
-        document.getElementById("controlCompany").value = context.company || "";
+        // Legacy filter controls removed.
         if (context.horizon) {
-          document.getElementById("controlHorizon").value = context.horizon;
+          // Legacy filter controls removed.
         }
       }
 
@@ -2894,25 +3042,25 @@
         async function loadData(runIdOverride) {
           try {
             showEmptyState(false);
-            state.lastEventAt = null;
             setStatus(true, "CONNECTING", "Fetching run data...");
+            const loadStartedAt = Date.now();
             const scrollY = window.scrollY;
             let runId = runIdOverride || getRunIdFromPath() || state.runId;
           if (runId) {
             state.latestLinks = [];
           }
-          let latest = null;
-          if (!runId) {
-            latest = await fetchLatest();
-            runId = latest.run_id;
-            state.latestLinks = latest.links || [];
-          }
-          if (!runId) {
-            showEmptyState(true);
-            clearView("No run loaded. Launch or load a run.");
-            return false;
-          }
-          state.runId = runId;
+            let latest = null;
+            if (!runId) {
+              latest = await fetchLatest();
+                runId = latest.run_id;
+                state.latestLinks = latest.links || [];
+              }
+            if (!runId) {
+              showEmptyState(true);
+              clearView("No run loaded. Launch or load a run.");
+              return false;
+            }
+            state.runId = runId;
           state.viewModel = await fetchArtifact(runId, "view_model.json");
           const runStatusValue = String(state.viewModel?.run_meta?.status || "").toUpperCase();
           const isFailed = runStatusValue === "FAIL" || runStatusValue === "FAILED";
@@ -2928,9 +3076,7 @@
             state.actionEditMode = false;
             const last = _lastNodeEvent();
             state.lastEventAt = last.timestamp;
-            const logs = buildLogLines();
-            state.logs = logs;
-          renderTerminal(logs);
+            state.logs = [];
           applyReadOnlyState();
           syncRunControls();
           renderRunPage();
@@ -2939,49 +3085,62 @@
           renderScenarioCards();
           renderWindTunnel();
           renderActionConsole();
-          refreshAdvancedPreview();
-          refreshRuns();
-          window.scrollTo(0, scrollY);
-          setStatus(true);
-          return true;
-        } catch (err) {
-          showEmptyState(true);
-          clearView("No run loaded. Launch or load a run.");
-          const status = err?.status;
-          const message = status === 401 || status === 403 ? "UNAUTHORIZED" : "OFFLINE";
-          const detail =
-            status === 401 || status === 403
-              ? "Access denied. Open Access and enter a valid API key."
-              : undefined;
-          setStatus(false, message, detail);
-          return false;
-        }
-      }
-
-      async function refreshRuns() {
-        try {
-          const payload = await fetchRuns();
-          if (Array.isArray(payload)) {
-            state.runs = payload;
-            state.runLabels = {};
-          } else {
-            state.runs = payload.runs || [];
-            state.runLabels = payload.labels || {};
+            refreshAdvancedPreview();
+            refreshRuns();
+            if (state.lastUserScrollAt <= loadStartedAt) {
+              state.isRestoringScroll = true;
+              window.scrollTo(0, scrollY);
+              requestAnimationFrame(() => {
+                state.isRestoringScroll = false;
+              });
+            }
+            setStatus(true);
+            return true;
+          } catch (err) {
+            const hasExistingView = Boolean(state.viewModel && state.runId);
+            if (!hasExistingView) {
+              showEmptyState(true);
+              clearView("No run loaded. Launch or load a run.");
+            }
+            const status = err?.status;
+            const message = status === 401 || status === 403 ? "UNAUTHORIZED" : "OFFLINE";
+            const detail =
+              status === 401 || status === 403
+                ? "Access denied. Open Access and enter a valid API key."
+                : undefined;
+            setStatus(false, message, detail);
+            return false;
           }
-        } catch (err) {
-          state.runs = [];
-          state.runLabels = {};
         }
-        const select = document.getElementById("runSelect");
-        select.innerHTML = state.runs
-          .map((run) => {
-            const label = escapeHtml(state.runLabels[run] || run);
-            return `<option value="${run}">${label}</option>`;
-          })
-          .join("");
-        if (state.runId) {
-          select.value = state.runId;
-        }
+
+        async function refreshRuns() {
+          try {
+            const payload = await fetchRuns();
+            if (Array.isArray(payload)) {
+              state.runs = payload;
+              state.runLabels = {};
+            } else {
+              state.runs = payload.runs || [];
+              state.runLabels = payload.labels || {};
+            }
+          } catch (err) {
+            state.runs = [];
+            state.runLabels = {};
+          }
+          const select = document.getElementById("runSelect");
+          if (state.runs.length) {
+            select.innerHTML = state.runs
+              .map((run) => {
+                const label = escapeHtml(state.runLabels[run] || run);
+                return `<option value="${run}">${label}</option>`;
+              })
+              .join("");
+          } else {
+            select.innerHTML = `<option value="">No runs available</option>`;
+          }
+          if (state.runId) {
+            select.value = state.runId;
+          }
         const runList = document.getElementById("runList");
         runList.innerHTML = "";
         state.runs.slice(0, 8).forEach((run) => {
@@ -3146,9 +3305,7 @@
         const settingsOverrides = runConfig.settings || buildSettingsOverrides();
         const mode = settingsOverrides.mode || runConfig.settings?.mode || draft.mode || "live";
         const generateStrategies =
-          runConfig.generate_strategies !== undefined
-            ? runConfig.generate_strategies
-            : document.getElementById("generateStrategies").value === "true";
+          runConfig.generate_strategies !== undefined ? runConfig.generate_strategies : true;
         return {
           scope,
           value,
@@ -3427,7 +3584,7 @@
         const resumeLast = document.getElementById("resumeLast").checked;
         const manualRunId = document.getElementById("resumeRunId").value.trim();
         const selectedRunId = document.getElementById("runSelect").value;
-        const generateStrategies = document.getElementById("generateStrategies").value === "true";
+        const generateStrategies = true;
         const latest = resumeLast ? await fetchLatest().catch(() => null) : null;
         const runId = manualRunId || (resumeFrom ? (resumeLast ? latest?.run_id : selectedRunId) : null);
         const plannedRunId = runId || (!resumeFrom ? generateRunId() : null);
@@ -3495,100 +3652,28 @@
         }
       });
 
-      document.getElementById("newRunBtn").addEventListener("click", () => {
+      document.getElementById("newRunBtn")?.addEventListener("click", () => {
         state.uploadedDocs = [];
         const uploadInput = document.getElementById("uploadInput");
         if (uploadInput) uploadInput.value = "";
         const uploadStatus = document.getElementById("uploadStatus");
         if (uploadStatus) uploadStatus.textContent = "";
         currentStep = 0;
-        renderWizard();
-        document.getElementById("wizard").scrollIntoView({ behavior: "smooth" });
-      });
-
-      document.getElementById("openLatestBtn").addEventListener("click", async () => {
-        try {
-          const latest = await fetchLatest();
-          if (latest?.run_id) {
-            history.pushState({}, "", `/runs/${latest.run_id}`);
-            setRoute("/runs");
-            loadData(latest.run_id);
-          }
-        } catch (err) {
-          setStatus(false, "NO RUNS", "No runs available yet. Launch a new run.");
-          showEmptyState(true);
-        }
-      });
-
-      document.getElementById("loadRunBtn").addEventListener("click", () => {
-        const runId = document.getElementById("runSelect").value;
-        if (!runId) return;
-        history.pushState({}, "", `/runs/${runId}`);
         setRoute("/runs");
-        loadData(runId);
+        const modal = document.getElementById("forgeModal");
+        if (modal) modal.classList.remove("hidden");
+        document.body.classList.add("modal-open");
+        renderWizard();
+        const wizard = document.getElementById("wizard");
+        if (wizard) {
+          wizard.scrollIntoView({ behavior: "smooth" });
+        }
+        setTimeout(() => {
+          const companyInput = document.getElementById("forgeCompany");
+          if (companyInput) companyInput.focus();
+        }, 50);
       });
-
-      document.getElementById("latestRunBtn").addEventListener("click", async () => {
-        try {
-          const latest = await fetchLatest();
-          if (latest?.run_id) {
-            document.getElementById("runSelect").value = latest.run_id;
-            history.pushState({}, "", `/runs/${latest.run_id}`);
-            setRoute("/runs");
-            loadData(latest.run_id);
-          }
-        } catch (err) {
-          setStatus(false, "NO RUNS", "No runs available yet. Launch a new run.");
-          showEmptyState(true);
-        }
-      });
-
-      document.getElementById("rerunBtn").addEventListener("click", async () => {
-        const runStatus = document.getElementById("runStatus");
-        if (!state.viewModel) {
-          runStatus.textContent = "Load a run before rerunning.";
-          return;
-        }
-        runStatus.textContent = "Rerunning...";
-        const rerunBtn = document.getElementById("rerunBtn");
-        rerunBtn.disabled = true;
-        try {
-          const payload = buildRerunPayload();
-          const response = await fetchJson("/build", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          });
-          const newRunId = response?.run_id;
-          runStatus.textContent = newRunId ? `Rerun launched: ${newRunId}` : "Rerun launched.";
-          if (newRunId) {
-            history.pushState({}, "", `/runs/${newRunId}`);
-            setRoute("/runs");
-            await loadData(newRunId);
-          }
-        } catch (err) {
-          runStatus.textContent = "Rerun failed.";
-        } finally {
-          rerunBtn.disabled = false;
-        }
-      });
-
-      document.getElementById("retryFailedBtn").addEventListener("click", async () => {
-        const runStatus = document.getElementById("runStatus");
-        const failedNode = latestFailedNode();
-        if (!failedNode) {
-          runStatus.textContent = "No failed node detected for this run.";
-          return;
-        }
-        if (!state.runId) {
-          runStatus.textContent = "Load a run before retrying.";
-          return;
-        }
-        document.getElementById("resumeLast").checked = false;
-        document.getElementById("resumeNode").value = failedNode;
-        document.getElementById("resumeRunId").value = state.runId;
-        document.getElementById("launchRun").click();
-      });
+      
 
       document.getElementById("uploadInput").addEventListener("change", async (event) => {
         const files = event.target.files || [];
@@ -3602,10 +3687,6 @@
         } catch (err) {
           status.textContent = "Upload failed. python-multipart may be missing.";
         }
-      });
-
-      document.getElementById("toggleRawLogs").addEventListener("change", () => {
-        renderTerminal(buildLogLines());
       });
 
       document.getElementById("chatSend")?.addEventListener("click", sendChat);
@@ -3721,81 +3802,97 @@
         .map((step) => `<option value="${step}">${step.replace(/_/g, " ")}</option>`)
         .join("")}`;
 
-      document.getElementById("accessBtn").addEventListener("click", () => {
-        document.getElementById("accessModal").classList.remove("hidden");
+      
+      document.getElementById("configPanelBtn").addEventListener("click", async () => {
+        document.getElementById("configPanelModal").classList.remove("hidden");
+        document.body.classList.add("modal-open");
         document.getElementById("apiBaseInput").value = apiBase() || window.location.origin;
         document.getElementById("apiKeyInput").value = localStorage.getItem("scenarioops_api_key") || "";
       });
 
-      document.getElementById("closeAccess").addEventListener("click", () => {
-        document.getElementById("accessModal").classList.add("hidden");
-      });
-
-      document.getElementById("saveAccess").addEventListener("click", () => {
+      document.getElementById("saveConfigPanel").addEventListener("click", () => {
         localStorage.setItem("scenarioops_api_base", document.getElementById("apiBaseInput").value.trim());
         localStorage.setItem("scenarioops_api_key", document.getElementById("apiKeyInput").value.trim());
-        document.getElementById("accessModal").classList.add("hidden");
+        updateAdvDraft(collectAdvancedOverrides());
         refreshApiKeyStatus();
         loadData();
+        document.getElementById("configPanelModal").classList.add("hidden");
+        document.body.classList.remove("modal-open");
       });
 
-      document.getElementById("configBtn").addEventListener("click", async () => {
-        document.getElementById("configModal").classList.remove("hidden");
-        const editor = document.getElementById("configEditor");
-        const status = document.getElementById("configStatus");
-        status.textContent = "Loading...";
-        try {
-          const payload = await fetchConfig();
-          editor.value = JSON.stringify(payload.settings || {}, null, 2);
-          editor.readOnly = !payload.is_admin;
-          status.textContent = payload.is_admin ? "Admin access granted." : "Read-only access.";
-        } catch (err) {
-          status.textContent = "Unable to load config. Check API key.";
-          editor.value = "";
+      document.getElementById("closeConfigPanel").addEventListener("click", () => {
+        document.getElementById("configPanelModal").classList.add("hidden");
+        document.body.classList.remove("modal-open");
+      });
+
+      const saveAccess = document.getElementById("saveAccess");
+      if (saveAccess) {
+        saveAccess.addEventListener("click", () => {
+          localStorage.setItem("scenarioops_api_base", document.getElementById("apiBaseInput").value.trim());
+          localStorage.setItem("scenarioops_api_key", document.getElementById("apiKeyInput").value.trim());
+          refreshApiKeyStatus();
+          loadData();
+        });
+      }
+
+      document.addEventListener("click", async (event) => {
+        const target = event.target;
+        if (!target) return;
+        const button = target.closest("button");
+        if (!button || !button.id) return;
+        if (button.id === "loadRunBtn" || button.id === "runActionLoadBtn") {
+          await handleLoadSelected();
+          return;
+        }
+        if (button.id === "latestRunBtn" || button.id === "runActionLatestBtn") {
+          await handleLoadLatest();
+          return;
+        }
+        if (button.id === "rerunBtn" || button.id === "runActionRerunBtn") {
+          await handleRerunSelected();
+          return;
+        }
+        if (button.id === "retryFailedBtn") {
+          handleRetryFailed();
         }
       });
 
-      document.getElementById("closeConfig").addEventListener("click", () => {
-        document.getElementById("configModal").classList.add("hidden");
+      applyRunUiMode();
+
+      document.getElementById("startNewRunBtn")?.addEventListener("click", () => {
+        const modal = document.getElementById("forgeModal");
+        if (modal) modal.classList.remove("hidden");
+        document.body.classList.add("modal-open");
+        currentStep = 0;
+        renderWizard();
+        const wizard = document.getElementById("wizard");
+        if (wizard) wizard.scrollIntoView({ behavior: "smooth" });
+        setTimeout(() => {
+          const companyInput = document.getElementById("forgeCompany");
+          if (companyInput) companyInput.focus();
+        }, 50);
       });
 
-      document.getElementById("saveConfig").addEventListener("click", async () => {
-        const status = document.getElementById("configStatus");
-        try {
-          const settings = JSON.parse(document.getElementById("configEditor").value || "{}");
-          await saveConfig(settings);
-          status.textContent = "Config saved.";
-        } catch (err) {
-          status.textContent = "Config save failed.";
-        }
+      document.getElementById("closeForge")?.addEventListener("click", () => {
+        const modal = document.getElementById("forgeModal");
+        if (modal) modal.classList.add("hidden");
+        document.body.classList.remove("modal-open");
       });
 
-      document.getElementById("helpBtn").addEventListener("click", () => {
+document.getElementById("helpBtn").addEventListener("click", () => {
         document.getElementById("helpModal").classList.remove("hidden");
+        document.body.classList.add("modal-open");
       });
 
       document.getElementById("closeHelp").addEventListener("click", () => {
         document.getElementById("helpModal").classList.add("hidden");
+        document.body.classList.remove("modal-open");
       });
 
       applyAdvancedDraft();
       updateAdvDraft(advDraft);
       attachAdvancedHandlers();
 
-      let activeLogTab = "all";
-      document.querySelectorAll("#logTabs .tab").forEach((tab) => {
-        tab.addEventListener("click", () => {
-          document.querySelectorAll("#logTabs .tab").forEach((t) => t.classList.remove("active"));
-          tab.classList.add("active");
-          activeLogTab = tab.dataset.log;
-          if (activeLogTab === "all") {
-            renderTerminal(buildLogLines());
-            return;
-          }
-          const filtered = buildLogLines().filter((line) => line.text.toLowerCase().includes(activeLogTab));
-          renderTerminal(filtered);
-        });
-      });
 
       function startPolling() {
         let delay = 8000;

@@ -241,6 +241,8 @@ def _apply_overrides(
         raise ValueError(f"Unknown settings keys: {', '.join(sorted(unknown))}")
     updated: dict[str, Any] = {}
     for key, value in values.items():
+        if value is None:
+            continue
         if key in _BOOL_FIELDS:
             if isinstance(value, str):
                 updated[key] = value.strip().lower() in {"1", "true", "yes", "on"}

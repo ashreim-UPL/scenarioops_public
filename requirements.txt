@@ -12,7 +12,6 @@ psycopg[binary]  # Postgres connectivity
 google-cloud-storage  # GCS run storage
 
 # --- UI & Visualization ---
-streamlit        # Dashboard UI
 pandas           # Data Manipulation
 plotly           # Strategic Visualization
 numpy            # Numeric ops for embeddings/clustering

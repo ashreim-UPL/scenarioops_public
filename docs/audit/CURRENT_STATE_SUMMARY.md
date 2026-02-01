@@ -18,7 +18,7 @@ The core execution engine uses a graph-based approach (`run_graph`) where state 
 ### Entry Points
 *   **CLI:** `scenarioops` (console script) dispatches to `scenarioops.app.main`. Handles commands like `build-scenarios`, `run-daily`, `verify`.
 *   **API:** `scenarioops/app/api.py` (FastAPI). Exposes endpoints `/build`, `/strategies`, `/daily`.
-*   **UI:** `src/scenarioops/ui/streamlit_app.py` (Streamlit). Provides an interactive dashboard to trigger runs and visualize artifacts.
+*   **UI:** FastAPI web app (`scenarioops/app/api.py`) serving the dashboards at `/` and `/ops`.
 
 ### Orchestration
 *   **Core Engine:** `scenarioops/graph/build_graph.py`. The `run_graph` function is the primary orchestrator. It explicitly calls node functions (e.g., `run_charter_node`, `run_scan_node`) in a defined sequence.
@@ -29,7 +29,7 @@ The core execution engine uses a graph-based approach (`run_graph`) where state 
 
 **External Libraries (Production):**
 *   `fastapi`, `uvicorn`: API server.
-*   `streamlit`: UI dashboard.
+*   FastAPI-served HTML dashboards for the UI.
 *   `pandas`, `plotly`: Data manipulation and visualization.
 *   `jsonschema`: Validation.
 *   `requests`: HTTP client (likely for retrieval).
@@ -53,7 +53,7 @@ The core execution engine uses a graph-based approach (`run_graph`) where state 
 *   **Status:** 🟡 **PARTIAL**
 *   **Findings:**
     *   **Safety Gating:** Input validation uses Pydantic in `api.py` and Dataclasses in `build_graph.py`. `GraphInputs` provides some structure.
-    *   **Deterministic Execution:** Randomness is managed in some areas (e.g., `streamlit_app.py` sets seed), but LLM calls are inherently non-deterministic without strict seeding/temperature controls (not fully verified in deep inspection).
+    *   **Deterministic Execution:** LLM calls are inherently non-deterministic without strict seeding/temperature controls (not fully verified in deep inspection).
     *   **Fail Fast:** `run_graph` uses broad `try...except Exception` blocks, which might mask specific errors, though it does log the error summary.
 
 ### C3: Observability & Reliability
