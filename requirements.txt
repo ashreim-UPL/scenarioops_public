@@ -13,6 +13,7 @@ google-cloud-storage  # GCS run storage
 
 # --- UI & Visualization ---
 pandas           # Data Manipulation
+pyarrow          # Parquet engine support
 plotly           # Strategic Visualization
 numpy            # Numeric ops for embeddings/clustering
 scikit-learn     # Clustering + vectorization
