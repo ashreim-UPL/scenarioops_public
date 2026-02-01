@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 import re
 from urllib.parse import urljoin
-from urllib.request import Request, urlopen
 
 from scenarioops.app.config import LLMConfig, ScenarioOpsSettings, llm_config_from_settings
 from scenarioops.graph.nodes.utils import build_prompt
@@ -17,7 +16,7 @@ from scenarioops.graph.tools.schema_validate import load_schema, validate_artifa
 from scenarioops.graph.tools.search import search_web
 from scenarioops.graph.tools.traceability import build_run_metadata
 from scenarioops.graph.tools.vectordb import open_run_vector_store
-from scenarioops.graph.tools.web_retriever import retrieve_url
+from scenarioops.graph.tools.web_retriever import retrieve_bytes, retrieve_url
 from scenarioops.graph.types import ArtifactData, NodeResult
 from scenarioops.llm.client import get_llm_client
 from scenarioops.llm.guards import ensure_dict
@@ -221,24 +220,27 @@ def _chunk_text(text: str) -> list[str]:
     return chunks
 
 
-def _download_pdf_text(url: str, *, timeout_seconds: float = 25.0) -> tuple[str, str | None]:
+def _download_pdf_text(
+    url: str,
+    *,
+    run_id: str,
+    base_dir: Path | None,
+    allow_web: bool,
+    timeout_seconds: float = 25.0,
+) -> tuple[str, str | None]:
     try:
         from pypdf import PdfReader
     except Exception:
         return "", "pdf_parser_unavailable"
     try:
-        request = Request(
+        content, _, _ = retrieve_bytes(
             url,
-            headers={
-                "User-Agent": (
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                    "AppleWebKit/537.36 (KHTML, like Gecko) "
-                    "Chrome/120.0.0.0 Safari/537.36"
-                )
-            },
+            run_id=run_id,
+            base_dir=base_dir,
+            allow_web=allow_web,
+            enforce_allowlist=False,
+            timeout_seconds=timeout_seconds,
         )
-        with urlopen(request, timeout=timeout_seconds) as response:
-            content = response.read()
     except Exception as exc:
         return "", f"pdf_download_failed:{exc}"
     try:
@@ -270,7 +272,7 @@ def _fetch_report_text(
         return "", None, "network_disabled"
     lowered = url.lower()
     if lowered.endswith(".pdf") or ".pdf?" in lowered:
-        text, error = _download_pdf_text(url)
+        text, error = _download_pdf_text(url, run_id=run_id, base_dir=base_dir, allow_web=allow_web)
         return text, "application/pdf", error
     try:
         retrieved = retrieve_url(

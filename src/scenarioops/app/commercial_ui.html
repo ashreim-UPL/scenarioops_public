@@ -804,11 +804,6 @@
 
       .hidden {
         display: none !important;
-        visibility: hidden !important;
-        height: 0 !important;
-        width: 0 !important;
-        overflow: hidden !important;
-        position: absolute !important;
       }
 
       section[data-view="/runs"] {
@@ -1092,9 +1087,38 @@
         grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
         gap: 16px;
       }
+
+      .back-to-top {
+        margin-top: 16px;
+        display: flex;
+        justify-content: flex-end;
+      }
+
+      .back-to-top-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        color: var(--muted);
+        text-decoration: none;
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        background: rgba(12, 18, 32, 0.6);
+        transition: all 180ms ease;
+      }
+
+      .back-to-top-link:hover {
+        color: var(--text);
+        border-color: rgba(40, 240, 200, 0.6);
+        box-shadow: 0 0 0 2px rgba(40, 240, 200, 0.12);
+      }
     </style>
   </head>
   <body>
+    <div id="top"></div>
     <div class="page">
       <div class="glass status-bar">
         <div class="status-left">
@@ -1125,7 +1149,7 @@
         <a class="nav-link" data-route="/chat" href="/chat">Advisor</a>
       </nav>
 
-      <section class="section" data-view="/runs">
+      <section class="section" id="runs-section" data-view="/runs">
         <div class="glass" style="padding: 14px 18px; margin-bottom: 12px; display:flex; justify-content: space-between; align-items:center;">
           <div class="section-title" style="margin:0;">Strategic Forge</div>
           <button class="primary" id="startNewRunBtn">Start New Run</button>
@@ -1149,7 +1173,6 @@
           </div>
           <div class="section-title" style="margin-top: 10px;">Recent Runs</div>
           <div id="runList" class="run-list"></div>
-          <label>Resume last run<input id="resumeLast" type="checkbox" /></label>
           <label>Resume from node<select id="resumeNode"></select></label>
           <label>Run ID<input id="resumeRunId" placeholder="Optional" /></label>
           <label>Uploads (optional)<input id="uploadInput" type="file" multiple /></label>
@@ -1212,21 +1235,42 @@
               </div>
           </div>
 
+          <div id="chat-section" class="glass" style="padding: 18px;">
+            <div class="section-title">Scenario Advisor</div>
+            <div class="helper" style="margin-bottom: 12px;">
+              Ask questions grounded in the run artifacts + vector database. The assistant will only use run data.
+            </div>
+            <div class="chat-panel">
+              <div id="chatMessages" class="chat-messages"></div>
+              <div class="chat-input">
+                <textarea id="chatInput" placeholder="Ask about scenarios, strategies, market signals, or risks..."></textarea>
+                <button id="chatSend" class="primary">Ask</button>
+              </div>
+              <div id="chatStatus" class="helper"></div>
+            </div>
+          </div>
+
           
 
         </div>
 
+        <div class="back-to-top">
+          <a class="back-to-top-link" href="#top">Back to top</a>
+        </div>
       </section>
 
-      <section class="section hidden" data-view="/intelligence">
+      <section class="section" id="intelligence-section" data-view="/intelligence">
         <div class="glass" style="padding: 18px;">
           <div class="section-title">Intelligence Signals</div>
           <div id="signalMeta" class="helper" style="margin-bottom: 10px;"></div>
           <div id="signalFeed" class="cards"></div>
         </div>
+        <div class="back-to-top">
+          <a class="back-to-top-link" href="#top">Back to top</a>
+        </div>
       </section>
 
-      <section class="section hidden" data-view="/scenarios">
+      <section class="section" id="scenarios-section" data-view="/scenarios">
         <div class="glass" style="padding: 18px;">
           <div class="section-title">Scenario Lab</div>
           <div class="glass" style="padding: 14px; margin-bottom: 16px;">
@@ -1236,9 +1280,12 @@
           <div class="matrix" id="scenarioMatrix" style="margin-bottom: 16px;"></div>
           <div class="cards" id="scenarioCards"></div>
         </div>
+        <div class="back-to-top">
+          <a class="back-to-top-link" href="#top">Back to top</a>
+        </div>
       </section>
 
-      <section class="section hidden" data-view="/wind-tunnel">
+      <section class="section" id="wind-tunnel-section" data-view="/wind-tunnel">
         <div class="glass" style="padding: 18px;">
           <div class="section-title">Strategy Score Grid</div>
           <div class="matrix" id="scoreMatrix"></div>
@@ -1249,9 +1296,12 @@
           <div class="section-title" style="margin-top: 18px;">Strategy Ranking Summary</div>
           <div class="matrix" id="rankingTable"></div>
         </div>
+        <div class="back-to-top">
+          <a class="back-to-top-link" href="#top">Back to top</a>
+        </div>
       </section>
 
-      <section class="section hidden" data-view="/actions">
+      <section class="section" id="actions-section" data-view="/actions">
         <div class="glass" style="padding: 18px;">
           <div class="action-toolbar">
             <div class="section-title">Action Console</div>
@@ -1265,22 +1315,8 @@
           <div id="actionStatus" class="helper"></div>
           <div class="cards action-board" id="actionBoard"></div>
         </div>
-      </section>
-
-      <section class="section hidden" data-view="/chat">
-        <div class="glass" style="padding: 18px;">
-          <div class="section-title">Scenario Advisor</div>
-          <div class="helper" style="margin-bottom: 12px;">
-            Ask questions grounded in the run artifacts + vector database. The assistant will only use run data.
-          </div>
-          <div class="chat-panel">
-            <div id="chatMessages" class="chat-messages"></div>
-            <div class="chat-input">
-              <textarea id="chatInput" placeholder="Ask about scenarios, strategies, market signals, or risks..."></textarea>
-              <button id="chatSend" class="primary">Ask</button>
-            </div>
-            <div id="chatStatus" class="helper"></div>
-          </div>
+        <div class="back-to-top">
+          <a class="back-to-top-link" href="#top">Back to top</a>
         </div>
       </section>
 
@@ -1426,6 +1462,9 @@
           actionEditMode: false,
           actionDirty: false,
           readOnly: false,
+          nodeStatusHistoryByRun: {},
+          lastResumeRunId: null,
+          lastResumeFrom: null,
         };
 
   
@@ -1462,36 +1501,43 @@
         }
 
         async function handleRerunSelected() {
-          const runStatus = document.getElementById("runStatus");
-          if (!state.viewModel) {
-            if (runStatus) runStatus.textContent = "Load a run before rerunning.";
-            return;
-          }
-          if (runStatus) runStatus.textContent = "Rerunning...";
-          const rerunBtn = document.getElementById("runActionRerunBtn") || document.getElementById("rerunBtn");
-          if (rerunBtn) rerunBtn.disabled = true;
-          try {
-            const payload = buildRerunPayload();
-            const response = await fetchJson("/build", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(payload),
-            });
-            const newRunId = response?.run_id;
-            if (runStatus) {
-              runStatus.textContent = newRunId ? `Rerun launched: ${newRunId}` : "Rerun launched.";
-            }
-            if (newRunId) {
-              history.pushState({}, "", `/runs/${newRunId}`);
-              setRoute("/runs");
-              await loadData(newRunId);
-            }
-          } catch (err) {
-            if (runStatus) runStatus.textContent = "Rerun failed.";
-          } finally {
-            if (rerunBtn) rerunBtn.disabled = false;
-          }
+        const runStatus = document.getElementById("runStatus");
+        const resumeFrom = document.getElementById("resumeNode").value || null;
+        if (resumeFrom) {
+          const selectedRunId = document.getElementById("runSelect").value || state.runId;
+          document.getElementById("resumeRunId").value = selectedRunId || "";
+          document.getElementById("launchRun").click();
+          return;
         }
+        if (!state.viewModel) {
+          if (runStatus) runStatus.textContent = "Load a run before rerunning.";
+          return;
+        }
+        if (runStatus) runStatus.textContent = "Rerunning...";
+        const rerunBtn = document.getElementById("runActionRerunBtn") || document.getElementById("rerunBtn");
+        if (rerunBtn) rerunBtn.disabled = true;
+        try {
+          const payload = buildRerunPayload();
+          const response = await fetchJson("/build", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const newRunId = response?.run_id;
+          if (runStatus) {
+            runStatus.textContent = newRunId ? `Rerun launched: ${newRunId}` : "Rerun launched.";
+          }
+          if (newRunId) {
+            history.pushState({}, "", `/runs/${newRunId}`);
+            setRoute("/runs");
+            await loadData(newRunId);
+          }
+        } catch (err) {
+          if (runStatus) runStatus.textContent = "Rerun failed.";
+        } finally {
+          if (rerunBtn) rerunBtn.disabled = false;
+        }
+      }
 
         function handleRetryFailed() {
           const runStatus = document.getElementById("runStatus");
@@ -1504,7 +1550,6 @@
             if (runStatus) runStatus.textContent = "Load a run before retrying.";
             return;
           }
-          document.getElementById("resumeLast").checked = false;
           document.getElementById("resumeNode").value = failedNode;
           document.getElementById("resumeRunId").value = state.runId;
           document.getElementById("launchRun").click();
@@ -1525,6 +1570,8 @@
         function getRunsModel() {
           return { runs: state.runs.slice(), labels: { ...state.runLabels } };
         }
+
+        let lastStateHash = "";
 
         function applyRunUiMode() {
           const panel = document.getElementById("runActionsPanel");
@@ -1792,7 +1839,6 @@
             status.textContent = "Run failed. You can retry or resume from the failed node.";
           }
           [
-            "uploadInput",
             "actionEditBtn",
             "actionSaveBtn",
             "actionGenerateBtn",
@@ -1929,9 +1975,17 @@
             if (hasRunning) {
               return { status: "RUNNING", lastEvent: last?.updated_at || null, current: last?.entry || null };
             }
-            if (String(meta.status || "").toUpperCase().includes("COMPLETE") || String(meta.status || "").toUpperCase() === "OK") {
+            const runStatusUpper = String(meta.status || "").toUpperCase();
+            if (runStatusUpper === "RUNNING" || runStatusUpper === "IN_PROGRESS") {
+                 return { status: "RUNNING", lastEvent: last?.updated_at || null, current: last?.entry || null };
+            }
+            if (runStatusUpper.includes("COMPLETE") || runStatusUpper === "OK") {
               return { status: "OK", lastEvent: last?.updated_at || null, current: last?.entry || null };
             }
+          }
+          const runStatusUpper = String(meta.status || "").toUpperCase();
+          if (runStatusUpper === "RUNNING" || runStatusUpper === "IN_PROGRESS") {
+               return { status: "RUNNING", lastEvent: null, current: null };
           }
           const events = Array.isArray(state.nodeEvents) ? state.nodeEvents : [];
           if (!events.length) {
@@ -2080,6 +2134,7 @@
           context.geography || "Global",
           `${context.horizon || 60} Months`,
           context.company || "Company",
+          runId ? `Run ID: ${runId}` : "Run ID: —",
         ];
         items.forEach((item) => {
           const pill = document.createElement("div");
@@ -2098,7 +2153,7 @@
         const geography = draft.geography || (draft.scope === "world" ? "Global" : "Global");
         const horizon = draft.horizon || 60;
         const company = draft.company || "Company";
-        const items = [geography, `${horizon} Months`, company];
+        const items = [geography, `${horizon} Months`, company, runId ? `Run ID: ${runId}` : "Run ID: —"];
         items.forEach((item) => {
           const pill = document.createElement("div");
           pill.className = "context-pill";
@@ -2106,6 +2161,26 @@
           ribbon.appendChild(pill);
         });
         document.getElementById("runState").textContent = runId ? `LAUNCHING - ${formatRunLabel({ company, geography, horizon })}` : "Launching";
+      }
+
+      function mergeNodeStatusHistory(previous, current) {
+        const merged = { ...(previous || {}) };
+        Object.entries(current || {}).forEach(([key, value]) => {
+          const prev = (previous || {})[key] || {};
+          const next = value || {};
+          merged[key] = { ...prev, ...next };
+          const prevDuration = prev.duration_seconds;
+          const nextDuration = next.duration_seconds;
+          if ((nextDuration === 0 || nextDuration === null || nextDuration === undefined) && prevDuration > 0) {
+            merged[key].duration_seconds = prevDuration;
+          }
+        });
+        return merged;
+      }
+
+      function getNodeStatusMap() {
+        if (!state.runId) return state.viewModel?.run_meta?.node_status || {};
+        return state.nodeStatusHistoryByRun[state.runId] || state.viewModel?.run_meta?.node_status || {};
       }
 
       function renderCompanyCards() {
@@ -2280,7 +2355,7 @@
             };
             defaultNodes.forEach((node) => {
               const steps = stageMap[node.id] || [];
-              const nodeStatusMap = state.viewModel?.run_meta?.node_status || {};
+              const nodeStatusMap = getNodeStatusMap();
               const nodeMeta = nodeStatusMap[node.id] || null;
               const entries = state.nodeEvents.filter((e) => steps.includes(resolveNodeName(e.node)));
               const stageStatus = deriveStageStatus(entries, nodeMeta, steps);
@@ -2288,9 +2363,9 @@
               const isEnabled = enabledNodes.has(node.id);
               div.className = "node";
               if (!isEnabled) div.classList.add("disabled");
-              if (stageStatus === "RUNNING") div.classList.add("running");
-              if (stageStatus === "FAIL") div.classList.add("error");
-              if (stageStatus === "OK") div.classList.add("success");
+          if (stageStatus === "RUNNING" || stageStatus === "IN_PROGRESS") div.classList.add("running");
+          if (stageStatus === "OK" || stageStatus === "COMPLETED") div.classList.add("success");
+          if (stageStatus === "FAIL" || stageStatus === "FAILED") div.classList.add("error");
               div.textContent = node.label;
               const entry = buildDetailEntry(node, stageStatus, entries, nodeMeta, steps);
               const detail = document.createElement("div");
@@ -2330,8 +2405,17 @@
               : state.launchingRunId
               ? "Launching"
               : "Pending";
-          const lastUpdate = derived.lastEvent ? ` • Last update ${formatAge(derived.lastEvent)}` : "";
-          el.textContent = `Status: ${status} • Current: ${current} • Completed: ${completed} • Failed: ${failed}${lastUpdate}`;
+            const lastUpdate = derived.lastEvent ? ` • Last update ${formatAge(derived.lastEvent)}` : "";
+          const ingestWarning = state.viewModel?.run_meta?.warnings?.ingest_docs;
+          let warningText = "";
+          if (ingestWarning) {
+            const failedCount = ingestWarning.failed || 0;
+            const partialCount = ingestWarning.partial || 0;
+            if (failedCount || partialCount) {
+              warningText = ` • Upload warnings: ${failedCount} failed, ${partialCount} partial`;
+            }
+          }
+          el.textContent = `Status: ${status} • Current: ${current} • Completed: ${completed} • Failed: ${failed}${lastUpdate}${warningText}`;
         }
 
       function renderArtifacts() {
@@ -3026,9 +3110,12 @@
 
       function setRoute(route) {
         const normalized = normalizeRoute(route);
-        document.querySelectorAll("[data-view]").forEach((section) => {
-          section.classList.toggle("hidden", section.dataset.view !== normalized);
-        });
+        const sectionId =
+          normalized === "/runs" ? "runs-section" : `${normalized.substring(1)}-section`;
+        const target = document.getElementById(sectionId);
+        if (target) {
+          target.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
         document.querySelectorAll(".nav-link").forEach((link) => {
           link.classList.toggle("active", normalizeRoute(link.dataset.route) === normalized);
         });
@@ -3061,17 +3148,42 @@
               return false;
             }
             state.runId = runId;
-          state.viewModel = await fetchArtifact(runId, "view_model.json");
-          const runStatusValue = String(state.viewModel?.run_meta?.status || "").toUpperCase();
+          const viewModel = await fetchArtifact(runId, "view_model.json");
+          const runStatusValue = String(viewModel?.run_meta?.status || "").toUpperCase();
           const isFailed = runStatusValue === "FAIL" || runStatusValue === "FAILED";
-          state.readOnly = Boolean(state.viewModel?.run_meta?.is_final) && !isFailed;
+          const readOnly = Boolean(viewModel?.run_meta?.is_final) && !isFailed;
           if (state.launchingRunId === runId) {
             state.launchingRunId = null;
           }
+            const nodeEvents = await fetchNodeEvents(runId);
+            const normalization = await fetchNormalization(runId);
+            const actionConsole = await fetchActionConsole(runId).catch(() => null);
+            const currentStateHash = JSON.stringify({
+              runId,
+              viewModel,
+              nodeEvents,
+              normalization,
+              actionConsole,
+              latestLinks: state.latestLinks,
+            });
+            if (currentStateHash === lastStateHash) {
+              setStatus(true);
+              return true;
+            }
+            lastStateHash = currentStateHash;
+            state.viewModel = viewModel;
+            state.readOnly = readOnly;
             updateContext(state.viewModel, state.runId);
-            state.nodeEvents = await fetchNodeEvents(runId);
-            state.normalization = await fetchNormalization(runId);
-            state.actionConsole = await fetchActionConsole(runId).catch(() => null);
+            state.nodeEvents = nodeEvents;
+            state.normalization = normalization;
+            state.actionConsole = actionConsole;
+            const rawNodeStatus = viewModel?.run_meta?.node_status || {};
+            if (state.lastResumeRunId === runId && state.lastResumeFrom) {
+              const previous = state.nodeStatusHistoryByRun[runId] || {};
+              state.nodeStatusHistoryByRun[runId] = mergeNodeStatusHistory(previous, rawNodeStatus);
+            } else {
+              state.nodeStatusHistoryByRun[runId] = rawNodeStatus;
+            }
             state.actionDirty = false;
             state.actionEditMode = false;
             const last = _lastNodeEvent();
@@ -3388,6 +3500,7 @@
           title: "Scope",
           content: `
             <label>Company<input id="forgeCompany" placeholder="Microsoft" /></label>
+            <label>Upload files (optional)<input id="forgeUploadInput" type="file" multiple /></label>
             <label>Scope<select id="forgeScope"><option value="country">Country</option><option value="region">Region</option><option value="world">World</option></select></label>
             <label>Country<select id="forgeGeographySelect"></select></label>
             <label id="forgeGeographyCustomWrap" class="hidden">Custom Country<input id="forgeGeographyCustom" placeholder="Enter country" /></label>
@@ -3574,19 +3687,17 @@
       document.getElementById("launchRun").addEventListener("click", async () => {
         const runStatus = document.getElementById("runStatus");
         const launchBtn = document.getElementById("launchRun");
-        if (!draft.company || !draft.company.trim()) {
+        if ((!draft.company || !draft.company.trim()) && !document.getElementById("resumeNode").value) {
           runStatus.textContent = "Company is required. Please enter a company name.";
           return;
         }
         runStatus.textContent = "Launching run...";
         launchBtn.disabled = true;
         const resumeFrom = document.getElementById("resumeNode").value || null;
-        const resumeLast = document.getElementById("resumeLast").checked;
         const manualRunId = document.getElementById("resumeRunId").value.trim();
         const selectedRunId = document.getElementById("runSelect").value;
         const generateStrategies = true;
-        const latest = resumeLast ? await fetchLatest().catch(() => null) : null;
-        const runId = manualRunId || (resumeFrom ? (resumeLast ? latest?.run_id : selectedRunId) : null);
+        const runId = manualRunId || (resumeFrom ? selectedRunId : null);
         const plannedRunId = runId || (!resumeFrom ? generateRunId() : null);
         if (!resumeFrom) {
           state.runId = plannedRunId;
@@ -3595,6 +3706,8 @@
           updateContextDraft(plannedRunId);
           setStatus(true, "LAUNCHING", plannedRunId ? `Run ${plannedRunId} is launching.` : "Launching run...");
         }
+        state.lastResumeRunId = resumeFrom ? runId : null;
+        state.lastResumeFrom = resumeFrom;
         const settingsOverrides = buildSettingsOverrides();
         const runMode = draft.mode || "live";
         const mockMode = runMode === "mock";
@@ -3634,6 +3747,15 @@
             runStatus.textContent = newRunId ? `${reason}: ${newRunId}` : reason;
           } else {
             runStatus.textContent = newRunId ? `Run launched: ${newRunId}` : "Run launched.";
+          }
+          const forgeModal = document.getElementById("forgeModal");
+          if (forgeModal) forgeModal.classList.add("hidden");
+          document.body.classList.remove("modal-open");
+          const topAnchor = document.getElementById("top");
+          if (topAnchor) {
+            topAnchor.scrollIntoView({ behavior: "smooth", block: "start" });
+          } else {
+            window.scrollTo({ top: 0, behavior: "smooth" });
           }
           if (newRunId) {
             history.pushState({}, "", `/runs/${newRunId}`);
@@ -3675,19 +3797,22 @@
       });
       
 
-      document.getElementById("uploadInput").addEventListener("change", async (event) => {
+      async function handleUploadChange(event) {
         const files = event.target.files || [];
         if (!files.length) return;
         const status = document.getElementById("uploadStatus");
-        status.textContent = "Uploading...";
+        if (status) status.textContent = "Uploading...";
         try {
           const result = await uploadFiles(files);
           state.uploadedDocs = result.files || [];
-          status.textContent = `Uploaded ${state.uploadedDocs.length} file(s).`;
+          if (status) status.textContent = `Uploaded ${state.uploadedDocs.length} file(s).`;
         } catch (err) {
-          status.textContent = "Upload failed. python-multipart may be missing.";
+          if (status) status.textContent = "Upload failed. python-multipart may be missing.";
         }
-      });
+      }
+
+      document.getElementById("uploadInput").addEventListener("change", handleUploadChange);
+      document.getElementById("forgeUploadInput")?.addEventListener("change", handleUploadChange);
 
       document.getElementById("chatSend")?.addEventListener("click", sendChat);
       document.getElementById("chatInput")?.addEventListener("keydown", (event) => {
@@ -3786,15 +3911,6 @@
         }
       });
 
-      document.querySelectorAll(".nav-link").forEach((link) => {
-        link.addEventListener("click", (event) => {
-          event.preventDefault();
-          const route = link.dataset.route;
-          history.pushState({}, "", route);
-          setRoute(route);
-        });
-      });
-
       window.addEventListener("popstate", () => setRoute(window.location.pathname));
 
       const resumeNode = document.getElementById("resumeNode");
@@ -3838,6 +3954,14 @@
       document.addEventListener("click", async (event) => {
         const target = event.target;
         if (!target) return;
+        const navLink = target.closest(".nav-link");
+        if (navLink) {
+          event.preventDefault();
+          const route = navLink.dataset.route;
+          history.pushState({}, "", route);
+          setRoute(route);
+          return;
+        }
         const button = target.closest("button");
         if (!button || !button.id) return;
         if (button.id === "loadRunBtn" || button.id === "runActionLoadBtn") {

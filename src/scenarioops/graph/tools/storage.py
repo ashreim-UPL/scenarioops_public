@@ -739,7 +739,12 @@ def log_node_event(
     if not isinstance(node_status, dict):
         node_status = {}
     previous = node_status.get(node_name) if isinstance(node_status.get(node_name), dict) else {}
-    attempt = int(previous.get("attempt") or 0) + 1
+    prev_status = previous.get("status")
+    if prev_status == "RUNNING" and status in ("OK", "FAIL"):
+        attempt = int(previous.get("attempt") or 1)
+    else:
+        attempt = int(previous.get("attempt") or 0) + 1
+    
     payload: dict[str, Any] = {
         "timestamp": timestamp_value,
         "node": node_name,

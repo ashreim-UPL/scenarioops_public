@@ -1,6 +1,6 @@
 # Current State Summary & Audit Report
 
-**Date:** 2026-01-16
+**Date:** 2026-02-01
 **Auditor:** Gemini Agent
 
 ## 1. Functional Summary
@@ -59,7 +59,7 @@ The core execution engine uses a graph-based approach (`run_graph`) where state 
 ### C3: Observability & Reliability
 *   **Status:** 🔴 **FAIL**
 *   **Findings:**
-    *   **Logging:** The codebase uses `print()` statements extensively in `scenarioops/app/main.py` (e.g., `print(json.dumps(...))`, `print(f"verify failed: ...")`). This violates the "No `print()` statements in production code" rule.
+*   **Logging:** The codebase previously used `print()` statements in `scenarioops/app/main.py`. This has been **Resolved**. All production logging now uses `scenarioops.observability` and structured JSON (verified in audit follow-up).
     *   **Metrics:** While `log_node_event` captures duration, explicit RED (Rate, Error, Duration) metrics emission for external monitoring is not clearly standardized across all paths.
 
 ### C4: Performance & Cost
@@ -70,5 +70,5 @@ The core execution engine uses a graph-based approach (`run_graph`) where state 
 ## Recommendations
 1.  **Refactor Directory Structure:** Move `scenarioops/` into `src/scenarioops/`.
 2.  **Purify Domain:** Decouple nodes from direct `LLMClient` usage. Pass "decisions" or "content" into domain entities, or use strict interfaces (Ports & Adapters) where the domain requests information without knowing the provider.
-3.  **Replace Print with Logger:** Replace all `print()` calls with a structured JSON logger (e.g., `structlog` or standard `logging` configured for JSON).
+3.  **Replace Print with Logger:** [COMPLETED] Replaced `print()` calls with structured JSON logging in `main.py`.
 4.  **Standardize Error Handling:** Remove broad catch blocks where possible or ensure they re-raise after logging structured error events.

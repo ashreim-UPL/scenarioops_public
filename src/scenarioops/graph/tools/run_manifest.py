@@ -73,7 +73,7 @@ def collect_schema_versions(root: Path) -> dict[str, str]:
 
 
 def collect_prompt_versions(root: Path) -> dict[str, str]:
-    prompts_dir = root / "prompts"
+    prompts_dir = root / "src" / "scenarioops" / "prompts"
     if not prompts_dir.exists():
         return {}
     prompts = sorted([path for path in prompts_dir.iterdir() if path.is_file()])

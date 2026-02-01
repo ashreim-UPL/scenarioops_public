@@ -13,7 +13,14 @@ from scenarioops.app.config import LLMConfig, ScenarioOpsSettings, llm_config_fr
 from scenarioops.graph.state import ScenarioOpsState
 from scenarioops.graph.tools.evidence_processing import fallback_summary, summarize_text
 from scenarioops.graph.tools.schema_validate import validate_artifact
-from scenarioops.graph.tools.storage import ensure_run_dirs, write_artifact, write_bytes, write_text
+from scenarioops.graph.tools.storage import (
+    ensure_run_dirs,
+    read_run_json,
+    update_run_json,
+    write_artifact,
+    write_bytes,
+    write_text,
+)
 from scenarioops.graph.tools.traceability import build_run_metadata
 from scenarioops.graph.tools.vectordb import open_run_vector_store
 from scenarioops.llm.client import get_llm_client
@@ -443,6 +450,19 @@ def run_ingest_docs_node(
     combined_units = _dedupe_units([*existing_units, *evidence_units])
     if not combined_units:
         return state
+
+    failed_units = [unit for unit in combined_units if unit.get("status") == "failed"]
+    partial_units = [unit for unit in combined_units if unit.get("status") == "partial"]
+    if failed_units or partial_units:
+        warning_payload = {
+            "failed": len(failed_units),
+            "partial": len(partial_units),
+            "total": len(combined_units),
+        }
+        current = read_run_json(run_id, base_dir=base_dir) or {}
+        warnings = dict(current.get("warnings") or {})
+        warnings["ingest_docs"] = warning_payload
+        update_run_json(run_id=run_id, updates={"warnings": warnings}, base_dir=base_dir)
 
     payload = {
         **metadata,

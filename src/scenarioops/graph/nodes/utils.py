@@ -12,9 +12,8 @@ from scenarioops.graph.tools.prompts import load_prompt_spec
 
 
 def prompts_dir() -> Path:
-    # __file__ is src/scenarioops/graph/nodes/utils.py
-    # parents[4] is root
-    return Path(__file__).resolve().parents[4] / "prompts"
+    # src/scenarioops/graph/nodes/utils.py -> parents[2] is src/scenarioops
+    return Path(__file__).resolve().parents[2] / "prompts"
 
 
 @dataclass(frozen=True)

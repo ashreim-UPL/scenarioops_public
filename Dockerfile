@@ -20,7 +20,6 @@ COPY src src
 COPY config config
 COPY data data
 COPY docs docs
-COPY prompts prompts
 
 # Install the package itself
 RUN pip install --no-cache-dir .

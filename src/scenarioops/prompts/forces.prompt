@@ -1,5 +1,5 @@
 Generate hierarchical driving forces grounded in evidence.
-Return ONLY a JSON object that matches the Forces schema. No prose, no markdown, no extra keys.
+Return ONLY a JSON object with a single root key "forces" containing the list of forces. No prose, no markdown, no extra keys.
 
 Rules:
 - Minimum total forces: {{min_forces}}.

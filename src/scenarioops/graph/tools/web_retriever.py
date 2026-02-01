@@ -81,7 +81,7 @@ _LAST_FETCH_AT: float | None = None
 
 def _load_allowlist(path: Path | None = None) -> list[str]:
     if path is None:
-        path = Path(__file__).resolve().parents[3] / "data" / "public_sources_allowlist.json"
+        path = Path(__file__).resolve().parents[4] / "data" / "public_sources_allowlist.json"
     if not path.exists():
         return []
     payload = json.loads(path.read_text(encoding="utf-8"))
@@ -119,10 +119,8 @@ def _parse_date(header_value: str | None) -> str | None:
         return None
 
 
-def _cache_dir(path: Path | None = None) -> Path:
-    if path is not None:
-        return path
-    return Path(__file__).resolve().parents[3] / "data" / "retriever_cache"
+def _cache_dir() -> Path:
+    return Path(__file__).resolve().parents[4] / "data" / "retriever_cache"
 
 
 def _cache_key(url: str) -> str:
@@ -193,6 +191,74 @@ def _log_retrieval(
         payload["detail"] = detail
     with log_path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(payload) + "\n")
+
+
+def retrieve_bytes(
+    url: str,
+    *,
+    run_id: str,
+    allowlist_path: Path | None = None,
+    base_dir: Path | None = None,
+    rate_limit_per_sec: float | None = 0.5,
+    allow_web: bool | None = None,
+    allow_network: bool | None = None,
+    enforce_allowlist: bool = True,
+    timeout_seconds: float = 20.0,
+) -> tuple[bytes, str | None, int | None]:
+    if allow_web is None:
+        allow_web = allow_network
+    if allow_web is None:
+        allow_web = False
+
+    allowlist = _load_allowlist(allowlist_path) if enforce_allowlist else []
+    if allowlist and not _is_allowed(url, allowlist):
+        _log_retrieval(
+            run_id=run_id,
+            url=url,
+            status="blocked",
+            base_dir=base_dir,
+            detail="allowlist_blocked",
+        )
+        raise PermissionError("URL blocked by allowlist.")
+
+    if not allow_web:
+        _log_retrieval(
+            run_id=run_id,
+            url=url,
+            status="blocked",
+            base_dir=base_dir,
+            detail="network disabled",
+        )
+        raise PermissionError("Network disabled.")
+
+    _rate_limit(rate_limit_per_sec)
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+    request = Request(url, headers=headers)
+    try:
+        with urlopen(request, timeout=timeout_seconds) as response:
+            raw = response.read()
+            content_type = response.headers.get("Content-Type")
+            http_status = getattr(response, "status", None)
+    except Exception as exc:
+        _log_retrieval(
+            run_id=run_id,
+            url=url,
+            status="error",
+            base_dir=base_dir,
+            detail=str(exc),
+        )
+        raise
+
+    _log_retrieval(
+        run_id=run_id,
+        url=url,
+        status="ok",
+        base_dir=base_dir,
+        detail=f"bytes={len(raw)} content_type={content_type}",
+    )
+    return raw, content_type, http_status
 
 
 def retrieve_url(

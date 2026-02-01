@@ -94,6 +94,8 @@ class GeminiClient:
 
         if schema_name in {"Scenarios", "Scenarios Payload"}:
             parsed = _coerce_scenarios_payload(parsed)
+        if schema_name in {"Forces", "Forces Payload"}:
+            parsed = _coerce_forces_payload(parsed)
         parsed = _sanitize_payload(parsed, schema)
         if schema_name in {"Scenarios", "Scenarios Payload"}:
             _normalize_scenarios_axis_states(parsed)
@@ -314,6 +316,32 @@ def _coerce_scenarios_payload(parsed: Mapping[str, Any]) -> Mapping[str, Any]:
     ]
     if len(list_candidates) == 1:
         return {"scenarios": list_candidates[0]}
+    return parsed
+
+
+def _looks_like_forces_list(value: Any) -> bool:
+    if not isinstance(value, list) or not value:
+        return False
+    item = value[0]
+    if not isinstance(item, Mapping):
+        return False
+    keys = set(item.keys())
+    required = {"label", "mechanism", "domain"}
+    return bool(required.intersection(keys))
+
+
+def _coerce_forces_payload(parsed: Mapping[str, Any]) -> Mapping[str, Any]:
+    if not isinstance(parsed, Mapping):
+        return parsed
+    if "forces" in parsed:
+        return parsed
+    for key in ("force_list", "forces_list", "items", "data"):
+        candidate = parsed.get(key)
+        if _looks_like_forces_list(candidate):
+            return {"forces": candidate}
+    list_candidates = [value for value in parsed.values() if _looks_like_forces_list(value)]
+    if len(list_candidates) == 1:
+        return {"forces": list_candidates[0]}
     return parsed
 
 

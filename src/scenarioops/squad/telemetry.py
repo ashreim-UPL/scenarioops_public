@@ -20,6 +20,19 @@ def record_node_event(
     schema_validated: bool = True,
     action: Callable[[], T],
 ) -> T:
+    # Emit START/RUNNING event
+    log_node_event(
+        run_id=run_id,
+        node_name=node_name,
+        inputs=inputs,
+        outputs=outputs,
+        schema_validated=False,
+        duration_seconds=0.0,
+        base_dir=base_dir,
+        tools=tools,
+        status="RUNNING",
+    )
+
     start = perf_counter()
     try:
         result = action()

@@ -16,8 +16,8 @@ class PromptSpec:
 
 def prompts_dir() -> Path:
     # __file__ is src/scenarioops/graph/tools/prompts.py
-    # parents[4] is repo root
-    return Path(__file__).resolve().parents[4] / "prompts"
+    # parents[0]=tools, parents[1]=graph, parents[2]=scenarioops
+    return Path(__file__).resolve().parents[2] / "prompts"
 
 
 def _sha256(text: str) -> str:
