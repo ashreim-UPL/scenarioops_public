@@ -250,6 +250,9 @@ def _apply_overrides(
                 updated[key] = bool(value)
             continue
         if key in _INT_FIELDS:
+            if value is None:
+                updated[key] = None
+                continue
             try:
                 updated[key] = int(value)
             except (TypeError, ValueError) as exc:
