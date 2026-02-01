@@ -37,9 +37,17 @@ class SourceReputationConfig:
             object.__setattr__(self, "publisher_categories", DEFAULT_PUBLISHER_CATEGORIES)
 
 
+def _config_path(path: Path | None = None) -> Path:
+    if path:
+        return path
+    env_path = os.environ.get("SCENARIOOPS_SOURCE_REPUTATION_PATH")
+    if env_path:
+        return Path(env_path)
+    return Path(__file__).resolve().parents[4] / "data" / "source_reputation.json"
+
+
 def _load_reputation_db() -> dict[str, Any]:
-    default_path = Path(__file__).resolve().parents[4] / "data" / "source_reputation.json"
-    path_env = os.environ.get("SCENARIOOPS_SOURCE_REPUTATION_PATH")
+    return _load_config_payload(_config_path())
 
 
 def _load_config_payload(path: Path | None) -> dict[str, Any]:
