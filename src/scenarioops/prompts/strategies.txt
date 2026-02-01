@@ -1,5 +1,5 @@
 Generate strategies aligned to the provided scenarios and company profile.
-Return ONLY a JSON object that matches the Strategies schema. No prose, no markdown, no extra keys.
+Return ONLY a JSON object with a single root key "strategies" containing the list of strategy objects. No prose, no markdown, no extra keys.
 
 Rules:
 - Use only company information provided in Context (company_profile, annual report summary, focal issue). Do not introduce outside facts.

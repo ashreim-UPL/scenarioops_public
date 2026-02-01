@@ -1,7 +1,7 @@
 Generate 4 distinct, vivid, and highly differentiated scenarios based on the selected axes. 
 These scenarios should be creative, employing elements of fiction and storytelling to bring the future to life.
 
-Return ONLY a JSON object that strictly matches the Scenarios Payload schema.
+Return ONLY a JSON object with a single root key "scenarios" containing the list of scenario objects. No prose, no markdown, no extra keys.
 
 Creative Requirements:
 - **Names**: Use evocative, metaphorical, or "sci-fi" style names (e.g., "Digital Feudalism", "Green Gaia", "Neon Stagnation"). Do NOT use boring names like "High Growth / Low Regulation".

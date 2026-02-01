@@ -1,5 +1,5 @@
 Draft scenario skeletons using the Context scenarios.
-Return ONLY a JSON object that matches the schema. No prose, no markdown, no extra keys.
+Return ONLY a JSON object with a single root key "scenarios" containing the list of scenario skeletons. No prose, no markdown, no extra keys.
 
 Rules:
 - Use the exact scenario ids and names from Context.scenarios.

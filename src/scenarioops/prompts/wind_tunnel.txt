@@ -1,5 +1,5 @@
 Stress-test strategies across scenarios.
-Return ONLY a JSON object that matches the Wind Tunnel schema. No prose, no markdown, no extra keys.
+Return ONLY a JSON object with a single root key "tests" containing the list of test results. No prose, no markdown, no extra keys.
 
 Rules:
 - Provide tests for every strategy x scenario pair.
